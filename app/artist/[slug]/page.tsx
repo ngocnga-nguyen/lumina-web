@@ -89,14 +89,14 @@ export default function ArtistProfile() {
       time: "30 min",
     },
     {
-      name: "Lash lift",
+      name: "Lash Lift",
       price: "$70",
       desc1: "Natural curl without",
       desc2: "extensions",
       time: "60 min",
     },
     {
-      name: "Lash lift + Tint",
+      name: "Lash Lift + Tint",
       price: "$85",
       desc1: "Curl + darker lashes",
       desc2: "",
@@ -134,7 +134,7 @@ export default function ArtistProfile() {
   return (
     <main className="min-h-screen bg-white text-black">
       {/* Top panel */}
-      <header className="flex items-center justify-between bg-[#faf6f5] px-10 py-6 text-[15px]">
+      <header className="flex items-center justify-between bg-[#faf6f5] px-4 py-5 text-[15px] md:px-10 md:py-6">
         <Link href="/browse" className="transition hover:opacity-70">
           ← Back
         </Link>
@@ -144,11 +144,11 @@ export default function ArtistProfile() {
         <div className="w-[60px]" />
       </header>
 
-      <section className="px-10 py-8">
-        <div className="grid grid-cols-[360px_1fr] gap-14">
+      <section className="px-4 py-8 md:px-10">
+        <div className="grid grid-cols-1 gap-10 md:grid-cols-[320px_1fr] md:gap-14 lg:grid-cols-[360px_1fr]">
           {/* Left */}
           <div>
-            <div className="relative h-[430px] w-full bg-[#dddddd]">
+            <div className="relative h-[360px] w-full bg-[#dddddd] md:h-[430px]">
               <button
                 onClick={() => toggleSave(artistId)}
                 className="absolute right-4 top-4 text-[19px] leading-none transition hover:scale-110"
@@ -161,13 +161,13 @@ export default function ArtistProfile() {
 
             <div className="mt-6">
               <h2
-                className="text-[28px]"
+                className="text-[24px] md:text-[28px]"
                 style={{ fontFamily: "Georgia, Times New Roman, serif" }}
               >
                 Availability
               </h2>
 
-              <div className="mt-4 flex flex-wrap gap-6 text-[16px] text-neutral-800">
+              <div className="mt-4 flex flex-wrap gap-4 text-[15px] text-neutral-800 md:gap-6 md:text-[16px]">
                 <span>Monday</span>
                 <span>Tuesday</span>
                 <span>Wednesday</span>
@@ -175,12 +175,16 @@ export default function ArtistProfile() {
                 <span>Friday</span>
               </div>
 
-              <div className="mt-5">
+              <div className="mt-5 flex flex-wrap gap-3">
                 <button
                   onClick={() => setOpenBooking(true)}
                   className="rounded-full border border-black px-5 py-2 text-[14px] transition hover:bg-black hover:text-white"
                 >
                   Request booking
+                </button>
+
+                <button className="rounded-full border border-black px-5 py-2 text-[14px] transition hover:bg-black hover:text-white">
+                  Ask question
                 </button>
               </div>
             </div>
@@ -189,38 +193,38 @@ export default function ArtistProfile() {
           {/* Right */}
           <div>
             <h1
-              className="text-[64px] leading-[1.0] font-semibold"
+              className="text-[42px] leading-[1.0] font-semibold md:text-[56px] lg:text-[64px]"
               style={{ fontFamily: "Georgia, Times New Roman, serif" }}
             >
               Emma L
             </h1>
 
             <p
-              className="mt-1 text-[34px] leading-[1.1]"
+              className="mt-1 text-[24px] leading-[1.1] md:text-[30px] lg:text-[34px]"
               style={{ fontFamily: "Georgia, Times New Roman, serif" }}
             >
               Lash Artist
             </p>
 
-            <div className="mt-8 flex flex-wrap gap-x-14 gap-y-3 text-[18px] text-neutral-800">
+            <div className="mt-6 flex flex-wrap gap-x-8 gap-y-2 text-[15px] text-neutral-800 md:mt-8 md:gap-x-14 md:text-[18px]">
               <span>4.9 (127 reviews)</span>
               <span>10+ years experience</span>
               <span>Broken Arrow, OK</span>
             </div>
 
             <p
-              className="mt-10 max-w-[780px] text-[20px] leading-[1.5] text-neutral-800"
+              className="mt-8 max-w-[780px] text-[18px] leading-[1.5] text-neutral-800 md:mt-10 md:text-[20px]"
               style={{ fontFamily: "Georgia, Times New Roman, serif" }}
             >
               Soft glam specialist known for natural, camera-ready finishes
             </p>
 
-            <div className="mt-10">
-              <p className="text-[14px] uppercase tracking-[0.12em] text-neutral-300">
+            <div className="mt-8 md:mt-10">
+              <p className="text-[12px] uppercase tracking-[0.12em] text-neutral-300 md:text-[14px]">
                 Trust Highlights
               </p>
 
-              <div className="mt-4 space-y-2 text-[17px] text-neutral-800">
+              <div className="mt-4 space-y-2 text-[15px] text-neutral-800 md:text-[17px]">
                 <p>✔ Verified reviews</p>
                 <p>◔ Responds within 2 hours</p>
                 <p>◉ 70% clients rebook</p>
@@ -231,13 +235,13 @@ export default function ArtistProfile() {
         </div>
 
         {/* Tabs */}
-        <section className="mt-12 pb-20">
-          <div className="flex justify-center gap-10 text-[17px]">
+        <section className="mt-12 pb-16 md:pb-20">
+          <div className="flex flex-wrap justify-center gap-4 text-[15px] md:gap-10 md:text-[17px]">
             <button
               onClick={() => setActiveTab("service")}
               className={
                 activeTab === "service"
-                  ? "rounded-full border border-[#d8b4b4] px-5 py-2 text-black"
+                  ? "rounded-full border border-[#d8b4b4] px-4 py-2 text-black md:px-5"
                   : "text-neutral-500"
               }
             >
@@ -248,7 +252,7 @@ export default function ArtistProfile() {
               onClick={() => setActiveTab("portfolio")}
               className={
                 activeTab === "portfolio"
-                  ? "rounded-full border border-[#d8b4b4] px-5 py-2 text-black"
+                  ? "rounded-full border border-[#d8b4b4] px-4 py-2 text-black md:px-5"
                   : "text-neutral-500"
               }
             >
@@ -259,7 +263,7 @@ export default function ArtistProfile() {
               onClick={() => setActiveTab("reviews")}
               className={
                 activeTab === "reviews"
-                  ? "rounded-full border border-[#d8b4b4] px-5 py-2 text-black"
+                  ? "rounded-full border border-[#d8b4b4] px-4 py-2 text-black md:px-5"
                   : "text-neutral-500"
               }
             >
@@ -269,13 +273,13 @@ export default function ArtistProfile() {
 
           {/* Service tab */}
           {activeTab === "service" && (
-            <div className="mt-12 grid grid-cols-4 gap-x-10 gap-y-12">
+            <div className="mt-10 grid grid-cols-1 gap-6 md:grid-cols-2 lg:mt-12 lg:grid-cols-4 lg:gap-x-10 lg:gap-y-12">
               {services.map((service) => (
                 <div
                   key={service.name}
                   className="rounded-[18px] bg-[#f8f2f2] p-5"
                 >
-                  <div className="flex items-start justify-between">
+                  <div className="flex items-start justify-between gap-3">
                     <h3
                       className="text-[20px] font-semibold"
                       style={{ fontFamily: "Georgia, Times New Roman, serif" }}
@@ -298,7 +302,7 @@ export default function ArtistProfile() {
                     {service.desc2}
                   </p>
 
-                  <p className="mt-10 text-right text-[13px] text-neutral-600">
+                  <p className="mt-8 text-right text-[13px] text-neutral-600 md:mt-10">
                     ◔ {service.time}
                   </p>
                 </div>
@@ -308,13 +312,13 @@ export default function ArtistProfile() {
 
           {/* Portfolio tab */}
           {activeTab === "portfolio" && (
-            <div className="mt-12 grid grid-cols-3 gap-8">
+            <div className="mt-10 grid grid-cols-1 gap-6 md:grid-cols-2 lg:mt-12 lg:grid-cols-3 lg:gap-8">
               {portfolioImages.map((image, index) => (
                 <img
                   key={index}
                   src={image}
                   alt={`Portfolio ${index + 1}`}
-                  className="h-[280px] w-full object-cover"
+                  className="h-[240px] w-full object-cover md:h-[260px] lg:h-[280px]"
                 />
               ))}
             </div>
@@ -322,17 +326,19 @@ export default function ArtistProfile() {
 
           {/* Reviews tab */}
           {activeTab === "reviews" && (
-            <div className="mx-auto mt-12 max-w-[900px] space-y-6">
+            <div className="mx-auto mt-10 max-w-[900px] space-y-5 lg:mt-12 lg:space-y-6">
               {reviews.map((review, index) => (
-                <div key={index} className="border border-neutral-200 p-6">
-                  <div className="flex items-center justify-between">
-                    <h3 className="text-[18px] font-medium">{review.name}</h3>
-                    <span className="text-[15px] text-neutral-600">
+                <div key={index} className="border border-neutral-200 p-5 md:p-6">
+                  <div className="flex items-center justify-between gap-4">
+                    <h3 className="text-[17px] font-medium md:text-[18px]">
+                      {review.name}
+                    </h3>
+                    <span className="text-[14px] text-neutral-600 md:text-[15px]">
                       ⭐ {review.rating}
                     </span>
                   </div>
 
-                  <p className="mt-3 text-[16px] leading-[1.6] text-neutral-700">
+                  <p className="mt-3 text-[15px] leading-[1.6] text-neutral-700 md:text-[16px]">
                     {review.text}
                   </p>
                 </div>
@@ -343,16 +349,16 @@ export default function ArtistProfile() {
       </section>
 
       {/* Footer */}
-      <footer className="mt-6 bg-[#f4f1f0] px-10 py-12">
-        <div className="grid grid-cols-4 gap-16">
+      <footer className="mt-6 bg-[#f4f1f0] px-4 py-10 md:px-10 md:py-12">
+        <div className="grid grid-cols-1 gap-10 md:grid-cols-2 lg:grid-cols-4 lg:gap-16">
           <div>
             <h3
-              className="text-[30px] font-semibold"
+              className="text-[28px] font-semibold md:text-[30px]"
               style={{ fontFamily: "Georgia, Times New Roman, serif" }}
             >
               Lumina
             </h3>
-            <p className="mt-6 max-w-[260px] text-[15px] leading-[1.5] text-neutral-700">
+            <p className="mt-5 max-w-[260px] text-[14px] leading-[1.5] text-neutral-700 md:mt-6 md:text-[15px]">
               Discover trusted beauty professionals and showcase your artistry
               without social media pressure.
             </p>
@@ -360,12 +366,12 @@ export default function ArtistProfile() {
 
           <div>
             <h4
-              className="text-[18px] font-semibold"
+              className="text-[17px] font-semibold md:text-[18px]"
               style={{ fontFamily: "Georgia, Times New Roman, serif" }}
             >
               For Clients
             </h4>
-            <div className="mt-6 space-y-1 text-[15px] text-neutral-700">
+            <div className="mt-4 space-y-1 text-[14px] text-neutral-700 md:mt-6 md:text-[15px]">
               <p>Find Professionals</p>
               <p>How It Works</p>
               <p>Reviews</p>
@@ -374,12 +380,12 @@ export default function ArtistProfile() {
 
           <div>
             <h4
-              className="text-[18px] font-semibold"
+              className="text-[17px] font-semibold md:text-[18px]"
               style={{ fontFamily: "Georgia, Times New Roman, serif" }}
             >
               For Artists
             </h4>
-            <div className="mt-6 space-y-1 text-[15px] text-neutral-700">
+            <div className="mt-4 space-y-1 text-[14px] text-neutral-700 md:mt-6 md:text-[15px]">
               <p>Join Lumina</p>
               <p>Pricing</p>
               <p>Success Stories</p>
@@ -388,12 +394,12 @@ export default function ArtistProfile() {
 
           <div>
             <h4
-              className="text-[18px] font-semibold"
+              className="text-[17px] font-semibold md:text-[18px]"
               style={{ fontFamily: "Georgia, Times New Roman, serif" }}
             >
               Company
             </h4>
-            <div className="mt-6 space-y-1 text-[15px] text-neutral-700">
+            <div className="mt-4 space-y-1 text-[14px] text-neutral-700 md:mt-6 md:text-[15px]">
               <p>About</p>
               <p>Contact</p>
               <p>Privacy</p>
@@ -404,10 +410,12 @@ export default function ArtistProfile() {
 
       {/* Booking popup */}
       {openBooking && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30">
-          <div className="w-[430px] bg-white p-6 shadow-xl">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 px-4">
+          <div className="w-full max-w-[430px] bg-white p-5 shadow-xl md:p-6">
             <div className="flex items-center justify-between">
-              <h2 className="text-[22px] font-medium">Request Booking</h2>
+              <h2 className="text-[20px] font-medium md:text-[22px]">
+                Request Booking
+              </h2>
               <button
                 onClick={() => setOpenBooking(false)}
                 className="text-neutral-400 transition hover:text-black"

@@ -20,7 +20,7 @@ export default function SavedPage() {
       albumTitle: "Hair",
       albumHref: "/saved/hair",
       image:
-        "https://i.pinimg.com/736x/d3/94/0b/d3940b17db908e6eb6aadb81b8c9723f.jpg",
+        "https://i.pinimg.com/736x/46/8c/76/468c761b7d788b2a540ec02bc3e3f1bf.jpg",
     },
     {
       id: "emma-l",
@@ -36,7 +36,7 @@ export default function SavedPage() {
       albumTitle: "Skin",
       albumHref: "/saved/skin",
       image:
-        "https://i.pinimg.com/1200x/ff/e4/31/ffe431a279388d674a8e127da9321437.jpg",
+        "https://i.pinimg.com/736x/03/4b/26/034b2662f1747eefe22a5df207cfee0c.jpg",
     },
     {
       id: "anna-h",
@@ -44,7 +44,7 @@ export default function SavedPage() {
       albumTitle: "Nail",
       albumHref: "/saved/nail",
       image:
-        "https://i.pinimg.com/1200x/ff/da/28/ffda28118015c870c770c4fb0e7a9479.jpg",
+        "https://i.pinimg.com/736x/c6/12/e6/c612e651df488d64a48ce23eda24ce18.jpg",
     },
   ];
 
@@ -77,13 +77,11 @@ export default function SavedPage() {
   }, {});
 
   const visibleAlbums = Object.values(albums);
-
   const availablePages = ["/saved/lash"];
 
   return (
     <main className="min-h-screen bg-white text-black">
-      {/* Top panel */}
-      <header className="flex items-center justify-between bg-[#faf6f5] px-10 py-6 text-[15px]">
+      <header className="flex items-center justify-between bg-[#faf6f5] px-4 py-5 text-[15px] md:px-10 md:py-6">
         <Link href="/browse" className="transition hover:opacity-70">
           ← Back
         </Link>
@@ -93,22 +91,23 @@ export default function SavedPage() {
         <div className="w-[60px]" />
       </header>
 
-      <section className="px-10 py-10">
-        {/* Title */}
-        <div className="mb-12 flex items-center gap-3">
+      <section className="px-4 py-8 md:px-10 md:py-10">
+        <div className="mb-10 flex items-center gap-3 md:mb-12">
           <span className="text-[22px] text-[#e9a8a8]">♡</span>
-          <span className="text-[20px] font-medium">Saved</span>
+          <span className="text-[18px] font-medium md:text-[20px]">Saved</span>
         </div>
 
         {visibleAlbums.length === 0 ? (
-          <div className="mt-20 text-center">
-            <p className="text-[18px] text-neutral-500">No saved artists yet.</p>
-            <p className="mt-2 text-[15px] text-neutral-400">
+          <div className="mt-16 text-center md:mt-20">
+            <p className="text-[16px] text-neutral-500 md:text-[18px]">
+              No saved artists yet.
+            </p>
+            <p className="mt-2 text-[14px] text-neutral-400 md:text-[15px]">
               Tap the heart on profiles you want to come back to.
             </p>
           </div>
         ) : (
-          <div className="grid grid-cols-3 gap-x-20 gap-y-20">
+          <div className="grid grid-cols-1 gap-10 md:grid-cols-2 md:gap-12 lg:grid-cols-3 lg:gap-x-20 lg:gap-y-20">
             {visibleAlbums.map((album) => {
               const isClickable = availablePages.includes(album.href);
 
@@ -118,24 +117,24 @@ export default function SavedPage() {
                     <img
                       src={album.images[0]}
                       alt={album.title}
-                      className="h-[180px] w-full object-cover"
+                      className="h-[180px] w-full object-cover md:h-[200px]"
                     />
                   ) : (
                     <div className="grid grid-cols-2 gap-3">
                       <img
                         src={album.images[0]}
                         alt={album.title}
-                        className="h-[180px] w-full object-cover"
+                        className="h-[180px] w-full object-cover md:h-[200px]"
                       />
                       <img
                         src={album.images[1]}
                         alt={album.title}
-                        className="h-[180px] w-full object-cover"
+                        className="h-[180px] w-full object-cover md:h-[200px]"
                       />
                     </div>
                   )}
 
-                  <p className="mt-5 text-center text-[20px] font-medium">
+                  <p className="mt-4 text-center text-[18px] font-medium md:mt-5 md:text-[20px]">
                     {album.title}
                   </p>
                   <p className="text-center text-sm text-neutral-500">
