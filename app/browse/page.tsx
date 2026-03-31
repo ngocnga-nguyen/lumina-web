@@ -65,6 +65,17 @@ export default function BrowsePage() {
 
   const artists: Artist[] = [
     {
+      id: "emma-l",
+      name: "Emma L",
+      role: "Lash Artist",
+      category: "Lashes",
+      rating: 4.9,
+      reviews: 127,
+      price: 95,
+      displayPrice: "From $95",
+      location: "Broken Arrow, OK",
+    },
+    {
       id: "linsey-j",
       name: "Linsey J",
       role: "Hair Stylist",
@@ -76,15 +87,15 @@ export default function BrowsePage() {
       location: "Broken Arrow, OK",
     },
     {
-      id: "emma-l",
-      name: "Emma L",
-      role: "Lash Artist",
-      category: "Lashes",
-      rating: 4.2,
-      reviews: 34,
-      price: 45,
-      displayPrice: "From $45",
-      location: "Claremore, OK",
+      id: "anna-h",
+      name: "Anna H",
+      role: "Nail Technician",
+      category: "Nails",
+      rating: 4.8,
+      reviews: 45,
+      price: 35,
+      displayPrice: "From $35",
+      location: "Pryor, OK",
     },
     {
       id: "lily-w",
@@ -96,17 +107,6 @@ export default function BrowsePage() {
       price: 55,
       displayPrice: "From $55",
       location: "Tulsa, OK",
-    },
-    {
-      id: "anna-h",
-      name: "Anna H",
-      role: "Nail Technician",
-      category: "Nails",
-      rating: 4.8,
-      reviews: 45,
-      price: 35,
-      displayPrice: "From $35",
-      location: "Pryor, OK",
     },
   ];
 
@@ -153,53 +153,53 @@ export default function BrowsePage() {
   return (
     <main className="min-h-screen bg-white text-black">
       {/* NAV */}
-      <header className="flex items-center justify-between bg-[#faf6f5] px-10 py-6 text-[15px]">
+      <header className="flex items-center justify-between bg-[#faf6f5] px-4 py-5 md:px-10">
         <Link href="/" className="font-medium">
           Lumina
         </Link>
 
-        <div>Browse Artists</div>
+        <div className="hidden md:block">Browse Artists</div>
 
-        <Link href="/saved" className="flex items-center gap-3">
-          <span className="text-[20px] text-[#e9a8a8]">♡</span>
-          <span>Saved</span>
+        <Link href="/saved" className="flex items-center gap-2">
+          <span className="text-[16px] text-[#e9a8a8]">♡</span>
+          <span className="text-sm">Saved</span>
         </Link>
       </header>
 
       {/* HEADER */}
-      <section className="px-10 pt-10 pb-20">
-        <div className="flex items-start justify-between">
+      <section className="px-4 pt-8 pb-16 md:px-10 md:pt-10 md:pb-20">
+        <div className="flex flex-col gap-6 md:flex-row md:items-start md:justify-between">
           <div>
             <h1
-              className="text-[54px] leading-[1.02] font-semibold"
+              className="text-[32px] font-semibold leading-[1.02] md:text-[54px]"
               style={{ fontFamily: "Georgia, Times New Roman, serif" }}
             >
               Professionals near me
             </h1>
 
-            <p className="mt-3 text-[18px] text-neutral-700">
+            <p className="mt-2 text-sm text-neutral-700 md:mt-3 md:text-[18px]">
               Discover {filteredAndSortedArtists.length} beauty professionals
             </p>
           </div>
 
-          <div className="w-[580px]">
-            <div className="flex items-center rounded-full bg-[#efedeb] px-5 py-3">
+          <div className="w-full md:w-[580px]">
+            <div className="flex items-center rounded-full bg-[#efedeb] px-4 py-3 md:px-5">
               <span className="mr-3 text-lg text-neutral-500">⌕</span>
               <input
                 type="text"
                 placeholder="search professional near me"
-                className="w-full bg-transparent outline-none"
+                className="w-full bg-transparent text-sm outline-none"
               />
             </div>
           </div>
 
-          <Link href="/browse/map" className="mt-2">
+          <Link href="/browse/map" className="text-sm md:mt-2 md:text-[15px]">
             Map
           </Link>
         </div>
 
         {/* FILTER + SORT */}
-        <div className="mt-10 flex items-center gap-10 text-[15px] text-neutral-700">
+        <div className="mt-8 flex items-center gap-6 text-sm text-neutral-700 md:mt-10 md:gap-10 md:text-[15px]">
           {/* FILTER */}
           <div className="relative">
             <button onClick={() => setOpenFilter(!openFilter)}>
@@ -207,7 +207,7 @@ export default function BrowsePage() {
             </button>
 
             {openFilter && (
-              <div className="absolute left-0 top-8 z-10 w-[260px] bg-white p-4 shadow-md">
+              <div className="absolute left-0 top-8 z-10 w-[240px] bg-white p-4 shadow-md md:w-[260px]">
                 <div className="mb-4 flex items-center justify-between">
                   <p className="font-medium">Filters</p>
                   <button
@@ -225,7 +225,7 @@ export default function BrowsePage() {
                   }
                   className={`block w-full py-1 text-left text-sm ${
                     selectedCategories.includes("Hair")
-                      ? "text-black font-medium"
+                      ? "font-medium text-black"
                       : "text-neutral-600"
                   }`}
                 >
@@ -237,7 +237,7 @@ export default function BrowsePage() {
                   }
                   className={`block w-full py-1 text-left text-sm ${
                     selectedCategories.includes("Lashes")
-                      ? "text-black font-medium"
+                      ? "font-medium text-black"
                       : "text-neutral-600"
                   }`}
                 >
@@ -249,7 +249,7 @@ export default function BrowsePage() {
                   }
                   className={`block w-full py-1 text-left text-sm ${
                     selectedCategories.includes("Nails")
-                      ? "text-black font-medium"
+                      ? "font-medium text-black"
                       : "text-neutral-600"
                   }`}
                 >
@@ -261,7 +261,7 @@ export default function BrowsePage() {
                   }
                   className={`block w-full py-1 text-left text-sm ${
                     selectedCategories.includes("Skin")
-                      ? "text-black font-medium"
+                      ? "font-medium text-black"
                       : "text-neutral-600"
                   }`}
                 >
@@ -275,7 +275,7 @@ export default function BrowsePage() {
                   }
                   className={`block w-full py-1 text-left text-sm ${
                     selectedPrices.includes("$")
-                      ? "text-black font-medium"
+                      ? "font-medium text-black"
                       : "text-neutral-600"
                   }`}
                 >
@@ -287,7 +287,7 @@ export default function BrowsePage() {
                   }
                   className={`block w-full py-1 text-left text-sm ${
                     selectedPrices.includes("$$")
-                      ? "text-black font-medium"
+                      ? "font-medium text-black"
                       : "text-neutral-600"
                   }`}
                 >
@@ -299,7 +299,7 @@ export default function BrowsePage() {
                   }
                   className={`block w-full py-1 text-left text-sm ${
                     selectedPrices.includes("$$$")
-                      ? "text-black font-medium"
+                      ? "font-medium text-black"
                       : "text-neutral-600"
                   }`}
                 >
@@ -313,7 +313,7 @@ export default function BrowsePage() {
                   }
                   className={`block w-full py-1 text-left text-sm ${
                     selectedRatings.includes("4.5+")
-                      ? "text-black font-medium"
+                      ? "font-medium text-black"
                       : "text-neutral-600"
                   }`}
                 >
@@ -325,7 +325,7 @@ export default function BrowsePage() {
                   }
                   className={`block w-full py-1 text-left text-sm ${
                     selectedRatings.includes("4.0+")
-                      ? "text-black font-medium"
+                      ? "font-medium text-black"
                       : "text-neutral-600"
                   }`}
                 >
@@ -417,10 +417,10 @@ export default function BrowsePage() {
         )}
 
         {/* GRID */}
-        <div className="mt-16 grid grid-cols-4 gap-12">
+        <div className="mt-10 grid grid-cols-1 gap-8 md:mt-16 md:grid-cols-2 lg:grid-cols-4 lg:gap-12">
           {filteredAndSortedArtists.map((artist) => (
             <div key={artist.id}>
-              <div className="relative h-[200px] bg-[#dddddd]">
+              <div className="relative h-[180px] rounded-[12px] bg-[#dddddd] md:h-[200px]">
                 <button
                   onClick={() => toggleSave(artist.id)}
                   className="absolute right-3 top-3 text-[19px] transition hover:scale-110"
@@ -448,7 +448,7 @@ export default function BrowsePage() {
 
                 <Link
                   href={`/artist/${artist.id}`}
-                  className="text-[#d8b4b4] hover:text-black transition"
+                  className="text-[#d8b4b4] transition hover:text-black"
                 >
                   View
                 </Link>
