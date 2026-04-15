@@ -81,9 +81,9 @@ export default function Home() {
             Browse Artists
           </Link>
 
-          <a href="#" className="transition hover:opacity-70">
+          <Link href="/join-as-artist" className="transition hover:opacity-70">
             Join as an Artist
-          </a>
+          </Link>
         </nav>
       </header>
 
@@ -231,7 +231,10 @@ export default function Home() {
 
               <div className="mt-6 flex items-center justify-between text-[14px] md:mt-8">
                 <span className="text-neutral-700">{artist.location}</span>
-                <Link href="/browse" className="text-neutral-400 transition hover:text-black">
+                <Link
+                  href="/browse"
+                  className="text-neutral-400 transition hover:text-black"
+                >
                   View Profile
                 </Link>
               </div>
@@ -319,9 +322,12 @@ export default function Home() {
             Browse Artists
           </Link>
 
-          <button className="rounded-full border border-black px-8 py-3 text-[15px]">
+          <Link
+            href="/join-as-artist"
+            className="rounded-full border border-black px-8 py-3 text-[15px] transition hover:bg-black hover:text-white"
+          >
             Join as an Artist
-          </button>
+          </Link>
         </div>
       </section>
     </main>
