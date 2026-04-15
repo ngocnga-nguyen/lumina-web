@@ -180,7 +180,7 @@ export default function ArtistProfile() {
                   onClick={() => setOpenBooking(true)}
                   className="rounded-full border border-black px-5 py-2 text-[14px] transition hover:bg-black hover:text-white"
                 >
-                  Request booking
+                  Send Request
                 </button>
 
                 <button className="rounded-full border border-black px-5 py-2 text-[14px] transition hover:bg-black hover:text-white">
@@ -408,13 +408,18 @@ export default function ArtistProfile() {
         </div>
       </footer>
 
-      {/* Booking popup */}
+      {/* Request popup */}
       {openBooking && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 px-4">
-          <div className="w-full max-w-[430px] bg-white p-5 shadow-xl md:p-6">
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/30 md:items-center">
+          <div
+            className="absolute inset-0"
+            onClick={() => setOpenBooking(false)}
+          />
+
+          <div className="relative w-full max-w-[430px] rounded-t-2xl bg-white p-5 shadow-xl md:rounded-md md:p-6">
             <div className="flex items-center justify-between">
-              <h2 className="text-[20px] font-medium md:text-[22px]">
-                Request Booking
+              <h2 className="text-[18px] font-medium md:text-[22px]">
+                Send Request
               </h2>
               <button
                 onClick={() => setOpenBooking(false)}
@@ -424,26 +429,42 @@ export default function ArtistProfile() {
               </button>
             </div>
 
-            <div className="mt-6 space-y-4">
+            <p className="mt-2 text-[13px] text-neutral-500">
+              Leave your contact so the artist can reach you directly.
+            </p>
+
+            <div className="mt-5 max-h-[60vh] space-y-4 overflow-y-auto pr-1">
+              <input
+                type="text"
+                placeholder="Your name"
+                className="w-full border border-neutral-300 px-4 py-3 text-[14px] outline-none"
+              />
+
+              <input
+                type="text"
+                placeholder="Phone number or Instagram"
+                className="w-full border border-neutral-300 px-4 py-3 text-[14px] outline-none"
+              />
+
               <input
                 type="text"
                 placeholder="Service (e.g. Hybrid set)"
-                className="w-full border border-neutral-300 px-4 py-3 outline-none"
+                className="w-full border border-neutral-300 px-4 py-3 text-[14px] outline-none"
               />
 
               <input
                 type="date"
-                className="w-full border border-neutral-300 px-4 py-3 outline-none"
+                className="w-full border border-neutral-300 px-4 py-3 text-[14px] outline-none"
               />
 
               <input
                 type="time"
-                className="w-full border border-neutral-300 px-4 py-3 outline-none"
+                className="w-full border border-neutral-300 px-4 py-3 text-[14px] outline-none"
               />
 
               <textarea
-                placeholder="Notes (optional)"
-                className="h-[120px] w-full resize-none border border-neutral-300 px-4 py-3 outline-none"
+                placeholder="Notes (anything the artist should know)"
+                className="h-[100px] w-full resize-none border border-neutral-300 px-4 py-3 text-[14px] outline-none"
               />
             </div>
 
@@ -460,7 +481,7 @@ export default function ArtistProfile() {
                   setOpenBooking(false);
                   alert("Request sent ✨");
                 }}
-                className="rounded-full bg-black px-5 py-2 text-[14px] text-white"
+                className="rounded-full bg-black px-6 py-2 text-[14px] text-white"
               >
                 Send Request
               </button>
