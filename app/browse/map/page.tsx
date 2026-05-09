@@ -1,14 +1,239 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import mapboxgl from "mapbox-gl";
+import "mapbox-gl/dist/mapbox-gl.css";
+import { supabase } from "@/lib/supabase";
+
+type Artist = {
+  id: string;
+  name: string;
+  category: string;
+  location: string;
+  price_start: number;
+  latitude: number | null;
+  longitude: number | null;
+};
+
+type UserLocation = {
+  latitude: number;
+  longitude: number;
+};
+
+function getDistanceMiles(
+  userLat: number,
+  userLng: number,
+  artistLat: number,
+  artistLng: number
+) {
+  const R = 3958.8;
+  const dLat = ((artistLat - userLat) * Math.PI) / 180;
+  const dLng = ((artistLng - userLng) * Math.PI) / 180;
+
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos((userLat * Math.PI) / 180) *
+      Math.cos((artistLat * Math.PI) / 180) *
+      Math.sin(dLng / 2) *
+      Math.sin(dLng / 2);
+
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
 
 export default function BrowseMapPage() {
-  const [selectedPin, setSelectedPin] = useState<"emma" | "linsey" | "anna" | null>("emma");
+  const mapContainer = useRef<HTMLDivElement | null>(null);
+  const mapRef = useRef<mapboxgl.Map | null>(null);
+  const markersRef = useRef<mapboxgl.Marker[]>([]);
+  const userMarkerRef = useRef<mapboxgl.Marker | null>(null);
+
+  const [artists, setArtists] = useState<Artist[]>([]);
+  const [selectedArtist, setSelectedArtist] = useState<Artist | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState("All");
+  const [userLocation, setUserLocation] = useState<UserLocation | null>(null);
+  const [locationStatus, setLocationStatus] = useState("");
+
+  useEffect(() => {
+    const fetchArtists = async () => {
+      const { data, error } = await supabase
+        .from("artists")
+        .select("*")
+        .order("name", { ascending: true });
+
+      if (error) {
+        console.log(error);
+        return;
+      }
+
+      setArtists(data || []);
+    };
+
+    fetchArtists();
+  }, []);
+
+  useEffect(() => {
+    if (!mapContainer.current || mapRef.current) return;
+
+    mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN || "";
+
+    mapRef.current = new mapboxgl.Map({
+      container: mapContainer.current,
+      style: "mapbox://styles/mapbox/light-v11",
+      center: [-95.9928, 36.154],
+      zoom: 8.5,
+    });
+
+    mapRef.current.addControl(new mapboxgl.NavigationControl(), "top-right");
+  }, []);
+
+  const useMyLocation = () => {
+    if (!navigator.geolocation) {
+      setLocationStatus("Location is not supported on this browser.");
+      return;
+    }
+
+    setLocationStatus("Getting your location...");
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const currentLocation = {
+          latitude: position.coords.latitude,
+          longitude: position.coords.longitude,
+        };
+
+        setUserLocation(currentLocation);
+        setLocationStatus("Showing nearest artists first.");
+
+        if (mapRef.current) {
+          mapRef.current.flyTo({
+            center: [currentLocation.longitude, currentLocation.latitude],
+            zoom: 9.5,
+          });
+
+          if (userMarkerRef.current) {
+            userMarkerRef.current.remove();
+          }
+
+          userMarkerRef.current = new mapboxgl.Marker({ color: "#000000" })
+            .setLngLat([currentLocation.longitude, currentLocation.latitude])
+            .setPopup(new mapboxgl.Popup().setText("You are here"))
+            .addTo(mapRef.current);
+        }
+      },
+      () => {
+        setLocationStatus("Location permission was denied.");
+      }
+    );
+  };
+
+  const getArtistDistance = (artist: Artist) => {
+    if (
+      !userLocation ||
+      artist.latitude === null ||
+      artist.longitude === null
+    ) {
+      return null;
+    }
+
+    return getDistanceMiles(
+      userLocation.latitude,
+      userLocation.longitude,
+      artist.latitude,
+      artist.longitude
+    );
+  };
+
+  const filteredArtists = useMemo(() => {
+    let result = [...artists];
+
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+
+      result = result.filter(
+        (artist) =>
+          artist.name.toLowerCase().includes(query) ||
+          artist.category.toLowerCase().includes(query) ||
+          artist.location.toLowerCase().includes(query)
+      );
+    }
+
+    if (selectedCategory !== "All") {
+      result = result.filter((artist) =>
+        artist.category.toLowerCase().includes(selectedCategory.toLowerCase())
+      );
+    }
+
+    if (userLocation) {
+      result.sort((a, b) => {
+        const aDistance = getArtistDistance(a);
+        const bDistance = getArtistDistance(b);
+
+        if (aDistance === null && bDistance === null) return 0;
+        if (aDistance === null) return 1;
+        if (bDistance === null) return -1;
+
+        return aDistance - bDistance;
+      });
+    }
+
+    return result;
+  }, [artists, searchQuery, selectedCategory, userLocation]);
+
+  useEffect(() => {
+    if (!mapRef.current) return;
+
+    markersRef.current.forEach((marker) => marker.remove());
+    markersRef.current = [];
+
+    filteredArtists.forEach((artist) => {
+      if (artist.latitude === null || artist.longitude === null) return;
+
+      const markerEl = document.createElement("button");
+      markerEl.type = "button";
+      markerEl.innerHTML = "📍";
+      markerEl.style.fontSize = "28px";
+      markerEl.style.cursor = "pointer";
+      markerEl.style.filter = "drop-shadow(0 3px 4px rgba(0,0,0,0.25))";
+
+      const marker = new mapboxgl.Marker({ element: markerEl })
+        .setLngLat([artist.longitude, artist.latitude])
+        .addTo(mapRef.current!);
+
+      markerEl.addEventListener("click", () => {
+        setSelectedArtist(artist);
+
+        mapRef.current?.flyTo({
+          center: [artist.longitude!, artist.latitude!],
+          zoom: 11.5,
+        });
+      });
+
+      markersRef.current.push(marker);
+    });
+
+    if (filteredArtists.length > 0) {
+      setSelectedArtist(filteredArtists[0]);
+
+      const firstWithCoords = filteredArtists.find(
+        (artist) => artist.latitude !== null && artist.longitude !== null
+      );
+
+      if (firstWithCoords && !userLocation) {
+        mapRef.current.flyTo({
+          center: [firstWithCoords.longitude!, firstWithCoords.latitude!],
+          zoom: 9.5,
+        });
+      }
+    } else {
+      setSelectedArtist(null);
+    }
+  }, [filteredArtists, userLocation]);
+
+  const categoryButtons = ["All", "Nail", "Hair", "Aesthetician", "Lash"];
 
   return (
     <main className="min-h-screen bg-white text-black">
-      {/* Top nav */}
       <header className="flex items-center justify-between bg-[#faf6f5] px-4 py-5 text-[15px] md:px-10 md:py-6">
         <Link href="/" className="font-medium">
           Lumina
@@ -33,12 +258,25 @@ export default function BrowseMapPage() {
               className="mt-5 text-[32px] leading-[1.02] font-semibold md:mt-8 md:text-[54px]"
               style={{ fontFamily: "Georgia, Times New Roman, serif" }}
             >
-              Professionals near me
+              Map of beauty professionals
             </h1>
 
             <p className="mt-2 text-[15px] text-neutral-700 md:mt-3 md:text-[18px]">
-              Discover 4 talented beauty professionals
+              Discover {filteredArtists.length} beauty professionals
             </p>
+
+            <button
+              onClick={useMyLocation}
+              className="mt-4 rounded-full border border-black px-5 py-2 text-[14px] transition hover:bg-black hover:text-white"
+            >
+              Use my location
+            </button>
+
+            {locationStatus && (
+              <p className="mt-2 text-[13px] text-neutral-500">
+                {locationStatus}
+              </p>
+            )}
           </div>
 
           <div className="w-full md:w-[580px]">
@@ -46,119 +284,87 @@ export default function BrowseMapPage() {
               <span className="mr-3 text-lg text-neutral-500">⌕</span>
               <input
                 type="text"
-                placeholder="search professional near me"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="search by city, artist, or service"
                 className="w-full bg-transparent text-sm outline-none placeholder:text-neutral-400"
               />
             </div>
 
             <div className="mt-6 flex flex-wrap justify-start gap-4 text-[14px] text-neutral-700 md:mt-8 md:justify-center md:gap-8 md:text-[15px]">
-              <button>All</button>
-              <button>Nail</button>
-              <button>Hair</button>
-              <button>Aesthetician</button>
-              <button>Lashes</button>
+              {categoryButtons.map((category) => (
+                <button
+                  key={category}
+                  onClick={() => setSelectedCategory(category)}
+                  className={
+                    selectedCategory === category
+                      ? "font-medium text-black"
+                      : "text-neutral-600"
+                  }
+                >
+                  {category}
+                </button>
+              ))}
             </div>
+
+            {(searchQuery || selectedCategory !== "All") && (
+              <button
+                onClick={() => {
+                  setSearchQuery("");
+                  setSelectedCategory("All");
+                }}
+                className="mt-4 text-[13px] text-neutral-500 hover:text-black"
+              >
+                Clear map search
+              </button>
+            )}
           </div>
 
           <div className="hidden md:block text-[16px]">Map</div>
         </div>
 
-        <div className="mt-10 md:mt-14">
+        <div className="mt-10 grid grid-cols-1 gap-6 lg:grid-cols-[1fr_320px]">
           <div
-            onClick={() => setSelectedPin(null)}
-            className="relative h-[430px] w-full overflow-hidden bg-[#f1ece8] md:h-[620px]"
-          >
-            {/* Real map background */}
-            <img
-              src="https://upload.wikimedia.org/wikipedia/commons/5/51/US_60_%28Oklahoma%29_map.png"
-              alt="Oklahoma map"
-              className="h-full w-full object-cover"
-            />
+            ref={mapContainer}
+            className="h-[430px] w-full overflow-hidden rounded-[22px] bg-[#f1ece8] md:h-[620px]"
+          />
 
-            {/* Pins */}
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                setSelectedPin("emma");
-              }}
-              className="absolute left-[58%] top-[42%] text-[22px] text-[#e9a8a8] drop-shadow-md transition hover:scale-110 md:text-[28px]"
-            >
-              📍
-            </button>
+          <div className="rounded-[22px] bg-[#fbf7f6] p-5">
+            {selectedArtist ? (
+              <>
+                <h3 className="text-[22px] font-medium">
+                  {selectedArtist.name}
+                </h3>
 
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                setSelectedPin("linsey");
-              }}
-              className="absolute left-[48%] top-[48%] text-[22px] text-[#e9a8a8] drop-shadow-md transition hover:scale-110 md:text-[28px]"
-            >
-              📍
-            </button>
-
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                setSelectedPin("anna");
-              }}
-              className="absolute left-[52%] top-[56%] text-[22px] text-[#e9a8a8] drop-shadow-md transition hover:scale-110 md:text-[28px]"
-            >
-              📍
-            </button>
-
-            {/* Popup card */}
-            {selectedPin === "emma" && (
-              <div
-                onClick={(e) => e.stopPropagation()}
-                className="absolute bottom-4 left-4 w-[250px] bg-white p-4 shadow-lg md:bottom-auto md:left-[62%] md:top-[34%] md:w-[270px]"
-              >
-                <h3 className="text-[20px] font-medium md:text-[22px]">Emma L</h3>
-                <p className="text-[14px] text-neutral-500 md:text-[15px]">Lash Artist</p>
-
-                <p className="mt-3 text-[13px] text-neutral-600 md:text-[14px]">
-                  4.9 (127 reviews) &nbsp;&nbsp; 10+ years experience
+                <p className="mt-1 text-[15px] text-neutral-500">
+                  {selectedArtist.category}
                 </p>
 
-                <p className="mt-4 text-[13px] text-neutral-700 md:text-[14px]">
-                  Soft glam specialist known for natural, camera-ready finishes
-                </p>
-              </div>
-            )}
-
-            {selectedPin === "linsey" && (
-              <div
-                onClick={(e) => e.stopPropagation()}
-                className="absolute bottom-4 left-4 w-[250px] bg-white p-4 shadow-lg md:bottom-auto md:left-[50%] md:top-[40%] md:w-[270px]"
-              >
-                <h3 className="text-[20px] font-medium md:text-[22px]">Linsey J</h3>
-                <p className="text-[14px] text-neutral-500 md:text-[15px]">Hair Stylist</p>
-
-                <p className="mt-3 text-[13px] text-neutral-600 md:text-[14px]">
-                  4.6 (55 reviews) &nbsp;&nbsp; 8+ years experience
+                <p className="mt-4 text-[14px] text-neutral-700">
+                  📍 {selectedArtist.location}
                 </p>
 
-                <p className="mt-4 text-[13px] text-neutral-700 md:text-[14px]">
-                  Known for soft layers, movement, and polished styling.
-                </p>
-              </div>
-            )}
-
-            {selectedPin === "anna" && (
-              <div
-                onClick={(e) => e.stopPropagation()}
-                className="absolute bottom-4 left-4 w-[250px] bg-white p-4 shadow-lg md:bottom-auto md:left-[54%] md:top-[50%] md:w-[270px]"
-              >
-                <h3 className="text-[20px] font-medium md:text-[22px]">Anna H</h3>
-                <p className="text-[14px] text-neutral-500 md:text-[15px]">Nail Technician</p>
-
-                <p className="mt-3 text-[13px] text-neutral-600 md:text-[14px]">
-                  4.8 (45 reviews) &nbsp;&nbsp; 6+ years experience
+                <p className="mt-2 text-[14px] text-neutral-700">
+                  From ${selectedArtist.price_start}
                 </p>
 
-                <p className="mt-4 text-[13px] text-neutral-700 md:text-[14px]">
-                  Clean sets, detailed shaping, and modern neutral nail design.
-                </p>
-              </div>
+                {getArtistDistance(selectedArtist) !== null && (
+                  <p className="mt-2 text-[14px] text-neutral-500">
+                    {getArtistDistance(selectedArtist)?.toFixed(1)} miles away
+                  </p>
+                )}
+
+                <Link
+                  href={`/artist/${selectedArtist.id}`}
+                  className="mt-6 inline-block rounded-full bg-black px-5 py-2 text-[14px] text-white"
+                >
+                  View Profile
+                </Link>
+              </>
+            ) : (
+              <p className="text-[14px] text-neutral-500">
+                Select a pin to view artist details.
+              </p>
             )}
           </div>
         </div>

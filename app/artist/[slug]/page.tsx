@@ -2,307 +2,360 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { useParams } from "next/navigation";
+import { supabase } from "@/lib/supabase";
+
+type Artist = {
+  id: string;
+  name: string;
+  category: string;
+  location: string;
+  price_start: number;
+  bio?: string;
+  profile_image_url?: string;
+  social_link?: string;
+  services_offered?: string;
+  availability?: string;
+  email?: string;
+};
+
+type PortfolioImage = {
+  id: string;
+  image_url: string;
+  caption?: string;
+};
 
 export default function ArtistProfile() {
-  const artistId = "emma-l";
+  const params = useParams();
+  const artistId = params.slug as string;
 
+  const [artist, setArtist] = useState<Artist | null>(null);
   const [saved, setSaved] = useState<string[]>([]);
-  const [openBooking, setOpenBooking] = useState(false);
-  const [activeTab, setActiveTab] = useState<"service" | "portfolio" | "reviews">("service");
+  const [portfolioImages, setPortfolioImages] = useState<PortfolioImage[]>([]);
+  const [activeTab, setActiveTab] = useState<
+    "service" | "portfolio" | "reviews"
+  >("service");
+
+  const [openRequest, setOpenRequest] = useState(false);
+  const [requestLoading, setRequestLoading] = useState(false);
+
+  const [requestForm, setRequestForm] = useState({
+    client_name: "",
+    client_contact: "",
+    service_requested: "",
+    preferred_date: "",
+    preferred_time: "",
+    notes: "",
+  });
 
   useEffect(() => {
     const stored = localStorage.getItem("savedArtists");
-    if (stored) {
-      setSaved(JSON.parse(stored));
-    }
+    if (stored) setSaved(JSON.parse(stored));
   }, []);
 
-  const toggleSave = (id: string) => {
-    let updated: string[] = [];
+  useEffect(() => {
+    const fetchArtist = async () => {
+      const { data, error } = await supabase
+        .from("artists")
+        .select("*")
+        .eq("id", artistId)
+        .single();
 
-    if (saved.includes(id)) {
-      updated = saved.filter((item) => item !== id);
-    } else {
-      updated = [...saved, id];
+      if (error) {
+        console.log("Artist fetch error:", error);
+        return;
+      }
+
+      setArtist(data);
+    };
+
+    const fetchPortfolio = async () => {
+      const { data, error } = await supabase
+        .from("portfolio_images")
+        .select("*")
+        .eq("artist_id", artistId)
+        .order("created_at", { ascending: false });
+
+      if (error) {
+        console.log("Portfolio fetch error:", error);
+        return;
+      }
+
+      setPortfolioImages(data || []);
+    };
+
+    if (artistId) {
+      fetchArtist();
+      fetchPortfolio();
     }
+  }, [artistId]);
+
+  const toggleSave = (id: string) => {
+    const updated = saved.includes(id)
+      ? saved.filter((item) => item !== id)
+      : [...saved, id];
 
     setSaved(updated);
     localStorage.setItem("savedArtists", JSON.stringify(updated));
   };
 
+  const handleRequestSubmit = async () => {
+    if (!artist) return;
+
+    if (!requestForm.client_name || !requestForm.client_contact) {
+      alert("Please enter your name and contact info.");
+      return;
+    }
+
+    setRequestLoading(true);
+
+    const { error } = await supabase.from("client_requests").insert([
+      {
+        artist_id: artist.id,
+        client_name: requestForm.client_name,
+        client_contact: requestForm.client_contact,
+        service_requested: requestForm.service_requested,
+        preferred_date: requestForm.preferred_date || null,
+        preferred_time: requestForm.preferred_time,
+        notes: requestForm.notes,
+      },
+    ]);
+
+    if (error) {
+      setRequestLoading(false);
+      alert(error.message);
+      return;
+    }
+
+    if (!artist.email) {
+      console.log("No artist email saved. Request saved, but email not sent.");
+      setRequestLoading(false);
+      setOpenRequest(false);
+      alert("Request saved, but this artist does not have an email saved yet.");
+      return;
+    }
+
+    console.log("Sending request to API...");
+
+    const res = await fetch("/api/send-request", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        artistEmail: artist.email,
+        artistName: artist.name,
+        clientName: requestForm.client_name,
+        clientContact: requestForm.client_contact,
+        service: requestForm.service_requested,
+        date: requestForm.preferred_date,
+        time: requestForm.preferred_time,
+        notes: requestForm.notes,
+      }),
+    });
+
+    console.log("API response:", res);
+
+    if (!res.ok) {
+      const errorData = await res.json();
+      console.log("Email API error:", errorData);
+      setRequestLoading(false);
+      alert(`Request saved, but email failed: ${errorData.error}`);
+      return;
+    }
+
+    setRequestLoading(false);
+    setOpenRequest(false);
+
+    setRequestForm({
+      client_name: "",
+      client_contact: "",
+      service_requested: "",
+      preferred_date: "",
+      preferred_time: "",
+      notes: "",
+    });
+
+    alert("Request sent ✨");
+  };
+
+  if (!artist) {
+    return (
+      <main className="min-h-screen bg-white px-4 py-10 text-black md:px-10">
+        <Link href="/browse">← Back</Link>
+        <p className="mt-8 text-neutral-600">Loading artist profile...</p>
+      </main>
+    );
+  }
+
   const services = [
     {
-      name: "Classic",
-      price: "$80",
-      desc1: "Natural",
-      desc2: "One extension per lash",
-      time: "90 min",
-      top: true,
-    },
-    {
-      name: "Hybrid",
-      price: "$100",
-      desc1: "Mix of classic + volume",
-      desc2: "Soft, fuller texture",
-      time: "105 min",
-    },
-    {
-      name: "Volume",
-      price: "$120",
-      desc1: "Full, fluffy, dramatic look",
-      desc2: "Multiple lashes per natural lash",
-      time: "120 min",
-    },
-    {
-      name: "Mega Volume",
-      price: "$150",
-      desc1: "Bold, dense, high-impact",
-      desc2: "Best for full glam",
-      time: "150 min",
-    },
-    {
-      name: "2-Week Fill",
-      price: "$50",
-      desc1: "Maintain for light",
-      desc2: "shedding",
-      time: "60 min",
-    },
-    {
-      name: "3-Week Fill",
-      price: "$65",
-      desc1: "Fuller refresh",
-      desc2: "",
-      time: "90 min",
-    },
-    {
-      name: "Foreign Fill",
-      price: "$75",
-      desc1: "For work done by",
-      desc2: "another artist",
-      time: "30 min",
-    },
-    {
-      name: "Lash Removal",
-      price: "$20",
-      desc1: "Safe removal of",
-      desc2: "extensions",
-      time: "30 min",
-    },
-    {
-      name: "Lash Lift",
-      price: "$70",
-      desc1: "Natural curl without",
-      desc2: "extensions",
-      time: "60 min",
-    },
-    {
-      name: "Lash Lift + Tint",
-      price: "$85",
-      desc1: "Curl + darker lashes",
-      desc2: "",
-      time: "75 min",
-    },
-  ];
-
-  const portfolioImages = [
-    "https://images.unsplash.com/photo-1512496015851-a90fb38ba796?auto=format&fit=crop&w=900&q=80",
-    "https://images.unsplash.com/photo-1583001931096-959e9a1a6223?auto=format&fit=crop&w=900&q=80",
-    "https://images.unsplash.com/photo-1527799820374-dcf8d9d4a388?auto=format&fit=crop&w=900&q=80",
-    "https://images.unsplash.com/photo-1604654894610-df63bc536371?auto=format&fit=crop&w=900&q=80",
-    "https://images.unsplash.com/photo-1487412947147-5cebf100ffc2?auto=format&fit=crop&w=900&q=80",
-    "https://images.unsplash.com/photo-1496747611176-843222e1e57c?auto=format&fit=crop&w=900&q=80",
-  ];
-
-  const reviews = [
-    {
-      name: "Mia R",
-      rating: "5.0",
-      text: "Emma is so gentle and my lashes always last. Super clean work and really pretty mapping.",
-    },
-    {
-      name: "Ava T",
-      rating: "4.9",
-      text: "I’ve rebooked with her three times already. She actually listens to what look you want.",
-    },
-    {
-      name: "Nina C",
-      rating: "5.0",
-      text: "Best lash retention I’ve had. Her studio vibe is also really calming and professional.",
+      name: artist.category,
+      price: `From $${artist.price_start}`,
+      desc1: artist.services_offered || "Services will be added soon.",
+      desc2: artist.bio || "Details may vary by artist.",
+      time: "Varies",
     },
   ];
 
   return (
     <main className="min-h-screen bg-white text-black">
-      {/* Top panel */}
       <header className="flex items-center justify-between bg-[#faf6f5] px-4 py-5 text-[15px] md:px-10 md:py-6">
-        <Link href="/browse" className="transition hover:opacity-70">
-          ← Back
-        </Link>
-
+        <Link href="/browse">← Back</Link>
         <div className="font-medium">Lumina</div>
-
         <div className="w-[60px]" />
       </header>
 
       <section className="px-4 py-8 md:px-10">
         <div className="grid grid-cols-1 gap-10 md:grid-cols-[320px_1fr] md:gap-14 lg:grid-cols-[360px_1fr]">
-          {/* Left */}
           <div>
-            <div className="relative h-[360px] w-full bg-[#dddddd] md:h-[430px]">
+            <div className="relative h-[360px] w-full overflow-hidden bg-[#eeeeee] md:h-[430px]">
+              {artist.profile_image_url ? (
+                <img
+                  src={artist.profile_image_url}
+                  alt={artist.name}
+                  className="h-full w-full object-cover"
+                />
+              ) : (
+                <div className="flex h-full w-full items-center justify-center text-center text-neutral-400">
+                  <div>
+                    <p className="text-[18px]">Profile Image</p>
+                    <p className="mt-1 text-[13px]">Coming soon</p>
+                  </div>
+                </div>
+              )}
+
               <button
-                onClick={() => toggleSave(artistId)}
-                className="absolute right-4 top-4 text-[19px] leading-none transition hover:scale-110"
+                onClick={() => toggleSave(artist.id)}
+                className="absolute right-4 top-4 text-[19px]"
               >
                 <span className="text-[#e9a8a8]">
-                  {saved.includes(artistId) ? "♥" : "♡"}
+                  {saved.includes(artist.id) ? "♥" : "♡"}
                 </span>
               </button>
             </div>
 
             <div className="mt-6">
               <h2
-                className="text-[24px] md:text-[28px]"
+                className="text-[24px]"
                 style={{ fontFamily: "Georgia, Times New Roman, serif" }}
               >
                 Availability
               </h2>
 
-              <div className="mt-4 flex flex-wrap gap-4 text-[15px] text-neutral-800 md:gap-6 md:text-[16px]">
-                <span>Monday</span>
-                <span>Tuesday</span>
-                <span>Wednesday</span>
-                <span>Thursday</span>
-                <span>Friday</span>
-              </div>
+              <p className="mt-4 text-[15px] leading-[1.6] text-neutral-700">
+                {artist.availability || "Availability coming soon."}
+              </p>
 
-              <div className="mt-5 flex flex-wrap gap-3">
-                <button
-                  onClick={() => setOpenBooking(true)}
-                  className="rounded-full border border-black px-5 py-2 text-[14px] transition hover:bg-black hover:text-white"
-                >
-                  Send Request
-                </button>
-
-                <button className="rounded-full border border-black px-5 py-2 text-[14px] transition hover:bg-black hover:text-white">
-                  Ask question
-                </button>
-              </div>
+              <button
+                onClick={() => setOpenRequest(true)}
+                className="mt-6 rounded-full bg-black px-6 py-3 text-[14px] text-white transition hover:opacity-90"
+              >
+                Send Request
+              </button>
             </div>
           </div>
 
-          {/* Right */}
           <div>
             <h1
-              className="text-[42px] leading-[1.0] font-semibold md:text-[56px] lg:text-[64px]"
+              className="text-[42px] leading-[1.0] font-semibold md:text-[56px]"
               style={{ fontFamily: "Georgia, Times New Roman, serif" }}
             >
-              Emma L
+              {artist.name}
             </h1>
 
             <p
-              className="mt-1 text-[24px] leading-[1.1] md:text-[30px] lg:text-[34px]"
+              className="mt-1 text-[28px]"
               style={{ fontFamily: "Georgia, Times New Roman, serif" }}
             >
-              Lash Artist
+              {artist.category}
             </p>
 
-            <div className="mt-6 flex flex-wrap gap-x-8 gap-y-2 text-[15px] text-neutral-800 md:mt-8 md:gap-x-14 md:text-[18px]">
-              <span>4.9 (127 reviews)</span>
-              <span>10+ years experience</span>
-              <span>Broken Arrow, OK</span>
+            <div className="mt-6 flex flex-wrap gap-x-8 gap-y-2 text-[16px]">
+              <span>{artist.location}</span>
+              <span>From ${artist.price_start}</span>
             </div>
 
             <p
-              className="mt-8 max-w-[780px] text-[18px] leading-[1.5] text-neutral-800 md:mt-10 md:text-[20px]"
+              className="mt-8 max-w-[760px] text-[20px] leading-[1.5]"
               style={{ fontFamily: "Georgia, Times New Roman, serif" }}
             >
-              Soft glam specialist known for natural, camera-ready finishes
+              {artist.bio || "This artist is building their Lumina profile."}
             </p>
 
-            <div className="mt-8 md:mt-10">
-              <p className="text-[12px] uppercase tracking-[0.12em] text-neutral-300 md:text-[14px]">
-                Trust Highlights
-              </p>
+            {artist.social_link && (
+              <a
+                href={
+                  artist.social_link.startsWith("http")
+                    ? artist.social_link
+                    : `https://${artist.social_link}`
+                }
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-6 inline-block rounded-full border border-black px-5 py-2 text-[14px] transition hover:bg-black hover:text-white"
+              >
+                Visit social / website
+              </a>
+            )}
 
-              <div className="mt-4 space-y-2 text-[15px] text-neutral-800 md:text-[17px]">
-                <p>✔ Verified reviews</p>
-                <p>◔ Responds within 2 hours</p>
-                <p>◉ 70% clients rebook</p>
-                <p>▣ 120+ verified results</p>
-              </div>
+            <div className="mt-8 space-y-2 text-[16px]">
+              <p>✔ Profile listed on Lumina</p>
+              <p>◔ Contact available through request form</p>
+              <p>◉ Pricing shown upfront</p>
+              <p>
+                ▣{" "}
+                {portfolioImages.length > 0
+                  ? "Portfolio images uploaded"
+                  : "Portfolio coming soon"}
+              </p>
             </div>
           </div>
         </div>
 
-        {/* Tabs */}
-        <section className="mt-12 pb-16 md:pb-20">
-          <div className="flex flex-wrap justify-center gap-4 text-[15px] md:gap-10 md:text-[17px]">
-            <button
-              onClick={() => setActiveTab("service")}
-              className={
-                activeTab === "service"
-                  ? "rounded-full border border-[#d8b4b4] px-4 py-2 text-black md:px-5"
-                  : "text-neutral-500"
-              }
-            >
-              Service
-            </button>
-
-            <button
-              onClick={() => setActiveTab("portfolio")}
-              className={
-                activeTab === "portfolio"
-                  ? "rounded-full border border-[#d8b4b4] px-4 py-2 text-black md:px-5"
-                  : "text-neutral-500"
-              }
-            >
-              Portfolio
-            </button>
-
-            <button
-              onClick={() => setActiveTab("reviews")}
-              className={
-                activeTab === "reviews"
-                  ? "rounded-full border border-[#d8b4b4] px-4 py-2 text-black md:px-5"
-                  : "text-neutral-500"
-              }
-            >
-              Reviews
-            </button>
+        <section className="mt-12 pb-16">
+          <div className="flex justify-center gap-6 text-[16px]">
+            {["service", "portfolio", "reviews"].map((tab) => (
+              <button
+                key={tab}
+                onClick={() =>
+                  setActiveTab(tab as "service" | "portfolio" | "reviews")
+                }
+                className={
+                  activeTab === tab
+                    ? "rounded-full border border-[#d8b4b4] px-5 py-2"
+                    : "text-neutral-500"
+                }
+              >
+                {tab.charAt(0).toUpperCase() + tab.slice(1)}
+              </button>
+            ))}
           </div>
 
-          {/* Service tab */}
           {activeTab === "service" && (
-            <div className="mt-10 grid grid-cols-1 gap-6 md:grid-cols-2 lg:mt-12 lg:grid-cols-4 lg:gap-x-10 lg:gap-y-12">
+            <div className="mt-10 grid grid-cols-1 gap-6 md:grid-cols-2">
               {services.map((service) => (
                 <div
                   key={service.name}
                   className="rounded-[18px] bg-[#f8f2f2] p-5"
                 >
-                  <div className="flex items-start justify-between gap-3">
-                    <h3
-                      className="text-[20px] font-semibold"
-                      style={{ fontFamily: "Georgia, Times New Roman, serif" }}
-                    >
-                      {service.name}
-                    </h3>
+                  <h3
+                    className="text-[22px] font-semibold"
+                    style={{ fontFamily: "Georgia, Times New Roman, serif" }}
+                  >
+                    {service.name}
+                  </h3>
 
-                    {service.top && (
-                      <span className="text-[11px] text-neutral-500">
-                        Top service
-                      </span>
-                    )}
-                  </div>
+                  <p className="mt-2 text-[18px]">{service.price}</p>
 
-                  <p className="mt-2 text-[18px] font-medium">{service.price}</p>
-
-                  <p className="mt-4 text-[14px] leading-[1.45] text-neutral-700">
+                  <p className="mt-4 whitespace-pre-line text-[14px] leading-[1.6] text-neutral-700">
                     {service.desc1}
-                    {service.desc1 && service.desc2 && <br />}
+                  </p>
+
+                  <p className="mt-4 text-[14px] leading-[1.6] text-neutral-700">
                     {service.desc2}
                   </p>
 
-                  <p className="mt-8 text-right text-[13px] text-neutral-600 md:mt-10">
+                  <p className="mt-8 text-right text-[13px] text-neutral-600">
                     ◔ {service.time}
                   </p>
                 </div>
@@ -310,182 +363,151 @@ export default function ArtistProfile() {
             </div>
           )}
 
-          {/* Portfolio tab */}
           {activeTab === "portfolio" && (
-            <div className="mt-10 grid grid-cols-1 gap-6 md:grid-cols-2 lg:mt-12 lg:grid-cols-3 lg:gap-8">
-              {portfolioImages.map((image, index) => (
-                <img
-                  key={index}
-                  src={image}
-                  alt={`Portfolio ${index + 1}`}
-                  className="h-[240px] w-full object-cover md:h-[260px] lg:h-[280px]"
-                />
-              ))}
+            <div className="mt-10 grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+              {portfolioImages.length > 0 ? (
+                portfolioImages.map((image) => (
+                  <div key={image.id}>
+                    <img
+                      src={image.image_url}
+                      alt="Portfolio"
+                      className="h-[260px] w-full object-cover"
+                    />
+                    {image.caption && (
+                      <p className="mt-2 text-[14px] text-neutral-600">
+                        {image.caption}
+                      </p>
+                    )}
+                  </div>
+                ))
+              ) : (
+                <p className="text-neutral-500">No portfolio uploaded yet.</p>
+              )}
             </div>
           )}
 
-          {/* Reviews tab */}
           {activeTab === "reviews" && (
-            <div className="mx-auto mt-10 max-w-[900px] space-y-5 lg:mt-12 lg:space-y-6">
-              {reviews.map((review, index) => (
-                <div key={index} className="border border-neutral-200 p-5 md:p-6">
-                  <div className="flex items-center justify-between gap-4">
-                    <h3 className="text-[17px] font-medium md:text-[18px]">
-                      {review.name}
-                    </h3>
-                    <span className="text-[14px] text-neutral-600 md:text-[15px]">
-                      ⭐ {review.rating}
-                    </span>
-                  </div>
-
-                  <p className="mt-3 text-[15px] leading-[1.6] text-neutral-700 md:text-[16px]">
-                    {review.text}
-                  </p>
-                </div>
-              ))}
+            <div className="mx-auto mt-10 max-w-[900px]">
+              <div className="border border-neutral-200 p-5">
+                <h3 className="text-[18px] font-medium">New profile</h3>
+                <p className="mt-3 text-[15px] text-neutral-700">
+                  Reviews will appear here once clients begin sharing feedback.
+                </p>
+              </div>
             </div>
           )}
         </section>
       </section>
 
-      {/* Footer */}
-      <footer className="mt-6 bg-[#f4f1f0] px-4 py-10 md:px-10 md:py-12">
-        <div className="grid grid-cols-1 gap-10 md:grid-cols-2 lg:grid-cols-4 lg:gap-16">
-          <div>
-            <h3
-              className="text-[28px] font-semibold md:text-[30px]"
-              style={{ fontFamily: "Georgia, Times New Roman, serif" }}
-            >
-              Lumina
-            </h3>
-            <p className="mt-5 max-w-[260px] text-[14px] leading-[1.5] text-neutral-700 md:mt-6 md:text-[15px]">
-              Discover trusted beauty professionals and showcase your artistry
-              without social media pressure.
-            </p>
-          </div>
-
-          <div>
-            <h4
-              className="text-[17px] font-semibold md:text-[18px]"
-              style={{ fontFamily: "Georgia, Times New Roman, serif" }}
-            >
-              For Clients
-            </h4>
-            <div className="mt-4 space-y-1 text-[14px] text-neutral-700 md:mt-6 md:text-[15px]">
-              <p>Find Professionals</p>
-              <p>How It Works</p>
-              <p>Reviews</p>
-            </div>
-          </div>
-
-          <div>
-            <h4
-              className="text-[17px] font-semibold md:text-[18px]"
-              style={{ fontFamily: "Georgia, Times New Roman, serif" }}
-            >
-              For Artists
-            </h4>
-            <div className="mt-4 space-y-1 text-[14px] text-neutral-700 md:mt-6 md:text-[15px]">
-              <p>Join Lumina</p>
-              <p>Pricing</p>
-              <p>Success Stories</p>
-            </div>
-          </div>
-
-          <div>
-            <h4
-              className="text-[17px] font-semibold md:text-[18px]"
-              style={{ fontFamily: "Georgia, Times New Roman, serif" }}
-            >
-              Company
-            </h4>
-            <div className="mt-4 space-y-1 text-[14px] text-neutral-700 md:mt-6 md:text-[15px]">
-              <p>About</p>
-              <p>Contact</p>
-              <p>Privacy</p>
-            </div>
-          </div>
-        </div>
-      </footer>
-
-      {/* Request popup */}
-      {openBooking && (
-        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/30 md:items-center">
-          <div
-            className="absolute inset-0"
-            onClick={() => setOpenBooking(false)}
-          />
-
-          <div className="relative w-full max-w-[430px] rounded-t-2xl bg-white p-5 shadow-xl md:rounded-md md:p-6">
+      {openRequest && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 px-4">
+          <div className="w-full max-w-[460px] rounded-[22px] bg-white p-6 shadow-xl">
             <div className="flex items-center justify-between">
-              <h2 className="text-[18px] font-medium md:text-[22px]">
+              <h2
+                className="text-[26px] font-semibold"
+                style={{ fontFamily: "Georgia, Times New Roman, serif" }}
+              >
                 Send Request
               </h2>
+
               <button
-                onClick={() => setOpenBooking(false)}
-                className="text-neutral-400 transition hover:text-black"
+                onClick={() => setOpenRequest(false)}
+                className="text-[20px] text-neutral-500 hover:text-black"
               >
-                ✕
+                ×
               </button>
             </div>
 
-            <p className="mt-2 text-[13px] text-neutral-500">
-              Leave your contact so the artist can reach you directly.
+            <p className="mt-2 text-[14px] text-neutral-600">
+              Your request will be sent to {artist.name}.
             </p>
 
-            <div className="mt-5 max-h-[60vh] space-y-4 overflow-y-auto pr-1">
+            <div className="mt-5 space-y-4">
               <input
                 type="text"
                 placeholder="Your name"
-                className="w-full border border-neutral-300 px-4 py-3 text-[14px] outline-none"
+                value={requestForm.client_name}
+                onChange={(e) =>
+                  setRequestForm({
+                    ...requestForm,
+                    client_name: e.target.value,
+                  })
+                }
+                className="w-full border border-neutral-200 px-4 py-3 text-[14px] outline-none"
               />
 
               <input
                 type="text"
-                placeholder="Phone number or Instagram"
-                className="w-full border border-neutral-300 px-4 py-3 text-[14px] outline-none"
+                placeholder="Phone, email, or Instagram"
+                value={requestForm.client_contact}
+                onChange={(e) =>
+                  setRequestForm({
+                    ...requestForm,
+                    client_contact: e.target.value,
+                  })
+                }
+                className="w-full border border-neutral-200 px-4 py-3 text-[14px] outline-none"
               />
 
               <input
                 type="text"
-                placeholder="Service (e.g. Hybrid set)"
-                className="w-full border border-neutral-300 px-4 py-3 text-[14px] outline-none"
+                placeholder="Service requested"
+                value={requestForm.service_requested}
+                onChange={(e) =>
+                  setRequestForm({
+                    ...requestForm,
+                    service_requested: e.target.value,
+                  })
+                }
+                className="w-full border border-neutral-200 px-4 py-3 text-[14px] outline-none"
               />
 
-              <input
-                type="date"
-                className="w-full border border-neutral-300 px-4 py-3 text-[14px] outline-none"
-              />
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                <input
+                  type="date"
+                  value={requestForm.preferred_date}
+                  onChange={(e) =>
+                    setRequestForm({
+                      ...requestForm,
+                      preferred_date: e.target.value,
+                    })
+                  }
+                  className="w-full border border-neutral-200 px-4 py-3 text-[14px] outline-none"
+                />
 
-              <input
-                type="time"
-                className="w-full border border-neutral-300 px-4 py-3 text-[14px] outline-none"
-              />
+                <input
+                  type="time"
+                  value={requestForm.preferred_time}
+                  onChange={(e) =>
+                    setRequestForm({
+                      ...requestForm,
+                      preferred_time: e.target.value,
+                    })
+                  }
+                  className="w-full border border-neutral-200 px-4 py-3 text-[14px] outline-none"
+                />
+              </div>
 
               <textarea
-                placeholder="Notes (anything the artist should know)"
-                className="h-[100px] w-full resize-none border border-neutral-300 px-4 py-3 text-[14px] outline-none"
+                placeholder="Notes"
+                value={requestForm.notes}
+                onChange={(e) =>
+                  setRequestForm({
+                    ...requestForm,
+                    notes: e.target.value,
+                  })
+                }
+                className="h-[100px] w-full resize-none border border-neutral-200 px-4 py-3 text-[14px] outline-none"
               />
             </div>
 
-            <div className="mt-6 flex items-center justify-between">
-              <button
-                onClick={() => setOpenBooking(false)}
-                className="text-[14px] text-neutral-500 transition hover:text-black"
-              >
-                Cancel
-              </button>
-
-              <button
-                onClick={() => {
-                  setOpenBooking(false);
-                  alert("Request sent ✨");
-                }}
-                className="rounded-full bg-black px-6 py-2 text-[14px] text-white"
-              >
-                Send Request
-              </button>
-            </div>
+            <button
+              onClick={handleRequestSubmit}
+              disabled={requestLoading}
+              className="mt-5 w-full rounded-full bg-black px-6 py-3 text-[14px] text-white disabled:opacity-50"
+            >
+              {requestLoading ? "Sending..." : "Send Request"}
+            </button>
           </div>
         </div>
       )}
