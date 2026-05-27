@@ -12,6 +12,7 @@ type Artist = {
   price_start: number;
   latitude: number | null;
   longitude: number | null;
+  profile_image_url?: string | null;
 };
 
 type UserLocation = {
@@ -36,23 +37,22 @@ function getDistanceMiles(
       Math.sin(dLng / 2) *
       Math.sin(dLng / 2);
 
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-
-  return R * c;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
 export default function BrowsePage() {
   const [openSort, setOpenSort] = useState(false);
   const [openFilter, setOpenFilter] = useState(false);
   const [saved, setSaved] = useState<string[]>([]);
-  const [sortBy, setSortBy] = useState("nearest");
+  const [sortBy, setSortBy] = useState("newest");
   const [artists, setArtists] = useState<Artist[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [userLocation, setUserLocation] = useState<UserLocation | null>(null);
   const [locationStatus, setLocationStatus] = useState("");
 
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
-  const [selectedPrices, setSelectedPrices] = useState<string[]>([]);
+  const [minPrice, setMinPrice] = useState("");
+  const [maxPrice, setMaxPrice] = useState("");
 
   useEffect(() => {
     const stored = localStorage.getItem("savedArtists");
@@ -64,7 +64,7 @@ export default function BrowsePage() {
       const { data, error } = await supabase
         .from("artists")
         .select("*")
-        .order("name", { ascending: true });
+        .order("created_at", { ascending: false });
 
       if (error) {
         console.log(error);
@@ -110,22 +110,32 @@ export default function BrowsePage() {
     localStorage.setItem("savedArtists", JSON.stringify(updated));
   };
 
-  const toggleArrayValue = (
-    value: string,
-    list: string[],
-    setList: React.Dispatch<React.SetStateAction<string[]>>
-  ) => {
-    setList(
-      list.includes(value)
-        ? list.filter((item) => item !== value)
-        : [...list, value]
+  const toggleCategory = (category: string) => {
+    setSelectedCategories((current) =>
+      current.includes(category)
+        ? current.filter((item) => item !== category)
+        : [...current, category]
     );
   };
 
   const clearFilters = () => {
     setSelectedCategories([]);
-    setSelectedPrices([]);
+    setMinPrice("");
+    setMaxPrice("");
     setSearchQuery("");
+  };
+
+  const getArtistDistance = (artist: Artist) => {
+    if (!userLocation || artist.latitude === null || artist.longitude === null) {
+      return null;
+    }
+
+    return getDistanceMiles(
+      userLocation.latitude,
+      userLocation.longitude,
+      artist.latitude,
+      artist.longitude
+    );
   };
 
   const filteredAndSortedArtists = useMemo(() => {
@@ -134,13 +144,12 @@ export default function BrowsePage() {
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase();
 
-      result = result.filter((artist) => {
-        return (
+      result = result.filter(
+        (artist) =>
           artist.name.toLowerCase().includes(query) ||
           artist.category.toLowerCase().includes(query) ||
           artist.location.toLowerCase().includes(query)
-        );
-      });
+      );
     }
 
     if (selectedCategories.length > 0) {
@@ -149,16 +158,16 @@ export default function BrowsePage() {
       );
     }
 
-    if (selectedPrices.length > 0) {
-      result = result.filter((artist) => {
-        return selectedPrices.some((priceLevel) => {
-          if (priceLevel === "$") return artist.price_start < 50;
-          if (priceLevel === "$$")
-            return artist.price_start >= 50 && artist.price_start <= 80;
-          if (priceLevel === "$$$") return artist.price_start > 80;
-          return false;
-        });
-      });
+    if (minPrice.trim()) {
+      result = result.filter(
+        (artist) => artist.price_start >= Number(minPrice)
+      );
+    }
+
+    if (maxPrice.trim()) {
+      result = result.filter(
+        (artist) => artist.price_start <= Number(maxPrice)
+      );
     }
 
     result.sort((a, b) => {
@@ -166,26 +175,12 @@ export default function BrowsePage() {
       if (sortBy === "high") return b.price_start - a.price_start;
 
       if (sortBy === "nearest" && userLocation) {
-        const aHasCoords = a.latitude !== null && a.longitude !== null;
-        const bHasCoords = b.latitude !== null && b.longitude !== null;
+        const aDistance = getArtistDistance(a);
+        const bDistance = getArtistDistance(b);
 
-        if (!aHasCoords && !bHasCoords) return 0;
-        if (!aHasCoords) return 1;
-        if (!bHasCoords) return -1;
-
-        const aDistance = getDistanceMiles(
-          userLocation.latitude,
-          userLocation.longitude,
-          a.latitude!,
-          a.longitude!
-        );
-
-        const bDistance = getDistanceMiles(
-          userLocation.latitude,
-          userLocation.longitude,
-          b.latitude!,
-          b.longitude!
-        );
+        if (aDistance === null && bDistance === null) return 0;
+        if (aDistance === null) return 1;
+        if (bDistance === null) return -1;
 
         return aDistance - bDistance;
       }
@@ -198,32 +193,19 @@ export default function BrowsePage() {
     artists,
     searchQuery,
     selectedCategories,
-    selectedPrices,
+    minPrice,
+    maxPrice,
     sortBy,
     userLocation,
   ]);
 
-  const getArtistDistance = (artist: Artist) => {
-    if (
-      !userLocation ||
-      artist.latitude === null ||
-      artist.longitude === null
-    ) {
-      return null;
-    }
-
-    return getDistanceMiles(
-      userLocation.latitude,
-      userLocation.longitude,
-      artist.latitude,
-      artist.longitude
-    );
-  };
+  const activeFilterCount =
+    selectedCategories.length + (minPrice ? 1 : 0) + (maxPrice ? 1 : 0);
 
   return (
     <main className="min-h-screen bg-white text-black">
       <header className="flex items-center justify-between bg-[#faf6f5] px-4 py-5 md:px-10">
-        <Link href="/" className="font-medium">
+        <Link href="/" className="font-medium transition hover:opacity-70">
           Lumina
         </Link>
 
@@ -266,12 +248,13 @@ export default function BrowsePage() {
           <div className="w-full md:w-[580px]">
             <div className="flex items-center rounded-full bg-[#efedeb] px-4 py-3 md:px-5">
               <span className="mr-3 text-lg text-neutral-500">⌕</span>
+
               <input
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="search by city, artist, or service"
-                className="w-full bg-transparent text-sm outline-none"
+                className="w-full bg-transparent text-sm outline-none placeholder:text-neutral-400"
               />
             </div>
 
@@ -285,21 +268,28 @@ export default function BrowsePage() {
             )}
           </div>
 
-          <Link href="/browse/map" className="text-sm md:mt-2 md:text-[15px]">
+          <Link
+            href="/browse/map"
+            className="text-sm transition hover:opacity-60 md:mt-2 md:text-[15px]"
+          >
             Map
           </Link>
         </div>
 
         <div className="mt-8 flex items-center gap-6 text-sm text-neutral-700 md:mt-10 md:gap-10 md:text-[15px]">
           <div className="relative">
-            <button onClick={() => setOpenFilter(!openFilter)}>
-              ☷ Filter
+            <button
+              onClick={() => setOpenFilter(!openFilter)}
+              className="transition hover:text-black"
+            >
+              ☷ Filter {activeFilterCount > 0 && `(${activeFilterCount})`}
             </button>
 
             {openFilter && (
-              <div className="absolute left-0 top-8 z-10 w-[240px] bg-white p-4 shadow-md md:w-[260px]">
+              <div className="absolute left-0 top-8 z-20 w-[280px] rounded-[18px] border border-neutral-200 bg-white p-4 shadow-lg">
                 <div className="mb-4 flex items-center justify-between">
                   <p className="font-medium">Filters</p>
+
                   <button
                     onClick={clearFilters}
                     className="text-xs text-neutral-500 hover:text-black"
@@ -309,6 +299,7 @@ export default function BrowsePage() {
                 </div>
 
                 <p className="mb-2 font-medium">Category</p>
+
                 {[
                   "Hair Stylist",
                   "Lash Artist",
@@ -319,50 +310,66 @@ export default function BrowsePage() {
                 ].map((item) => (
                   <button
                     key={item}
-                    onClick={() =>
-                      toggleArrayValue(
-                        item,
-                        selectedCategories,
-                        setSelectedCategories
-                      )
-                    }
-                    className={`block w-full py-1 text-left text-sm ${
+                    onClick={() => toggleCategory(item)}
+                    className={`block w-full rounded-[10px] px-2 py-2 text-left text-sm ${
                       selectedCategories.includes(item)
-                        ? "font-medium text-black"
-                        : "text-neutral-600"
+                        ? "bg-[#faf6f5] font-medium text-black"
+                        : "text-neutral-600 hover:bg-[#faf6f5]"
                     }`}
                   >
                     {item}
                   </button>
                 ))}
 
-                <p className="mb-2 mt-4 font-medium">Price</p>
-                {["$", "$$", "$$$"].map((item) => (
-                  <button
-                    key={item}
-                    onClick={() =>
-                      toggleArrayValue(item, selectedPrices, setSelectedPrices)
-                    }
-                    className={`block w-full py-1 text-left text-sm ${
-                      selectedPrices.includes(item)
-                        ? "font-medium text-black"
-                        : "text-neutral-600"
-                    }`}
-                  >
-                    {item}
-                  </button>
-                ))}
+                <p className="mb-2 mt-5 font-medium">Price range</p>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <input
+                    type="number"
+                    placeholder="Min"
+                    value={minPrice}
+                    onChange={(e) => setMinPrice(e.target.value)}
+                    className="w-full rounded-[12px] border border-neutral-200 px-3 py-2 text-sm outline-none"
+                  />
+
+                  <input
+                    type="number"
+                    placeholder="Max"
+                    value={maxPrice}
+                    onChange={(e) => setMaxPrice(e.target.value)}
+                    className="w-full rounded-[12px] border border-neutral-200 px-3 py-2 text-sm outline-none"
+                  />
+                </div>
+
+                <p className="mt-3 text-[12px] text-neutral-500">
+                  Example: Min 30, Max 100
+                </p>
               </div>
             )}
           </div>
 
           <div className="relative">
-            <button onClick={() => setOpenSort(!openSort)}>☰ Sort</button>
+            <button
+              onClick={() => setOpenSort(!openSort)}
+              className="transition hover:text-black"
+            >
+              ☰ Sort
+            </button>
 
             {openSort && (
-              <div className="absolute left-0 top-8 z-10 w-[220px] bg-white p-3 shadow-md">
+              <div className="absolute left-0 top-8 z-20 w-[220px] rounded-[18px] border border-neutral-200 bg-white p-3 shadow-lg">
                 <button
-                  className="block w-full py-1 text-left"
+                  className="block w-full rounded-[10px] px-3 py-2 text-left hover:bg-[#faf6f5]"
+                  onClick={() => {
+                    setSortBy("newest");
+                    setOpenSort(false);
+                  }}
+                >
+                  Newest
+                </button>
+
+                <button
+                  className="block w-full rounded-[10px] px-3 py-2 text-left hover:bg-[#faf6f5]"
                   onClick={() => {
                     setSortBy("nearest");
                     setOpenSort(false);
@@ -372,7 +379,7 @@ export default function BrowsePage() {
                 </button>
 
                 <button
-                  className="block w-full py-1 text-left"
+                  className="block w-full rounded-[10px] px-3 py-2 text-left hover:bg-[#faf6f5]"
                   onClick={() => {
                     setSortBy("low");
                     setOpenSort(false);
@@ -382,7 +389,7 @@ export default function BrowsePage() {
                 </button>
 
                 <button
-                  className="block w-full py-1 text-left"
+                  className="block w-full rounded-[10px] px-3 py-2 text-left hover:bg-[#faf6f5]"
                   onClick={() => {
                     setSortBy("high");
                     setOpenSort(false);
@@ -401,10 +408,22 @@ export default function BrowsePage() {
 
             return (
               <div key={artist.id}>
-                <div className="relative h-[180px] rounded-[12px] bg-[#dddddd] md:h-[200px]">
+                <div className="relative h-[180px] overflow-hidden rounded-[12px] bg-[#dddddd] md:h-[200px]">
+                  {artist.profile_image_url ? (
+                    <img
+                      src={artist.profile_image_url}
+                      alt={artist.name}
+                      className="h-full w-full object-cover"
+                    />
+                  ) : (
+                    <div className="flex h-full w-full items-center justify-center text-neutral-400">
+                      Profile Image
+                    </div>
+                  )}
+
                   <button
                     onClick={() => toggleSave(artist.id)}
-                    className="absolute right-3 top-3 text-[19px] transition hover:scale-110"
+                    className="absolute right-3 top-3 rounded-full bg-white/80 px-2 py-1 text-[19px] transition hover:scale-110"
                   >
                     <span className="text-[#e9a8a8]">
                       {saved.includes(artist.id) ? "♥" : "♡"}

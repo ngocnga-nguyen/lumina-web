@@ -14,7 +14,6 @@ type Artist = {
   bio?: string;
   profile_image_url?: string;
   social_link?: string;
-  services_offered?: string;
   availability?: string;
   email?: string;
 };
@@ -25,6 +24,22 @@ type PortfolioImage = {
   caption?: string;
 };
 
+type Service = {
+  id: string;
+  service_name: string;
+  price: number | null;
+  duration: string | null;
+  description: string | null;
+};
+
+type Review = {
+  id: string;
+  reviewer_name: string;
+  rating: number;
+  comment: string | null;
+  created_at: string;
+};
+
 export default function ArtistProfile() {
   const params = useParams();
   const artistId = params.slug as string;
@@ -32,6 +47,10 @@ export default function ArtistProfile() {
   const [artist, setArtist] = useState<Artist | null>(null);
   const [saved, setSaved] = useState<string[]>([]);
   const [portfolioImages, setPortfolioImages] = useState<PortfolioImage[]>([]);
+  const [selectedPortfolioImage, setSelectedPortfolioImage] =
+    useState<PortfolioImage | null>(null);
+  const [services, setServices] = useState<Service[]>([]);
+  const [reviews, setReviews] = useState<Review[]>([]);
   const [activeTab, setActiveTab] = useState<
     "service" | "portfolio" | "reviews"
   >("service");
@@ -48,46 +67,58 @@ export default function ArtistProfile() {
     notes: "",
   });
 
+  const [reviewForm, setReviewForm] = useState({
+    reviewer_name: "",
+    rating: 5,
+    comment: "",
+  });
+
   useEffect(() => {
     const stored = localStorage.getItem("savedArtists");
     if (stored) setSaved(JSON.parse(stored));
   }, []);
 
   useEffect(() => {
-    const fetchArtist = async () => {
-      const { data, error } = await supabase
+    const fetchArtistData = async () => {
+      const { data: artistData, error: artistError } = await supabase
         .from("artists")
         .select("*")
         .eq("id", artistId)
         .single();
 
-      if (error) {
-        console.log("Artist fetch error:", error);
+      if (artistError) {
+        console.log("Artist fetch error:", artistError);
         return;
       }
 
-      setArtist(data);
-    };
+      setArtist(artistData);
 
-    const fetchPortfolio = async () => {
-      const { data, error } = await supabase
+      const { data: portfolioData } = await supabase
         .from("portfolio_images")
         .select("*")
         .eq("artist_id", artistId)
         .order("created_at", { ascending: false });
 
-      if (error) {
-        console.log("Portfolio fetch error:", error);
-        return;
-      }
+      setPortfolioImages(portfolioData || []);
 
-      setPortfolioImages(data || []);
+      const { data: serviceData } = await supabase
+        .from("services")
+        .select("*")
+        .eq("artist_id", artistId)
+        .order("created_at", { ascending: false });
+
+      setServices(serviceData || []);
+
+      const { data: reviewData } = await supabase
+        .from("reviews")
+        .select("*")
+        .eq("artist_id", artistId)
+        .order("created_at", { ascending: false });
+
+      setReviews(reviewData || []);
     };
 
-    if (artistId) {
-      fetchArtist();
-      fetchPortfolio();
-    }
+    if (artistId) fetchArtistData();
   }, [artistId]);
 
   const toggleSave = (id: string) => {
@@ -127,41 +158,23 @@ export default function ArtistProfile() {
       return;
     }
 
-    if (!artist.email) {
-      console.log("No artist email saved. Request saved, but email not sent.");
-      setRequestLoading(false);
-      setOpenRequest(false);
-      alert("Request saved, but this artist does not have an email saved yet.");
-      return;
-    }
-
-    console.log("Sending request to API...");
-
-    const res = await fetch("/api/send-request", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        artistEmail: artist.email,
-        artistName: artist.name,
-        clientName: requestForm.client_name,
-        clientContact: requestForm.client_contact,
-        service: requestForm.service_requested,
-        date: requestForm.preferred_date,
-        time: requestForm.preferred_time,
-        notes: requestForm.notes,
-      }),
-    });
-
-    console.log("API response:", res);
-
-    if (!res.ok) {
-      const errorData = await res.json();
-      console.log("Email API error:", errorData);
-      setRequestLoading(false);
-      alert(`Request saved, but email failed: ${errorData.error}`);
-      return;
+    if (artist.email) {
+      await fetch("/api/send-request", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          artistEmail: artist.email,
+          artistName: artist.name,
+          clientName: requestForm.client_name,
+          clientContact: requestForm.client_contact,
+          service: requestForm.service_requested,
+          date: requestForm.preferred_date,
+          time: requestForm.preferred_time,
+          notes: requestForm.notes,
+        }),
+      });
     }
 
     setRequestLoading(false);
@@ -179,6 +192,54 @@ export default function ArtistProfile() {
     alert("Request sent ✨");
   };
 
+  const handleSubmitReview = async () => {
+    if (!artist) return;
+
+    if (!reviewForm.reviewer_name || !reviewForm.comment) {
+      alert("Please add your name and review.");
+      return;
+    }
+
+    const { data, error } = await supabase
+      .from("reviews")
+      .insert([
+        {
+          artist_id: artist.id,
+          reviewer_name: reviewForm.reviewer_name,
+          rating: reviewForm.rating,
+          comment: reviewForm.comment,
+        },
+      ])
+      .select()
+      .single();
+
+    if (error) {
+      alert(error.message);
+      return;
+    }
+
+    setReviews([data, ...reviews]);
+
+    setReviewForm({
+      reviewer_name: "",
+      rating: 5,
+      comment: "",
+    });
+
+    alert("Review submitted ✨");
+  };
+
+  const deleteReview = async (id: string) => {
+    const { error } = await supabase.from("reviews").delete().eq("id", id);
+
+    if (error) {
+      alert(error.message);
+      return;
+    }
+
+    setReviews(reviews.filter((review) => review.id !== id));
+  };
+
   if (!artist) {
     return (
       <main className="min-h-screen bg-white px-4 py-10 text-black md:px-10">
@@ -188,21 +249,29 @@ export default function ArtistProfile() {
     );
   }
 
-  const services = [
-    {
-      name: artist.category,
-      price: `From $${artist.price_start}`,
-      desc1: artist.services_offered || "Services will be added soon.",
-      desc2: artist.bio || "Details may vary by artist.",
-      time: "Varies",
-    },
-  ];
+  const trustHighlights = [
+    "✔ Profile listed on Lumina",
+    artist.email && "◔ Contact available through request form",
+    artist.price_start && "◉ Pricing shown upfront",
+    portfolioImages.length > 0
+      ? "▣ Portfolio images uploaded"
+      : "▣ Portfolio coming soon",
+    artist.availability && "◷ Availability provided",
+    artist.profile_image_url && "◌ Profile photo uploaded",
+    services.length > 0 && "✦ Services listed",
+    reviews.length > 0 &&
+      `★ ${reviews.length} review${reviews.length === 1 ? "" : "s"}`,
+  ].filter(Boolean);
 
   return (
     <main className="min-h-screen bg-white text-black">
       <header className="flex items-center justify-between bg-[#faf6f5] px-4 py-5 text-[15px] md:px-10 md:py-6">
         <Link href="/browse">← Back</Link>
-        <div className="font-medium">Lumina</div>
+
+        <Link href="/" className="font-medium transition hover:opacity-70">
+          Lumina
+        </Link>
+
         <div className="w-[60px]" />
       </header>
 
@@ -243,7 +312,7 @@ export default function ArtistProfile() {
                 Availability
               </h2>
 
-              <p className="mt-4 text-[15px] leading-[1.6] text-neutral-700">
+              <p className="mt-4 whitespace-pre-line text-[15px] leading-[1.6] text-neutral-700">
                 {artist.availability || "Availability coming soon."}
               </p>
 
@@ -298,16 +367,16 @@ export default function ArtistProfile() {
               </a>
             )}
 
-            <div className="mt-8 space-y-2 text-[16px]">
-              <p>✔ Profile listed on Lumina</p>
-              <p>◔ Contact available through request form</p>
-              <p>◉ Pricing shown upfront</p>
-              <p>
-                ▣{" "}
-                {portfolioImages.length > 0
-                  ? "Portfolio images uploaded"
-                  : "Portfolio coming soon"}
+            <div className="mt-8">
+              <p className="mb-3 text-[12px] uppercase tracking-[0.14em] text-neutral-400">
+                Trust Highlights
               </p>
+
+              <div className="space-y-2 text-[16px] text-neutral-800">
+                {trustHighlights.map((highlight, index) => (
+                  <p key={index}>{highlight}</p>
+                ))}
+              </div>
             </div>
           </div>
         </div>
@@ -333,52 +402,57 @@ export default function ArtistProfile() {
 
           {activeTab === "service" && (
             <div className="mt-10 grid grid-cols-1 gap-6 md:grid-cols-2">
-              {services.map((service) => (
-                <div
-                  key={service.name}
-                  className="rounded-[18px] bg-[#f8f2f2] p-5"
-                >
-                  <h3
-                    className="text-[22px] font-semibold"
-                    style={{ fontFamily: "Georgia, Times New Roman, serif" }}
+              {services.length > 0 ? (
+                services.map((service) => (
+                  <div
+                    key={service.id}
+                    className="rounded-[18px] bg-[#f8f2f2] p-5"
                   >
-                    {service.name}
-                  </h3>
+                    <h3
+                      className="text-[22px] font-semibold"
+                      style={{ fontFamily: "Georgia, Times New Roman, serif" }}
+                    >
+                      {service.service_name}
+                    </h3>
 
-                  <p className="mt-2 text-[18px]">{service.price}</p>
+                    <p className="mt-2 text-[18px]">${service.price}</p>
 
-                  <p className="mt-4 whitespace-pre-line text-[14px] leading-[1.6] text-neutral-700">
-                    {service.desc1}
-                  </p>
+                    <p className="mt-4 whitespace-pre-line text-[14px] leading-[1.6] text-neutral-700">
+                      {service.description || "No description added."}
+                    </p>
 
-                  <p className="mt-4 text-[14px] leading-[1.6] text-neutral-700">
-                    {service.desc2}
-                  </p>
-
-                  <p className="mt-8 text-right text-[13px] text-neutral-600">
-                    ◔ {service.time}
-                  </p>
-                </div>
-              ))}
+                    <p className="mt-8 text-right text-[13px] text-neutral-600">
+                      ◔ {service.duration || "Varies"}
+                    </p>
+                  </div>
+                ))
+              ) : (
+                <p className="text-neutral-500">Services coming soon.</p>
+              )}
             </div>
           )}
 
           {activeTab === "portfolio" && (
-            <div className="mt-10 grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+            <div className="mx-auto mt-10 grid max-w-[1350px] grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
               {portfolioImages.length > 0 ? (
                 portfolioImages.map((image) => (
-                  <div key={image.id}>
+                  <button
+                    key={image.id}
+                    onClick={() => setSelectedPortfolioImage(image)}
+                    className="group text-left"
+                  >
                     <img
                       src={image.image_url}
-                      alt="Portfolio"
-                      className="h-[260px] w-full object-cover"
+                      alt={image.caption || "Portfolio"}
+                      className="aspect-[4/3] w-full rounded-[4px] object-cover transition group-hover:opacity-90"
                     />
+
                     {image.caption && (
                       <p className="mt-2 text-[14px] text-neutral-600">
                         {image.caption}
                       </p>
                     )}
-                  </div>
+                  </button>
                 ))
               ) : (
                 <p className="text-neutral-500">No portfolio uploaded yet.</p>
@@ -388,16 +462,144 @@ export default function ArtistProfile() {
 
           {activeTab === "reviews" && (
             <div className="mx-auto mt-10 max-w-[900px]">
-              <div className="border border-neutral-200 p-5">
-                <h3 className="text-[18px] font-medium">New profile</h3>
-                <p className="mt-3 text-[15px] text-neutral-700">
-                  Reviews will appear here once clients begin sharing feedback.
-                </p>
+              <div className="rounded-[24px] border border-neutral-200 p-6">
+                <h3
+                  className="text-[28px] font-semibold"
+                  style={{ fontFamily: "Georgia, Times New Roman, serif" }}
+                >
+                  Leave a review
+                </h3>
+
+                <div className="mt-6 space-y-4">
+                  <input
+                    type="text"
+                    placeholder="Your name"
+                    value={reviewForm.reviewer_name}
+                    onChange={(e) =>
+                      setReviewForm({
+                        ...reviewForm,
+                        reviewer_name: e.target.value,
+                      })
+                    }
+                    className="w-full border border-neutral-200 px-4 py-3 outline-none"
+                  />
+
+                  <div>
+                    <p className="mb-2 text-[14px] text-neutral-500">
+                      Rating
+                    </p>
+
+                    <div className="flex gap-2 text-[30px]">
+                      {[1, 2, 3, 4, 5].map((star) => (
+                        <button
+                          key={star}
+                          type="button"
+                          onClick={() =>
+                            setReviewForm({
+                              ...reviewForm,
+                              rating: star,
+                            })
+                          }
+                          className={
+                            star <= reviewForm.rating
+                              ? "text-[#e9a8a8]"
+                              : "text-neutral-300"
+                          }
+                        >
+                          ★
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <textarea
+                    placeholder="Share your experience..."
+                    value={reviewForm.comment}
+                    onChange={(e) =>
+                      setReviewForm({
+                        ...reviewForm,
+                        comment: e.target.value,
+                      })
+                    }
+                    className="h-[120px] w-full resize-none border border-neutral-200 px-4 py-3 outline-none"
+                  />
+
+                  <button
+                    onClick={handleSubmitReview}
+                    className="rounded-full bg-black px-6 py-3 text-[14px] text-white"
+                  >
+                    Submit Review
+                  </button>
+                </div>
+              </div>
+
+              <div className="mt-8 space-y-5">
+                {reviews.length > 0 ? (
+                  reviews.map((review) => (
+                    <div
+                      key={review.id}
+                      className="rounded-[20px] bg-[#faf6f5] p-5"
+                    >
+                      <div className="flex items-center justify-between gap-4">
+                        <div>
+                          <p className="font-medium">{review.reviewer_name}</p>
+
+                          <p className="mt-1 text-[#e9a8a8]">
+                            {"★".repeat(review.rating)}
+                            <span className="text-neutral-300">
+                              {"★".repeat(5 - review.rating)}
+                            </span>
+                          </p>
+                        </div>
+
+                        <button
+                          onClick={() => deleteReview(review.id)}
+                          className="text-[13px] text-neutral-400 hover:text-black"
+                        >
+                          Delete
+                        </button>
+                      </div>
+
+                      <p className="mt-3 whitespace-pre-line text-[15px] leading-[1.6] text-neutral-700">
+                        {review.comment}
+                      </p>
+                    </div>
+                  ))
+                ) : (
+                  <p className="text-neutral-500">
+                    No reviews yet. Be the first to leave one.
+                  </p>
+                )}
               </div>
             </div>
           )}
         </section>
       </section>
+
+      {selectedPortfolioImage && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 px-4 py-6">
+          <div className="relative w-full max-w-[980px]">
+            <button
+              onClick={() => setSelectedPortfolioImage(null)}
+              className="absolute right-0 top-[-42px] text-[15px] text-white"
+            >
+              Close
+            </button>
+
+            <img
+              src={selectedPortfolioImage.image_url}
+              alt={selectedPortfolioImage.caption || "Portfolio image"}
+              className="max-h-[82vh] w-full rounded-[12px] object-contain"
+            />
+
+            {selectedPortfolioImage.caption && (
+              <p className="mt-4 text-[15px] text-white">
+                {selectedPortfolioImage.caption}
+              </p>
+            )}
+          </div>
+        </div>
+      )}
 
       {openRequest && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 px-4">

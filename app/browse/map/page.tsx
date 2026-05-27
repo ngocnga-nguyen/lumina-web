@@ -54,6 +54,16 @@ export default function BrowseMapPage() {
   const [userLocation, setUserLocation] = useState<UserLocation | null>(null);
   const [locationStatus, setLocationStatus] = useState("");
 
+  const categoryButtons = [
+    "All",
+    "Nail",
+    "Hair",
+    "Aesthetician",
+    "Lash",
+    "Makeup",
+    "Brow",
+  ];
+
   useEffect(() => {
     const fetchArtists = async () => {
       const { data, error } = await supabase
@@ -128,11 +138,7 @@ export default function BrowseMapPage() {
   };
 
   const getArtistDistance = (artist: Artist) => {
-    if (
-      !userLocation ||
-      artist.latitude === null ||
-      artist.longitude === null
-    ) {
+    if (!userLocation || artist.latitude === null || artist.longitude === null) {
       return null;
     }
 
@@ -187,7 +193,7 @@ export default function BrowseMapPage() {
     markersRef.current = [];
 
     filteredArtists.forEach((artist) => {
-      if (artist.latitude === null || artist.longitude === null) return;
+      if (!artist.latitude || !artist.longitude) return;
 
       const markerEl = document.createElement("button");
       markerEl.type = "button";
@@ -230,8 +236,6 @@ export default function BrowseMapPage() {
     }
   }, [filteredArtists, userLocation]);
 
-  const categoryButtons = ["All", "Nail", "Hair", "Aesthetician", "Lash"];
-
   return (
     <main className="min-h-screen bg-white text-black">
       <header className="flex items-center justify-between bg-[#faf6f5] px-4 py-5 text-[15px] md:px-10 md:py-6">
@@ -239,7 +243,7 @@ export default function BrowseMapPage() {
           Lumina
         </Link>
 
-        <div className="hidden md:block text-[15px]">Browse Artists</div>
+        <div className="hidden text-[15px] md:block">Browse Artists</div>
 
         <Link href="/saved" className="flex items-center gap-2">
           <span className="text-[16px] text-[#e9a8a8]">♡</span>
@@ -279,9 +283,10 @@ export default function BrowseMapPage() {
             )}
           </div>
 
-          <div className="w-full md:w-[580px]">
+          <div className="w-full md:w-[620px]">
             <div className="flex items-center rounded-full bg-[#efedeb] px-4 py-3 md:px-5">
               <span className="mr-3 text-lg text-neutral-500">⌕</span>
+
               <input
                 type="text"
                 value={searchQuery}
@@ -320,7 +325,7 @@ export default function BrowseMapPage() {
             )}
           </div>
 
-          <div className="hidden md:block text-[16px]">Map</div>
+          <div className="hidden text-[16px] md:block">Map</div>
         </div>
 
         <div className="mt-10 grid grid-cols-1 gap-6 lg:grid-cols-[1fr_320px]">
