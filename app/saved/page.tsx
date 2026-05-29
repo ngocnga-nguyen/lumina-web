@@ -14,36 +14,53 @@ type Artist = {
 };
 
 export default function SavedPage() {
-  const [savedIds, setSavedIds] = useState<string[]>([]);
   const [savedArtists, setSavedArtists] = useState<Artist[]>([]);
   const [selectedCompareIds, setSelectedCompareIds] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const loadSavedArtists = async () => {
-      const stored = localStorage.getItem("savedArtists");
-      const ids = stored ? JSON.parse(stored) : [];
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
 
-      setSavedIds(ids);
-
-      if (ids.length === 0) {
+      if (!user) {
         setSavedArtists([]);
         setLoading(false);
         return;
       }
 
-      const { data, error } = await supabase
-        .from("artists")
-        .select("*")
-        .in("id", ids);
+      const { data: savedData, error: savedError } = await supabase
+        .from("saved_artists")
+        .select("artist_id")
+        .eq("user_id", user.id);
 
-      if (error) {
-        console.log(error);
+      if (savedError) {
+        console.log(savedError);
         setLoading(false);
         return;
       }
 
-      setSavedArtists(data || []);
+      const artistIds = (savedData || []).map((item) => item.artist_id);
+
+      if (artistIds.length === 0) {
+        setSavedArtists([]);
+        setLoading(false);
+        return;
+      }
+
+      const { data: artistsData, error: artistsError } = await supabase
+        .from("artists")
+        .select("*")
+        .in("id", artistIds);
+
+      if (artistsError) {
+        console.log(artistsError);
+        setLoading(false);
+        return;
+      }
+
+      setSavedArtists(artistsData || []);
       setLoading(false);
     };
 
@@ -56,19 +73,37 @@ export default function SavedPage() {
     );
   }, [savedArtists, selectedCompareIds]);
 
-  const removeSaved = (id: string) => {
-    const updatedIds = savedIds.filter((savedId) => savedId !== id);
+  const removeSaved = async (artistId: string) => {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
 
-    setSavedIds(updatedIds);
-    setSavedArtists((artists) => artists.filter((artist) => artist.id !== id));
-    setSelectedCompareIds((ids) => ids.filter((selectedId) => selectedId !== id));
+    if (!user) return;
 
-    localStorage.setItem("savedArtists", JSON.stringify(updatedIds));
+    setSavedArtists((artists) =>
+      artists.filter((artist) => artist.id !== artistId)
+    );
+
+    setSelectedCompareIds((ids) =>
+      ids.filter((selectedId) => selectedId !== artistId)
+    );
+
+    const { error } = await supabase
+      .from("saved_artists")
+      .delete()
+      .eq("user_id", user.id)
+      .eq("artist_id", artistId);
+
+    if (error) {
+      console.log(error);
+    }
   };
 
   const toggleCompare = (id: string) => {
     if (selectedCompareIds.includes(id)) {
-      setSelectedCompareIds((ids) => ids.filter((item) => item !== id));
+      setSelectedCompareIds((ids) =>
+        ids.filter((item) => item !== id)
+      );
       return;
     }
 
@@ -103,6 +138,7 @@ export default function SavedPage() {
           <div>
             <div className="flex items-center gap-3">
               <span className="text-[22px] text-[#e9a8a8]">♡</span>
+
               <span className="text-[18px] font-medium md:text-[20px]">
                 Saved Artists
               </span>
@@ -124,7 +160,9 @@ export default function SavedPage() {
         </div>
 
         {loading ? (
-          <p className="text-neutral-500">Loading saved artists...</p>
+          <p className="text-neutral-500">
+            Loading saved artists...
+          </p>
         ) : savedArtists.length === 0 ? (
           <div className="mt-16 text-center md:mt-20">
             <p className="text-[16px] text-neutral-500 md:text-[18px]">
@@ -154,7 +192,9 @@ export default function SavedPage() {
 
                     <h2
                       className="mt-2 text-[30px] font-semibold md:text-[38px]"
-                      style={{ fontFamily: "Georgia, Times New Roman, serif" }}
+                      style={{
+                        fontFamily: "Georgia, Times New Roman, serif",
+                      }}
                     >
                       Artist comparison
                     </h2>
@@ -169,9 +209,15 @@ export default function SavedPage() {
                   <table className="w-full min-w-[720px] border-collapse text-left text-[14px]">
                     <thead>
                       <tr className="border-b border-neutral-200">
-                        <th className="py-3 pr-4 font-medium">Artist</th>
+                        <th className="py-3 pr-4 font-medium">
+                          Artist
+                        </th>
+
                         {selectedArtists.map((artist) => (
-                          <th key={artist.id} className="py-3 pr-4 font-medium">
+                          <th
+                            key={artist.id}
+                            className="py-3 pr-4 font-medium"
+                          >
                             {artist.name}
                           </th>
                         ))}
@@ -180,7 +226,10 @@ export default function SavedPage() {
 
                     <tbody>
                       <tr className="border-b border-neutral-200">
-                        <td className="py-4 pr-4 text-neutral-500">Category</td>
+                        <td className="py-4 pr-4 text-neutral-500">
+                          Category
+                        </td>
+
                         {selectedArtists.map((artist) => (
                           <td key={artist.id} className="py-4 pr-4">
                             {artist.category}
@@ -189,7 +238,10 @@ export default function SavedPage() {
                       </tr>
 
                       <tr className="border-b border-neutral-200">
-                        <td className="py-4 pr-4 text-neutral-500">Location</td>
+                        <td className="py-4 pr-4 text-neutral-500">
+                          Location
+                        </td>
+
                         {selectedArtists.map((artist) => (
                           <td key={artist.id} className="py-4 pr-4">
                             {artist.location}
@@ -201,6 +253,7 @@ export default function SavedPage() {
                         <td className="py-4 pr-4 text-neutral-500">
                           Starting price
                         </td>
+
                         {selectedArtists.map((artist) => (
                           <td key={artist.id} className="py-4 pr-4">
                             From ${artist.price_start}
@@ -209,7 +262,10 @@ export default function SavedPage() {
                       </tr>
 
                       <tr>
-                        <td className="py-4 pr-4 text-neutral-500">Profile</td>
+                        <td className="py-4 pr-4 text-neutral-500">
+                          Profile
+                        </td>
+
                         {selectedArtists.map((artist) => (
                           <td key={artist.id} className="py-4 pr-4">
                             <Link
@@ -229,7 +285,8 @@ export default function SavedPage() {
 
             <div className="grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-4 lg:gap-12">
               {savedArtists.map((artist) => {
-                const isSelected = selectedCompareIds.includes(artist.id);
+                const isSelected =
+                  selectedCompareIds.includes(artist.id);
 
                 return (
                   <div key={artist.id}>
@@ -243,8 +300,13 @@ export default function SavedPage() {
                       ) : (
                         <div className="flex h-full w-full items-center justify-center text-center text-neutral-400">
                           <div>
-                            <p className="text-[15px]">Profile Image</p>
-                            <p className="mt-1 text-[12px]">Coming soon</p>
+                            <p className="text-[15px]">
+                              Profile Image
+                            </p>
+
+                            <p className="mt-1 text-[12px]">
+                              Coming soon
+                            </p>
                           </div>
                         </div>
                       )}
@@ -261,7 +323,9 @@ export default function SavedPage() {
                       {artist.name}
                     </h2>
 
-                    <p className="text-neutral-500">{artist.category}</p>
+                    <p className="text-neutral-500">
+                      {artist.category}
+                    </p>
 
                     <p className="mt-3 text-sm text-neutral-500">
                       {artist.location}
@@ -295,7 +359,9 @@ export default function SavedPage() {
                           : "mt-4 w-full rounded-full border border-black px-4 py-2 text-[13px] transition hover:bg-black hover:text-white"
                       }
                     >
-                      {isSelected ? "Selected for Compare" : "Compare"}
+                      {isSelected
+                        ? "Selected for Compare"
+                        : "Compare"}
                     </button>
                   </div>
                 );

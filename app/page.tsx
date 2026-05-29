@@ -16,6 +16,7 @@ type Artist = {
 export default function Home() {
   const [artists, setArtists] = useState<Artist[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
+  const [user, setUser] = useState<any>(null);
 
   useEffect(() => {
     const fetchArtists = async () => {
@@ -33,6 +34,18 @@ export default function Home() {
     };
 
     fetchArtists();
+  }, []);
+
+  useEffect(() => {
+    const getUser = async () => {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      setUser(user);
+    };
+
+    getUser();
   }, []);
 
   const categories = useMemo(() => {
@@ -54,6 +67,11 @@ export default function Home() {
     );
   }, [artists, searchQuery]);
 
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    window.location.reload();
+  };
+
   return (
     <main className="min-h-screen bg-white text-black">
       <header className="flex items-center justify-between bg-[#faf6f5] px-4 py-5 text-[15px] md:px-10 md:py-6">
@@ -61,19 +79,43 @@ export default function Home() {
           Lumina
         </Link>
 
-        <nav className="flex items-center gap-6 text-sm md:gap-16 md:text-[15px]">
+        <nav className="flex items-center gap-4 text-sm md:gap-10 md:text-[15px]">
           <Link href="/browse" className="transition hover:opacity-70">
             Browse Artists
           </Link>
 
-          <Link href="/join-as-artist" className="transition hover:opacity-70">
-            Join as an Artist
-          </Link>
+          {user ? (
+            <>
+              <Link href="/saved" className="transition hover:opacity-70">
+                Saved
+              </Link>
+
+              <button
+                onClick={handleLogout}
+                className="transition hover:opacity-70"
+              >
+                Sign Out
+              </button>
+            </>
+          ) : (
+            <>
+              <Link href="/login" className="transition hover:opacity-70">
+                Login
+              </Link>
+
+              <Link
+                href="/join-as-artist"
+                className="transition hover:opacity-70"
+              >
+                Join as an Artist
+              </Link>
+            </>
+          )}
         </nav>
       </header>
 
-      <section className="bg-white px-4 pt-10 pb-16 md:px-14 md:pt-20 md:pb-28">
-        <div className="max-w-[900px]">
+      <section className="bg-white px-4 pt-10 pb-12 md:px-14 md:pt-20 md:pb-20">
+        <div className="max-w-[960px]">
           <h1
             className="max-w-[820px] text-[42px] leading-[1.0] tracking-[-0.03em] font-semibold md:text-[68px] lg:text-[84px]"
             style={{ fontFamily: "Georgia, Times New Roman, serif" }}
@@ -93,8 +135,35 @@ export default function Home() {
             results, and trust signals before you commit.
           </p>
 
-          <div className="mt-10 md:mt-16 lg:mt-20">
-            <div className="relative w-full max-w-[430px]">
+          <div className="mt-8 flex flex-col gap-3 sm:flex-row md:mt-12">
+            <Link
+              href="/browse"
+              className="rounded-full bg-black px-7 py-3 text-center text-[14px] text-white transition hover:opacity-90"
+            >
+              Browse Artists
+            </Link>
+
+            {!user && (
+              <Link
+                href="/signup"
+                className="rounded-full border border-black px-7 py-3 text-center text-[14px] transition hover:bg-black hover:text-white"
+              >
+                Create Client Account
+              </Link>
+            )}
+          </div>
+
+          {!user && (
+            <p className="mt-4 text-[13px] text-neutral-500">
+              Beauty professional?{" "}
+              <Link href="/join-as-artist" className="text-black underline">
+                Create a professional account
+              </Link>
+            </p>
+          )}
+
+          <div className="mt-10 md:mt-14">
+            <div className="relative w-full max-w-[620px]">
               <div className="flex w-full items-center rounded-full bg-[#efedeb] px-5 py-3">
                 <span className="mr-3 text-lg text-neutral-500">⌕</span>
 
@@ -144,7 +213,7 @@ export default function Home() {
         </div>
       </section>
 
-      <section className="px-4 pb-16 md:px-14 md:pb-24 lg:pb-28">
+      <section className="px-4 pb-10 md:px-14 md:pb-16 lg:pb-20">
         <div className="text-center">
           <h2 className="text-[16px] font-semibold uppercase tracking-[0.08em] md:text-[18px]">
             Explore active categories
@@ -192,8 +261,8 @@ export default function Home() {
         )}
       </section>
 
-      <section className="px-4 pb-16 md:px-14 md:pb-24 lg:pb-32">
-        <div className="grid grid-cols-1 gap-12 md:grid-cols-2 md:gap-20">
+      <section className="px-4 pb-14 md:px-14 md:pb-20 lg:pb-24">
+        <div className="grid grid-cols-1 gap-8 md:grid-cols-2 md:gap-14">
           <div>
             <h2
               className="text-[42px] leading-[1.05] font-semibold md:text-[54px] lg:text-[64px]"
@@ -206,13 +275,13 @@ export default function Home() {
               works
             </h2>
 
-            <p className="mt-6 max-w-[360px] text-[18px] text-neutral-700 md:mt-10 md:text-[22px]">
+            <p className="mt-6 max-w-[360px] text-[18px] text-neutral-700 md:mt-8 md:text-[22px]">
               Beauty discovery should feel clearer before you spend money or
               trust someone with your look.
             </p>
           </div>
 
-          <div className="grid grid-cols-1 gap-8 pt-2 md:grid-cols-3 md:gap-10 lg:pt-6 lg:gap-16">
+          <div className="grid grid-cols-1 gap-8 pt-2 md:grid-cols-3 md:gap-10 lg:pt-6 lg:gap-12">
             <div>
               <div className="mb-3 text-xl md:mb-4">✨</div>
 
@@ -229,11 +298,12 @@ export default function Home() {
               <div className="mb-3 text-xl md:mb-4">♡</div>
 
               <h3 className="text-[18px] font-medium md:text-[20px]">
-                2. Compare
+                2. Save & compare
               </h3>
 
               <p className="mt-2 text-[14px] text-neutral-600 md:text-[15px]">
-                Save favorites and compare pricing, services, and trust signals.
+                Create a client account to save favorites and compare artists
+                across devices.
               </p>
             </div>
 
@@ -252,7 +322,7 @@ export default function Home() {
         </div>
       </section>
 
-      <section className="px-4 pb-16 md:px-14 md:pb-24 lg:pb-32">
+      <section className="px-4 pb-16 md:px-14 md:pb-24 lg:pb-28">
         <div className="text-center">
           <h2 className="text-[16px] font-semibold uppercase tracking-[0.08em] md:text-[18px]">
             Artists on Lumina
@@ -332,7 +402,7 @@ export default function Home() {
         </div>
       </section>
 
-      <section className="px-4 pb-16 md:px-14 md:pb-24 lg:pb-32">
+      <section className="px-4 pb-16 md:px-14 md:pb-24 lg:pb-28">
         <div className="grid grid-cols-1 gap-10 md:grid-cols-2 lg:grid-cols-4 lg:gap-14">
           <div>
             <h2
@@ -390,7 +460,7 @@ export default function Home() {
         </div>
       </section>
 
-      <section className="px-4 pb-20 text-center md:px-14 md:pb-32 lg:pb-40">
+      <section className="px-4 pb-20 text-center md:px-14 md:pb-28 lg:pb-32">
         <h2
           className="text-[36px] leading-[1.08] font-semibold md:text-[52px] lg:text-[64px]"
           style={{ fontFamily: "Georgia, Times New Roman, serif" }}
@@ -402,25 +472,61 @@ export default function Home() {
           Discover, compare, and request beauty professionals with more clarity.
         </p>
 
-        <div className="mt-10 flex flex-col items-center justify-center gap-4 md:mt-14 md:flex-row md:gap-6">
-          <Link
-            href="/browse"
-            className="rounded-full bg-black px-8 py-3 text-[15px] text-white"
-          >
-            Browse Artists
-          </Link>
+        <div className="mx-auto mt-10 grid max-w-[720px] grid-cols-1 gap-4 md:mt-14 md:grid-cols-2">
+          <div className="rounded-[24px] bg-[#fbf7f6] p-6">
+            <p className="text-[13px] uppercase tracking-[0.14em] text-neutral-400">
+              For Clients
+            </p>
 
-          <Link
-            href="/join-as-artist"
-            className="rounded-full border border-black px-8 py-3 text-[15px] transition hover:bg-black hover:text-white"
-          >
-            Join as an Artist
-          </Link>
+            <h3
+              className="mt-3 text-[28px] font-semibold"
+              style={{ fontFamily: "Georgia, Times New Roman, serif" }}
+            >
+              Save and compare artists
+            </h3>
+
+            <p className="mt-3 text-[14px] leading-[1.6] text-neutral-600">
+              Create a client account to save favorites, compare profiles, and
+              keep track of who you want to book.
+            </p>
+
+            <Link
+              href={user ? "/saved" : "/signup"}
+              className="mt-6 inline-block rounded-full bg-black px-7 py-3 text-[14px] text-white"
+            >
+              {user ? "View Saved Artists" : "Create Client Account"}
+            </Link>
+          </div>
+
+          <div className="rounded-[24px] border border-neutral-200 p-6">
+            <p className="text-[13px] uppercase tracking-[0.14em] text-neutral-400">
+              For Artists
+            </p>
+
+            <h3
+              className="mt-3 text-[28px] font-semibold"
+              style={{ fontFamily: "Georgia, Times New Roman, serif" }}
+            >
+              Build your professional profile
+            </h3>
+
+            <p className="mt-3 text-[14px] leading-[1.6] text-neutral-600">
+              Join as a beauty professional to upload your work, list services,
+              and receive client requests.
+            </p>
+
+            <Link
+              href="/join-as-artist"
+              className="mt-6 inline-block rounded-full border border-black px-7 py-3 text-[14px] transition hover:bg-black hover:text-white"
+            >
+              Join as an Artist
+            </Link>
+          </div>
         </div>
       </section>
 
       <footer className="bg-[#f4f4f4] px-6 py-16 md:px-14 md:py-24">
-        <div className="grid grid-cols-1 gap-14 md:grid-cols-4">
+        <div className="grid grid-cols-1 gap-12 md:grid-cols-2 lg:grid-cols-4 lg:gap-20">
           <div>
             <Link
               href="/"
@@ -445,17 +551,15 @@ export default function Home() {
             </h3>
 
             <div className="mt-8 space-y-2 text-[16px]">
-              <Link
-                href="/browse"
-                className="block transition hover:opacity-60"
-              >
+              <Link href="/browse" className="block transition hover:opacity-60">
                 Find Professionals
               </Link>
 
-              <Link
-                href="/saved"
-                className="block transition hover:opacity-60"
-              >
+              <Link href="/signup" className="block transition hover:opacity-60">
+                Create Account
+              </Link>
+
+              <Link href="/saved" className="block transition hover:opacity-60">
                 Saved Artists
               </Link>
 
@@ -481,18 +585,22 @@ export default function Home() {
                 href="/join-as-artist"
                 className="block transition hover:opacity-60"
               >
-                Join Lumina
+                Join as an Artist
+              </Link>
+
+              <Link href="/login" className="block transition hover:opacity-60">
+                Professional Login
               </Link>
 
               <Link
-                href="/admin/portfolio"
+                href="/dashboard/portfolio"
                 className="block transition hover:opacity-60"
               >
                 Portfolio
               </Link>
 
               <Link
-                href="/admin/requests"
+                href="/dashboard/requests"
                 className="block transition hover:opacity-60"
               >
                 Requests
@@ -509,24 +617,15 @@ export default function Home() {
             </h3>
 
             <div className="mt-8 space-y-2 text-[16px]">
-              <Link
-                href="/about"
-                className="block transition hover:opacity-60"
-              >
+              <Link href="/about" className="block transition hover:opacity-60">
                 About
               </Link>
 
-              <Link
-                href="/contact"
-                className="block transition hover:opacity-60"
-              >
+              <Link href="/contact" className="block transition hover:opacity-60">
                 Contact
               </Link>
 
-              <Link
-                href="/privacy"
-                className="block transition hover:opacity-60"
-              >
+              <Link href="/privacy" className="block transition hover:opacity-60">
                 Privacy
               </Link>
             </div>

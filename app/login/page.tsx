@@ -21,7 +21,7 @@ export default function LoginPage() {
 
     setLoading(true);
 
-    const { error } = await supabase.auth.signInWithPassword({
+    const { data, error } = await supabase.auth.signInWithPassword({
       email,
       password,
     });
@@ -32,9 +32,30 @@ export default function LoginPage() {
       return;
     }
 
+    const user = data.user;
+
+    if (!user) {
+      setLoading(false);
+      return;
+    }
+
+    // check if user is an artist
+    const { data: artist } = await supabase
+      .from("artists")
+      .select("id")
+      .eq("id", user.id)
+      .single();
+
     setLoading(false);
 
-    router.push("/dashboard");
+    // professional account
+    if (artist) {
+      router.push("/dashboard");
+      return;
+    }
+
+    // normal client account
+    router.push("/browse");
   };
 
   return (
@@ -48,11 +69,11 @@ export default function LoginPage() {
           className="text-[42px] leading-[1.0] font-semibold"
           style={{ fontFamily: "Georgia, Times New Roman, serif" }}
         >
-          Professional Login
+          Login to Lumina
         </h1>
 
         <p className="mt-4 text-[15px] text-neutral-600">
-          Login to manage your Lumina profile and dashboard.
+          Login to continue browsing, saving artists, or managing your professional profile.
         </p>
 
         <div className="mt-8 space-y-4">
@@ -85,6 +106,13 @@ export default function LoginPage() {
           Don’t have an account?{" "}
           <Link href="/signup" className="text-black underline">
             Create account
+          </Link>
+        </p>
+
+        <p className="mt-4 text-center text-[14px] text-neutral-500">
+          Are you a beauty professional?{" "}
+          <Link href="/join-as-artist" className="text-black underline">
+            Join as an Artist
           </Link>
         </p>
       </div>

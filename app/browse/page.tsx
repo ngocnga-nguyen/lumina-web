@@ -49,32 +49,45 @@ export default function BrowsePage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [userLocation, setUserLocation] = useState<UserLocation | null>(null);
   const [locationStatus, setLocationStatus] = useState("");
+  const [saveStatus, setSaveStatus] = useState("");
 
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [minPrice, setMinPrice] = useState("");
   const [maxPrice, setMaxPrice] = useState("");
 
   useEffect(() => {
-    const stored = localStorage.getItem("savedArtists");
-    if (stored) setSaved(JSON.parse(stored));
-  }, []);
-
-  useEffect(() => {
-    const fetchArtists = async () => {
-      const { data, error } = await supabase
+    const fetchInitialData = async () => {
+      const { data: artistsData, error: artistsError } = await supabase
         .from("artists")
         .select("*")
         .order("created_at", { ascending: false });
 
-      if (error) {
-        console.log(error);
+      if (artistsError) {
+        console.log(artistsError);
+      } else {
+        setArtists(artistsData || []);
+      }
+
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      if (!user) return;
+
+      const { data: savedData, error: savedError } = await supabase
+        .from("saved_artists")
+        .select("artist_id")
+        .eq("user_id", user.id);
+
+      if (savedError) {
+        console.log(savedError);
         return;
       }
 
-      setArtists(data || []);
+      setSaved((savedData || []).map((item) => item.artist_id));
     };
 
-    fetchArtists();
+    fetchInitialData();
   }, []);
 
   const useMyLocation = () => {
@@ -101,13 +114,55 @@ export default function BrowsePage() {
     );
   };
 
-  const toggleSave = (id: string) => {
-    const updated = saved.includes(id)
-      ? saved.filter((item) => item !== id)
-      : [...saved, id];
+  const toggleSave = async (artistId: string) => {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
 
-    setSaved(updated);
-    localStorage.setItem("savedArtists", JSON.stringify(updated));
+    if (!user) {
+      setSaveStatus("Please log in to save artists.");
+      return;
+    }
+
+    const isAlreadySaved = saved.includes(artistId);
+
+    if (isAlreadySaved) {
+      setSaved((current) => current.filter((id) => id !== artistId));
+
+      const { error } = await supabase
+        .from("saved_artists")
+        .delete()
+        .eq("user_id", user.id)
+        .eq("artist_id", artistId);
+
+      if (error) {
+        console.log(error);
+        setSaved((current) => [...current, artistId]);
+        setSaveStatus("Could not remove saved artist.");
+        return;
+      }
+
+      setSaveStatus("");
+      return;
+    }
+
+    setSaved((current) => [...current, artistId]);
+
+    const { error } = await supabase.from("saved_artists").insert([
+      {
+        user_id: user.id,
+        artist_id: artistId,
+      },
+    ]);
+
+    if (error) {
+      console.log(error);
+      setSaved((current) => current.filter((id) => id !== artistId));
+      setSaveStatus("Could not save artist.");
+      return;
+    }
+
+    setSaveStatus("");
   };
 
   const toggleCategory = (category: string) => {
@@ -241,6 +296,12 @@ export default function BrowsePage() {
             {locationStatus && (
               <p className="mt-2 text-[13px] text-neutral-500">
                 {locationStatus}
+              </p>
+            )}
+
+            {saveStatus && (
+              <p className="mt-2 text-[13px] text-neutral-500">
+                {saveStatus}
               </p>
             )}
           </div>

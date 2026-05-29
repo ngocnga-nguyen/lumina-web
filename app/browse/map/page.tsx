@@ -28,6 +28,7 @@ function getDistanceMiles(
   artistLng: number
 ) {
   const R = 3958.8;
+
   const dLat = ((artistLat - userLat) * Math.PI) / 180;
   const dLng = ((artistLng - userLng) * Math.PI) / 180;
 
@@ -49,10 +50,16 @@ export default function BrowseMapPage() {
 
   const [artists, setArtists] = useState<Artist[]>([]);
   const [selectedArtist, setSelectedArtist] = useState<Artist | null>(null);
+
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("All");
-  const [userLocation, setUserLocation] = useState<UserLocation | null>(null);
+
+  const [userLocation, setUserLocation] =
+    useState<UserLocation | null>(null);
+
   const [locationStatus, setLocationStatus] = useState("");
+
+  const [saved, setSaved] = useState<string[]>([]);
 
   const categoryButtons = [
     "All",
@@ -77,6 +84,24 @@ export default function BrowseMapPage() {
       }
 
       setArtists(data || []);
+
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      if (!user) return;
+
+      const { data: savedData, error: savedError } = await supabase
+        .from("saved_artists")
+        .select("artist_id")
+        .eq("user_id", user.id);
+
+      if (savedError) {
+        console.log(savedError);
+        return;
+      }
+
+      setSaved((savedData || []).map((item) => item.artist_id));
     };
 
     fetchArtists();
@@ -85,7 +110,8 @@ export default function BrowseMapPage() {
   useEffect(() => {
     if (!mapContainer.current || mapRef.current) return;
 
-    mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN || "";
+    mapboxgl.accessToken =
+      process.env.NEXT_PUBLIC_MAPBOX_TOKEN || "";
 
     mapRef.current = new mapboxgl.Map({
       container: mapContainer.current,
@@ -94,12 +120,64 @@ export default function BrowseMapPage() {
       zoom: 8.5,
     });
 
-    mapRef.current.addControl(new mapboxgl.NavigationControl(), "top-right");
+    mapRef.current.addControl(
+      new mapboxgl.NavigationControl(),
+      "top-right"
+    );
   }, []);
+
+  const toggleSave = async (artistId: string) => {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) {
+      alert("Please log in to save artists.");
+      return;
+    }
+
+    const isAlreadySaved = saved.includes(artistId);
+
+    if (isAlreadySaved) {
+      setSaved((current) =>
+        current.filter((id) => id !== artistId)
+      );
+
+      const { error } = await supabase
+        .from("saved_artists")
+        .delete()
+        .eq("user_id", user.id)
+        .eq("artist_id", artistId);
+
+      if (error) {
+        console.log(error);
+      }
+
+      return;
+    }
+
+    setSaved((current) => [...current, artistId]);
+
+    const { error } = await supabase
+      .from("saved_artists")
+      .insert([
+        {
+          user_id: user.id,
+          artist_id: artistId,
+        },
+      ]);
+
+    if (error) {
+      console.log(error);
+    }
+  };
 
   const useMyLocation = () => {
     if (!navigator.geolocation) {
-      setLocationStatus("Location is not supported on this browser.");
+      setLocationStatus(
+        "Location is not supported on this browser."
+      );
+
       return;
     }
 
@@ -113,11 +191,17 @@ export default function BrowseMapPage() {
         };
 
         setUserLocation(currentLocation);
-        setLocationStatus("Showing nearest artists first.");
+
+        setLocationStatus(
+          "Showing nearest artists first."
+        );
 
         if (mapRef.current) {
           mapRef.current.flyTo({
-            center: [currentLocation.longitude, currentLocation.latitude],
+            center: [
+              currentLocation.longitude,
+              currentLocation.latitude,
+            ],
             zoom: 9.5,
           });
 
@@ -125,20 +209,33 @@ export default function BrowseMapPage() {
             userMarkerRef.current.remove();
           }
 
-          userMarkerRef.current = new mapboxgl.Marker({ color: "#000000" })
-            .setLngLat([currentLocation.longitude, currentLocation.latitude])
-            .setPopup(new mapboxgl.Popup().setText("You are here"))
+          userMarkerRef.current = new mapboxgl.Marker({
+            color: "#000000",
+          })
+            .setLngLat([
+              currentLocation.longitude,
+              currentLocation.latitude,
+            ])
+            .setPopup(
+              new mapboxgl.Popup().setText("You are here")
+            )
             .addTo(mapRef.current);
         }
       },
       () => {
-        setLocationStatus("Location permission was denied.");
+        setLocationStatus(
+          "Location permission was denied."
+        );
       }
     );
   };
 
   const getArtistDistance = (artist: Artist) => {
-    if (!userLocation || artist.latitude === null || artist.longitude === null) {
+    if (
+      !userLocation ||
+      artist.latitude === null ||
+      artist.longitude === null
+    ) {
       return null;
     }
 
@@ -166,7 +263,9 @@ export default function BrowseMapPage() {
 
     if (selectedCategory !== "All") {
       result = result.filter((artist) =>
-        artist.category.toLowerCase().includes(selectedCategory.toLowerCase())
+        artist.category
+          .toLowerCase()
+          .includes(selectedCategory.toLowerCase())
       );
     }
 
@@ -175,8 +274,11 @@ export default function BrowseMapPage() {
         const aDistance = getArtistDistance(a);
         const bDistance = getArtistDistance(b);
 
-        if (aDistance === null && bDistance === null) return 0;
+        if (aDistance === null && bDistance === null)
+          return 0;
+
         if (aDistance === null) return 1;
+
         if (bDistance === null) return -1;
 
         return aDistance - bDistance;
@@ -184,33 +286,54 @@ export default function BrowseMapPage() {
     }
 
     return result;
-  }, [artists, searchQuery, selectedCategory, userLocation]);
+  }, [
+    artists,
+    searchQuery,
+    selectedCategory,
+    userLocation,
+  ]);
 
   useEffect(() => {
     if (!mapRef.current) return;
 
-    markersRef.current.forEach((marker) => marker.remove());
+    markersRef.current.forEach((marker) =>
+      marker.remove()
+    );
+
     markersRef.current = [];
 
     filteredArtists.forEach((artist) => {
-      if (!artist.latitude || !artist.longitude) return;
+      if (!artist.latitude || !artist.longitude)
+        return;
 
       const markerEl = document.createElement("button");
+
       markerEl.type = "button";
       markerEl.innerHTML = "📍";
+
       markerEl.style.fontSize = "28px";
       markerEl.style.cursor = "pointer";
-      markerEl.style.filter = "drop-shadow(0 3px 4px rgba(0,0,0,0.25))";
 
-      const marker = new mapboxgl.Marker({ element: markerEl })
-        .setLngLat([artist.longitude, artist.latitude])
+      markerEl.style.filter =
+        "drop-shadow(0 3px 4px rgba(0,0,0,0.25))";
+
+      const marker = new mapboxgl.Marker({
+        element: markerEl,
+      })
+        .setLngLat([
+          artist.longitude,
+          artist.latitude,
+        ])
         .addTo(mapRef.current!);
 
       markerEl.addEventListener("click", () => {
         setSelectedArtist(artist);
 
         mapRef.current?.flyTo({
-          center: [artist.longitude!, artist.latitude!],
+          center: [
+            artist.longitude!,
+            artist.latitude!,
+          ],
           zoom: 11.5,
         });
       });
@@ -222,12 +345,17 @@ export default function BrowseMapPage() {
       setSelectedArtist(filteredArtists[0]);
 
       const firstWithCoords = filteredArtists.find(
-        (artist) => artist.latitude !== null && artist.longitude !== null
+        (artist) =>
+          artist.latitude !== null &&
+          artist.longitude !== null
       );
 
       if (firstWithCoords && !userLocation) {
         mapRef.current.flyTo({
-          center: [firstWithCoords.longitude!, firstWithCoords.latitude!],
+          center: [
+            firstWithCoords.longitude!,
+            firstWithCoords.latitude!,
+          ],
           zoom: 9.5,
         });
       }
@@ -243,10 +371,18 @@ export default function BrowseMapPage() {
           Lumina
         </Link>
 
-        <div className="hidden text-[15px] md:block">Browse Artists</div>
+        <div className="hidden text-[15px] md:block">
+          Browse Artists
+        </div>
 
-        <Link href="/saved" className="flex items-center gap-2">
-          <span className="text-[16px] text-[#e9a8a8]">♡</span>
+        <Link
+          href="/saved"
+          className="flex items-center gap-2"
+        >
+          <span className="text-[16px] text-[#e9a8a8]">
+            ♡
+          </span>
+
           <span className="text-sm">Saved</span>
         </Link>
       </header>
@@ -254,19 +390,26 @@ export default function BrowseMapPage() {
       <section className="px-4 pt-8 pb-16 md:px-10 md:pt-10 md:pb-20">
         <div className="flex flex-col gap-6 md:flex-row md:items-start md:justify-between">
           <div>
-            <Link href="/browse" className="text-[14px] md:text-[16px]">
+            <Link
+              href="/browse"
+              className="text-[14px] md:text-[16px]"
+            >
               ← Back
             </Link>
 
             <h1
               className="mt-5 text-[32px] leading-[1.02] font-semibold md:mt-8 md:text-[54px]"
-              style={{ fontFamily: "Georgia, Times New Roman, serif" }}
+              style={{
+                fontFamily:
+                  "Georgia, Times New Roman, serif",
+              }}
             >
               Map of beauty professionals
             </h1>
 
             <p className="mt-2 text-[15px] text-neutral-700 md:mt-3 md:text-[18px]">
-              Discover {filteredArtists.length} beauty professionals
+              Discover {filteredArtists.length} beauty
+              professionals
             </p>
 
             <button
@@ -285,12 +428,16 @@ export default function BrowseMapPage() {
 
           <div className="w-full md:w-[620px]">
             <div className="flex items-center rounded-full bg-[#efedeb] px-4 py-3 md:px-5">
-              <span className="mr-3 text-lg text-neutral-500">⌕</span>
+              <span className="mr-3 text-lg text-neutral-500">
+                ⌕
+              </span>
 
               <input
                 type="text"
                 value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                onChange={(e) =>
+                  setSearchQuery(e.target.value)
+                }
                 placeholder="search by city, artist, or service"
                 className="w-full bg-transparent text-sm outline-none placeholder:text-neutral-400"
               />
@@ -300,7 +447,9 @@ export default function BrowseMapPage() {
               {categoryButtons.map((category) => (
                 <button
                   key={category}
-                  onClick={() => setSelectedCategory(category)}
+                  onClick={() =>
+                    setSelectedCategory(category)
+                  }
                   className={
                     selectedCategory === category
                       ? "font-medium text-black"
@@ -312,7 +461,8 @@ export default function BrowseMapPage() {
               ))}
             </div>
 
-            {(searchQuery || selectedCategory !== "All") && (
+            {(searchQuery ||
+              selectedCategory !== "All") && (
               <button
                 onClick={() => {
                   setSearchQuery("");
@@ -325,7 +475,9 @@ export default function BrowseMapPage() {
             )}
           </div>
 
-          <div className="hidden text-[16px] md:block">Map</div>
+          <div className="hidden text-[16px] md:block">
+            Map
+          </div>
         </div>
 
         <div className="mt-10 grid grid-cols-1 gap-6 lg:grid-cols-[1fr_320px]">
@@ -345,17 +497,35 @@ export default function BrowseMapPage() {
                   {selectedArtist.category}
                 </p>
 
+                <div className="mt-5">
+                  <button
+                    onClick={() =>
+                      toggleSave(selectedArtist.id)
+                    }
+                    className="rounded-full border border-black px-4 py-2 text-[14px] transition hover:bg-black hover:text-white"
+                  >
+                    {saved.includes(selectedArtist.id)
+                      ? "♥ Saved"
+                      : "♡ Save Artist"}
+                  </button>
+                </div>
+
                 <p className="mt-4 text-[14px] text-neutral-700">
                   📍 {selectedArtist.location}
                 </p>
 
                 <p className="mt-2 text-[14px] text-neutral-700">
-                  From ${selectedArtist.price_start}
+                  From $
+                  {selectedArtist.price_start}
                 </p>
 
-                {getArtistDistance(selectedArtist) !== null && (
+                {getArtistDistance(selectedArtist) !==
+                  null && (
                   <p className="mt-2 text-[14px] text-neutral-500">
-                    {getArtistDistance(selectedArtist)?.toFixed(1)} miles away
+                    {getArtistDistance(
+                      selectedArtist
+                    )?.toFixed(1)}{" "}
+                    miles away
                   </p>
                 )}
 
