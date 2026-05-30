@@ -82,9 +82,10 @@ export default function ArtistProfile() {
     const fetchArtistData = async () => {
       const { data: artistData, error: artistError } = await supabase
         .from("artists")
-        .select("*")
-        .eq("id", artistId)
-        .single();
+.select("*")
+.eq("id", params.slug)
+.eq("is_active", true)
+.single();
 
       if (artistError) {
         console.log("Artist fetch error:", artistError);

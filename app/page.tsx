@@ -24,6 +24,7 @@ export default function Home() {
       const { data, error } = await supabase
         .from("artists")
         .select("*")
+        .eq("is_active", true)
         .order("name", { ascending: true });
 
       if (error) {
@@ -97,15 +98,12 @@ export default function Home() {
           {user ? (
             artistId ? (
               <>
-                <Link href="/dashboard" className="transition hover:opacity-70">
-                  Dashboard
+                <Link href="/browse" className="transition hover:opacity-70">
+                  Browse Artists
                 </Link>
 
-                <Link
-                  href={`/artist/${artistId}`}
-                  className="transition hover:opacity-70"
-                >
-                  View My Page
+                <Link href="/dashboard" className="transition hover:opacity-70">
+                  Dashboard
                 </Link>
 
                 <button

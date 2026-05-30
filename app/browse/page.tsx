@@ -60,6 +60,7 @@ export default function BrowsePage() {
       const { data: artistsData, error: artistsError } = await supabase
         .from("artists")
         .select("*")
+        .eq("is_active", true)
         .order("created_at", { ascending: false });
 
       if (artistsError) {

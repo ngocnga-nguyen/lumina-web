@@ -20,7 +20,9 @@ type ProfileForm = {
 
 export default function DashboardProfilePage() {
   const [loading, setLoading] = useState(false);
+  const [visibilityLoading, setVisibilityLoading] = useState(false);
   const [locationSaved, setLocationSaved] = useState(false);
+  const [isActive, setIsActive] = useState(true);
 
   const [form, setForm] = useState<ProfileForm>({
     name: "",
@@ -70,6 +72,8 @@ export default function DashboardProfilePage() {
           profile_image_url: data.profile_image_url || "",
         });
 
+        setIsActive(data.is_active ?? true);
+
         if (data.latitude && data.longitude) {
           setLocationSaved(true);
         }
@@ -104,6 +108,38 @@ export default function DashboardProfilePage() {
       latitude,
       longitude,
     };
+  };
+
+  const updateVisibility = async (nextStatus: boolean) => {
+    setVisibilityLoading(true);
+
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) {
+      setVisibilityLoading(false);
+      alert("You need to be logged in.");
+      return;
+    }
+
+    const { error } = await supabase
+      .from("artists")
+      .update({
+        is_active: nextStatus,
+      })
+      .eq("id", user.id);
+
+    setVisibilityLoading(false);
+
+    if (error) {
+      alert(error.message);
+      return;
+    }
+
+    setIsActive(nextStatus);
+
+    alert(nextStatus ? "Your profile is now visible." : "Your profile is now hidden.");
   };
 
   const saveProfile = async () => {
@@ -199,6 +235,42 @@ export default function DashboardProfilePage() {
         <p className="mt-4 max-w-[680px] text-[16px] leading-[1.6] text-neutral-600">
           Keep your profile clear, accurate, and easy for clients to understand.
         </p>
+
+        <div className="mt-8 max-w-[780px] rounded-[24px] border border-neutral-200 bg-[#fbf7f6] p-5 md:p-6">
+          <p className={sectionTitleClass}>Public visibility</p>
+
+          <div className="mt-4 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+            <div>
+              <p className="text-[18px] font-medium">
+                {isActive ? "Your profile is visible" : "Your profile is hidden"}
+              </p>
+
+              <p className="mt-2 text-[14px] leading-[1.6] text-neutral-600">
+                {isActive
+                  ? "Clients can currently find your profile on Lumina."
+                  : "Clients cannot find your profile in browse, search, or map while hidden."}
+              </p>
+            </div>
+
+            {isActive ? (
+              <button
+                onClick={() => updateVisibility(false)}
+                disabled={visibilityLoading}
+                className="rounded-full border border-black px-5 py-3 text-[14px] transition hover:bg-black hover:text-white disabled:opacity-50"
+              >
+                {visibilityLoading ? "Updating..." : "Hide Profile"}
+              </button>
+            ) : (
+              <button
+                onClick={() => updateVisibility(true)}
+                disabled={visibilityLoading}
+                className="rounded-full bg-black px-5 py-3 text-[14px] text-white transition hover:opacity-90 disabled:opacity-50"
+              >
+                {visibilityLoading ? "Updating..." : "Make Profile Visible"}
+              </button>
+            )}
+          </div>
+        </div>
 
         <div className="mt-10 max-w-[780px] rounded-[28px] border border-neutral-200 bg-white p-6 md:p-8">
           <div className="space-y-9">
@@ -297,69 +369,68 @@ export default function DashboardProfilePage() {
 
               <div className="mt-4 space-y-4">
                 <div>
-  <p className="mb-3 text-[14px] text-neutral-600">
-    Profile photo
-  </p>
+                  <p className="mb-3 text-[14px] text-neutral-600">
+                    Profile photo
+                  </p>
 
-  <label className="flex h-[220px] w-full cursor-pointer items-center justify-center overflow-hidden rounded-[18px] border border-dashed border-neutral-300 bg-[#fafafa] transition hover:bg-[#f5f5f5]">
-    {form.profile_image_url ? (
-      <img
-        src={form.profile_image_url}
-        alt="Profile"
-        className="h-full w-full object-cover"
-      />
-    ) : (
-      <div className="text-center">
-        <p className="text-[16px] font-medium">
-          Upload profile photo
-        </p>
+                  <label className="flex h-[220px] w-full cursor-pointer items-center justify-center overflow-hidden rounded-[18px] border border-dashed border-neutral-300 bg-[#fafafa] transition hover:bg-[#f5f5f5]">
+                    {form.profile_image_url ? (
+                      <img
+                        src={form.profile_image_url}
+                        alt="Profile"
+                        className="h-full w-full object-cover"
+                      />
+                    ) : (
+                      <div className="text-center">
+                        <p className="text-[16px] font-medium">
+                          Upload profile photo
+                        </p>
 
-        <p className="mt-2 text-[13px] text-neutral-500">
-          Tap to choose from phone or files
-        </p>
-      </div>
-    )}
+                        <p className="mt-2 text-[13px] text-neutral-500">
+                          Tap to choose from phone or files
+                        </p>
+                      </div>
+                    )}
 
-    <input
-      type="file"
-      accept="image/*"
-      className="hidden"
-      onChange={async (e) => {
-        const file = e.target.files?.[0];
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={async (e) => {
+                        const file = e.target.files?.[0];
 
-        if (!file) return;
+                        if (!file) return;
 
-        const {
-          data: { user },
-        } = await supabase.auth.getUser();
+                        const {
+                          data: { user },
+                        } = await supabase.auth.getUser();
 
-        if (!user) return;
+                        if (!user) return;
 
-        const fileExt = file.name.split(".").pop();
+                        const fileExt = file.name.split(".").pop();
+                        const fileName = `${user.id}-${Date.now()}.${fileExt}`;
 
-        const fileName = `${user.id}-${Date.now()}.${fileExt}`;
+                        const { error: uploadError } = await supabase.storage
+                          .from("profile-images")
+                          .upload(fileName, file);
 
-        const { error: uploadError } = await supabase.storage
-          .from("profile-images")
-          .upload(fileName, file);
+                        if (uploadError) {
+                          alert(uploadError.message);
+                          return;
+                        }
 
-        if (uploadError) {
-          alert(uploadError.message);
-          return;
-        }
+                        const { data } = supabase.storage
+                          .from("profile-images")
+                          .getPublicUrl(fileName);
 
-        const { data } = supabase.storage
-          .from("profile-images")
-          .getPublicUrl(fileName);
-
-        setForm({
-          ...form,
-          profile_image_url: data.publicUrl,
-        });
-      }}
-    />
-  </label>
-</div>
+                        setForm({
+                          ...form,
+                          profile_image_url: data.publicUrl,
+                        });
+                      }}
+                    />
+                  </label>
+                </div>
 
                 <textarea
                   placeholder="Short bio — describe your style, specialties, and what clients can expect."
