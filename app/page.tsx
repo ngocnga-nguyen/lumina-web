@@ -17,6 +17,7 @@ export default function Home() {
   const [artists, setArtists] = useState<Artist[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [user, setUser] = useState<any>(null);
+  const [artistId, setArtistId] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchArtists = async () => {
@@ -43,6 +44,19 @@ export default function Home() {
       } = await supabase.auth.getUser();
 
       setUser(user);
+
+      if (!user) {
+        setArtistId(null);
+        return;
+      }
+
+      const { data: artist } = await supabase
+        .from("artists")
+        .select("id")
+        .eq("id", user.id)
+        .maybeSingle();
+
+      setArtistId(artist?.id || null);
     };
 
     getUser();
@@ -80,25 +94,51 @@ export default function Home() {
         </Link>
 
         <nav className="flex items-center gap-4 text-sm md:gap-10 md:text-[15px]">
-          <Link href="/browse" className="transition hover:opacity-70">
-            Browse Artists
-          </Link>
-
           {user ? (
-            <>
-              <Link href="/saved" className="transition hover:opacity-70">
-                Saved
-              </Link>
+            artistId ? (
+              <>
+                <Link href="/dashboard" className="transition hover:opacity-70">
+                  Dashboard
+                </Link>
 
-              <button
-                onClick={handleLogout}
-                className="transition hover:opacity-70"
-              >
-                Sign Out
-              </button>
-            </>
+                <Link
+                  href={`/artist/${artistId}`}
+                  className="transition hover:opacity-70"
+                >
+                  View My Page
+                </Link>
+
+                <button
+                  onClick={handleLogout}
+                  className="transition hover:opacity-70"
+                >
+                  Sign Out
+                </button>
+              </>
+            ) : (
+              <>
+                <Link href="/browse" className="transition hover:opacity-70">
+                  Browse Artists
+                </Link>
+
+                <Link href="/saved" className="transition hover:opacity-70">
+                  Saved
+                </Link>
+
+                <button
+                  onClick={handleLogout}
+                  className="transition hover:opacity-70"
+                >
+                  Sign Out
+                </button>
+              </>
+            )
           ) : (
             <>
+              <Link href="/browse" className="transition hover:opacity-70">
+                Browse Artists
+              </Link>
+
               <Link href="/login" className="transition hover:opacity-70">
                 Login
               </Link>
@@ -149,6 +189,15 @@ export default function Home() {
                 className="rounded-full border border-black px-7 py-3 text-center text-[14px] transition hover:bg-black hover:text-white"
               >
                 Create Client Account
+              </Link>
+            )}
+
+            {user && artistId && (
+              <Link
+                href="/dashboard"
+                className="rounded-full border border-black px-7 py-3 text-center text-[14px] transition hover:bg-black hover:text-white"
+              >
+                Go to Dashboard
               </Link>
             )}
           </div>
@@ -516,10 +565,10 @@ export default function Home() {
             </p>
 
             <Link
-              href="/join-as-artist"
+              href={artistId ? "/dashboard" : "/join-as-artist"}
               className="mt-6 inline-block rounded-full border border-black px-7 py-3 text-[14px] transition hover:bg-black hover:text-white"
             >
-              Join as an Artist
+              {artistId ? "Go to Dashboard" : "Join as an Artist"}
             </Link>
           </div>
         </div>
