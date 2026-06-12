@@ -16,6 +16,12 @@ type Artist = {
   social_link?: string;
   availability?: string;
   email?: string;
+
+  is_verified?: boolean;
+  years_experience?: number | null;
+  verified_results_count?: number | null;
+  repeat_client_rate?: number | null;
+  verified_reviews?: boolean | null;
 };
 
 type PortfolioImage = {
@@ -74,9 +80,28 @@ export default function ArtistProfile() {
   });
 
   useEffect(() => {
-    const stored = localStorage.getItem("savedArtists");
-    if (stored) setSaved(JSON.parse(stored));
-  }, []);
+  const fetchSavedArtists = async () => {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) return;
+
+    const { data, error } = await supabase
+      .from("saved_artists")
+      .select("artist_id")
+      .eq("user_id", user.id);
+
+    if (error) {
+      console.log(error);
+      return;
+    }
+
+    setSaved((data || []).map((item) => item.artist_id));
+  };
+
+  fetchSavedArtists();
+}, []);
 
   useEffect(() => {
     const fetchArtistData = async () => {
@@ -122,14 +147,49 @@ export default function ArtistProfile() {
     if (artistId) fetchArtistData();
   }, [artistId]);
 
-  const toggleSave = (id: string) => {
-    const updated = saved.includes(id)
-      ? saved.filter((item) => item !== id)
-      : [...saved, id];
+  const toggleSave = async (artistId: string) => {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
 
-    setSaved(updated);
-    localStorage.setItem("savedArtists", JSON.stringify(updated));
-  };
+  if (!user) {
+    window.location.href = "/login";
+    return;
+  }
+
+  const isAlreadySaved = saved.includes(artistId);
+
+  if (isAlreadySaved) {
+    setSaved((current) => current.filter((id) => id !== artistId));
+
+    const { error } = await supabase
+      .from("saved_artists")
+      .delete()
+      .eq("user_id", user.id)
+      .eq("artist_id", artistId);
+
+    if (error) {
+      alert(error.message);
+      setSaved((current) => [...current, artistId]);
+    }
+
+    return;
+  }
+
+  setSaved((current) => [...current, artistId]);
+
+  const { error } = await supabase.from("saved_artists").insert([
+    {
+      user_id: user.id,
+      artist_id: artistId,
+    },
+  ]);
+
+  if (error) {
+    alert(error.message);
+    setSaved((current) => current.filter((id) => id !== artistId));
+  }
+};
 
   const handleRequestSubmit = async () => {
     if (!artist) return;
@@ -250,19 +310,23 @@ export default function ArtistProfile() {
     );
   }
 
-  const trustHighlights = [
-    "✔ Profile listed on Lumina",
-    artist.email && "◔ Contact available through request form",
-    artist.price_start && "◉ Pricing shown upfront",
-    portfolioImages.length > 0
-      ? "▣ Portfolio images uploaded"
-      : "▣ Portfolio coming soon",
-    artist.availability && "◷ Availability provided",
-    artist.profile_image_url && "◌ Profile photo uploaded",
-    services.length > 0 && "✦ Services listed",
-    reviews.length > 0 &&
-      `★ ${reviews.length} review${reviews.length === 1 ? "" : "s"}`,
-  ].filter(Boolean);
+  const professionalHighlights = [
+  artist.is_verified && "✓ Verified Professional",
+
+
+
+  artist.years_experience &&
+    `${artist.years_experience} Years Experience`,
+
+  artist.verified_results_count &&
+    `${artist.verified_results_count} Portfolio Results`,
+
+  artist.verified_reviews &&
+    "Verified Reviews",
+
+  artist.repeat_client_rate &&
+    `${artist.repeat_client_rate}% Repeat Client Rate`,
+].filter(Boolean);
 
   return (
     <main className="min-h-screen bg-white text-black">
@@ -295,17 +359,10 @@ export default function ArtistProfile() {
                 </div>
               )}
 
-              <button
-                onClick={() => toggleSave(artist.id)}
-                className="absolute right-4 top-4 text-[19px]"
-              >
-                <span className="text-[#e9a8a8]">
-                  {saved.includes(artist.id) ? "♥" : "♡"}
-                </span>
-              </button>
+              
             </div>
 
-            <div className="mt-6">
+            <div className="mt-6 rounded-[22px] bg-[#faf6f5] p-5">
               <h2
                 className="text-[24px]"
                 style={{ fontFamily: "Georgia, Times New Roman, serif" }}
@@ -319,7 +376,7 @@ export default function ArtistProfile() {
 
               <button
                 onClick={() => setOpenRequest(true)}
-                className="mt-6 rounded-full bg-black px-6 py-3 text-[14px] text-white transition hover:opacity-90"
+                className="mt-5 rounded-full bg-black px-5 py-3 text-[13px] text-white transition hover:opacity-90"
               >
                 Send Request
               </button>
@@ -327,32 +384,65 @@ export default function ArtistProfile() {
           </div>
 
           <div>
-            <h1
-              className="text-[42px] leading-[1.0] font-semibold md:text-[56px]"
-              style={{ fontFamily: "Georgia, Times New Roman, serif" }}
-            >
-              {artist.name}
-            </h1>
+  <div className="flex items-start justify-between gap-4">
+    <h1
+      className="text-[34px] leading-[1.0] font-semibold md:text-[42px]"
+      style={{ fontFamily: "'Playfair Display', serif" }}
+    >
+      {artist.name}
+    </h1>
+    <button
 
+    onClick={() => toggleSave(artist.id)}
+
+    className={`rounded-full px-4 py-2 text-[14px] transition-all duration-200 ${
+
+      saved.includes(artist.id)
+
+        ? "bg-[#f7e8ec] border border-[#e8c9d1] text-[#9c6a78]"
+
+        : "bg-white border border-neutral-200 text-neutral-700 hover:bg-[#faf6f5]"
+
+    }`}
+
+  >
+
+    {saved.includes(artist.id) ? "♥ Saved" : "♡ Save"}
+
+  </button>
+
+</div>
+              
             <p
-              className="mt-1 text-[28px]"
+              className="mt-2 text-[24px]"
               style={{ fontFamily: "Georgia, Times New Roman, serif" }}
             >
               {artist.category}
             </p>
 
-            <div className="mt-6 flex flex-wrap gap-x-8 gap-y-2 text-[16px]">
-              <span>{artist.location}</span>
-              <span>From ${artist.price_start}</span>
+<div className="mt-6 flex flex-wrap gap-x-8 gap-y-2 text-[15px] text-neutral-600">
+                <span>{artist.location}</span>
+              <span>Starting at ${artist.price_start}</span>
             </div>
 
-            <p
-              className="mt-8 max-w-[760px] text-[20px] leading-[1.5]"
-              style={{ fontFamily: "Georgia, Times New Roman, serif" }}
-            >
-              {artist.bio || "This artist is building their Lumina profile."}
-            </p>
+          <div className="mt-8 max-w-[760px] border-t border-[#eadfdb] pt-6">
+  <p
+    className="text-[22px] leading-[1.5]"
+    style={{ fontFamily: "Georgia, Times New Roman, serif" }}
+  >
+    {artist.bio ||
+      `Professional ${artist.category.toLowerCase()} services in Pryor, Oklahoma.`}
+  </p>
 
+  <p className="mt-4 text-[14px] tracking-[0.02em] text-neutral-500">
+    {artist.is_verified && "Verified Professional"}
+
+    {artist.is_verified && artist.years_experience && " · "}
+
+    {artist.years_experience &&
+      `${artist.years_experience}+ Years Experience`}
+  </p>
+</div>
             {artist.social_link && (
               <a
                 href={
@@ -368,21 +458,12 @@ export default function ArtistProfile() {
               </a>
             )}
 
-            <div className="mt-8">
-              <p className="mb-3 text-[12px] uppercase tracking-[0.14em] text-neutral-400">
-                Trust Highlights
-              </p>
-
-              <div className="space-y-2 text-[16px] text-neutral-800">
-                {trustHighlights.map((highlight, index) => (
-                  <p key={index}>{highlight}</p>
-                ))}
-              </div>
+            
             </div>
           </div>
-        </div>
+      
 
-        <section className="mt-12 pb-16">
+        <section className="mt-6 pb-16">
           <div className="flex justify-center gap-6 text-[16px]">
             {["service", "portfolio", "reviews"].map((tab) => (
               <button

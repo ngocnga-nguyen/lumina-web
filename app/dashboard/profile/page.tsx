@@ -16,6 +16,7 @@ type ProfileForm = {
   bio: string;
   availability: string;
   profile_image_url: string;
+  years_experience: string;
 };
 
 export default function DashboardProfilePage() {
@@ -36,6 +37,7 @@ export default function DashboardProfilePage() {
     bio: "",
     availability: "",
     profile_image_url: "",
+   years_experience: "", 
   });
 
   useEffect(() => {
@@ -70,6 +72,7 @@ export default function DashboardProfilePage() {
           bio: data.bio || "",
           availability: data.availability || "",
           profile_image_url: data.profile_image_url || "",
+          years_experience: data.years_experience?.toString() || "",
         });
 
         setIsActive(data.is_active ?? true);
@@ -191,6 +194,11 @@ export default function DashboardProfilePage() {
         bio: form.bio,
         availability: form.availability,
         profile_image_url: form.profile_image_url,
+        years_experience: form.years_experience
+
+  ? Number(form.years_experience)
+
+  : null,
       })
       .eq("id", user.id);
 
@@ -307,6 +315,17 @@ export default function DashboardProfilePage() {
                   }
                   className={inputClass}
                 />
+
+                <input
+  type="number"
+  placeholder="Years of experience, example: 5"
+  value={form.years_experience}
+  onChange={(e) =>
+    setForm({ ...form, years_experience: e.target.value })
+  }
+  className={inputClass}
+/>
+
               </div>
             </section>
 

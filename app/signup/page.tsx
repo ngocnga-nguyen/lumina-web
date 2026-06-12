@@ -8,7 +8,10 @@ export default function SignupPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
+  const [submittedEmail, setSubmittedEmail] = useState("");
   const [loading, setLoading] = useState(false);
+  const [resending, setResending] = useState(false);
+  const [success, setSuccess] = useState(false);
 
   const handleSignup = async () => {
     if (!email || !password || !fullName) {
@@ -18,8 +21,10 @@ export default function SignupPage() {
 
     setLoading(true);
 
+    const cleanEmail = email.trim().toLowerCase();
+
     const { data, error } = await supabase.auth.signUp({
-      email,
+      email: cleanEmail,
       password,
       options: {
         data: {
@@ -42,7 +47,8 @@ export default function SignupPage() {
         {
           id: user.id,
           full_name: fullName,
-          email,
+          email: cleanEmail,
+          account_type: "client",
         },
       ]);
 
@@ -51,13 +57,33 @@ export default function SignupPage() {
       }
     }
 
+    setSubmittedEmail(cleanEmail);
+    setSuccess(true);
     setLoading(false);
-
-    alert("Account created ✨ Please check your email to confirm your account.");
 
     setEmail("");
     setPassword("");
     setFullName("");
+  };
+
+  const resendConfirmation = async () => {
+    if (!submittedEmail) return;
+
+    setResending(true);
+
+    const { error } = await supabase.auth.resend({
+      type: "signup",
+      email: submittedEmail,
+    });
+
+    setResending(false);
+
+    if (error) {
+      alert(error.message);
+      return;
+    }
+
+    alert("Confirmation email resent. Please check your inbox and spam folder.");
   };
 
   return (
@@ -78,53 +104,86 @@ export default function SignupPage() {
           Save artists, compare profiles, and keep track of who you want to book.
         </p>
 
-        <div className="mt-8 space-y-4">
-          <input
-            type="text"
-            placeholder="Full name"
-            value={fullName}
-            onChange={(e) => setFullName(e.target.value)}
-            className="w-full rounded-[16px] border border-neutral-200 px-4 py-4 text-[15px] outline-none"
-          />
+        {success ? (
+          <div className="mt-8 rounded-[22px] bg-[#faf6f5] p-5">
+            <p className="text-[18px] font-medium">Check your email ✨</p>
 
-          <input
-            type="email"
-            placeholder="Email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            className="w-full rounded-[16px] border border-neutral-200 px-4 py-4 text-[15px] outline-none"
-          />
+            <p className="mt-3 text-[14px] leading-[1.6] text-neutral-600">
+              We sent a confirmation link to{" "}
+              <span className="font-medium text-black">{submittedEmail}</span>.
+              Please confirm your email before logging in.
+            </p>
 
-          <input
-            type="password"
-            placeholder="Password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            className="w-full rounded-[16px] border border-neutral-200 px-4 py-4 text-[15px] outline-none"
-          />
-        </div>
+            <p className="mt-3 text-[13px] leading-[1.6] text-neutral-500">
+              If you don’t see it, check your spam or promotions folder.
+            </p>
 
-        <button
-          onClick={handleSignup}
-          disabled={loading}
-          className="mt-8 w-full rounded-full bg-black px-6 py-4 text-[15px] text-white transition hover:opacity-90 disabled:opacity-50"
-        >
-          {loading ? "Creating account..." : "Create account"}
-        </button>
+            <button
+              onClick={resendConfirmation}
+              disabled={resending}
+              className="mt-5 w-full rounded-full border border-black px-5 py-3 text-[14px] transition hover:bg-black hover:text-white disabled:opacity-50"
+            >
+              {resending ? "Resending..." : "Resend confirmation email"}
+            </button>
 
-        <p className="mt-6 text-center text-[14px] text-neutral-500">
-          Already have an account?{" "}
-          <Link href="/login" className="text-black underline">
-            Login
-          </Link>
-        </p>
+            <Link
+              href="/login"
+              className="mt-4 block text-center text-[14px] text-black underline"
+            >
+              Go to login
+            </Link>
+          </div>
+        ) : (
+          <>
+            <div className="mt-8 space-y-4">
+              <input
+                type="text"
+                placeholder="Full name"
+                value={fullName}
+                onChange={(e) => setFullName(e.target.value)}
+                className="w-full rounded-[16px] border border-neutral-200 px-4 py-4 text-[15px] outline-none"
+              />
 
-        <p className="mt-4 text-center text-[14px] text-neutral-500">
-          Are you a beauty professional?{" "}
-          <Link href="/join-as-artist" className="text-black underline">
-            Join as an Artist
-          </Link>
-        </p>
+              <input
+                type="email"
+                placeholder="Email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="w-full rounded-[16px] border border-neutral-200 px-4 py-4 text-[15px] outline-none"
+              />
+
+              <input
+                type="password"
+                placeholder="Password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="w-full rounded-[16px] border border-neutral-200 px-4 py-4 text-[15px] outline-none"
+              />
+            </div>
+
+            <button
+              onClick={handleSignup}
+              disabled={loading}
+              className="mt-8 w-full rounded-full bg-black px-6 py-4 text-[15px] text-white transition hover:opacity-90 disabled:opacity-50"
+            >
+              {loading ? "Creating account..." : "Create account"}
+            </button>
+
+            <p className="mt-6 text-center text-[14px] text-neutral-500">
+              Already have an account?{" "}
+              <Link href="/login" className="text-black underline">
+                Login
+              </Link>
+            </p>
+
+            <p className="mt-4 text-center text-[14px] text-neutral-500">
+              Are you a beauty professional?{" "}
+              <Link href="/join-as-artist" className="text-black underline">
+                Join as an Artist
+              </Link>
+            </p>
+          </>
+        )}
       </div>
     </main>
   );

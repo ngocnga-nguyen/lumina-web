@@ -11,12 +11,19 @@ type Artist = {
   location: string;
   price_start: number;
   profile_image_url?: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  distance?: number | null;
 };
 
 export default function SavedPage() {
   const [savedArtists, setSavedArtists] = useState<Artist[]>([]);
   const [selectedCompareIds, setSelectedCompareIds] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
+  const [userLocation, setUserLocation] = useState<{
+  latitude: number;
+  longitude: number;
+} | null>(null);
 
   useEffect(() => {
     const loadSavedArtists = async () => {
@@ -29,6 +36,7 @@ export default function SavedPage() {
         setLoading(false);
         return;
       }
+      
 
       const { data: savedData, error: savedError } = await supabase
         .from("saved_artists")
@@ -66,6 +74,21 @@ export default function SavedPage() {
 
     loadSavedArtists();
   }, []);
+  useEffect(() => {
+  if (!navigator.geolocation) return;
+
+  navigator.geolocation.getCurrentPosition(
+    (position) => {
+      setUserLocation({
+        latitude: position.coords.latitude,
+        longitude: position.coords.longitude,
+      });
+    },
+    () => {
+      console.log("Location permission denied");
+    }
+  );
+}, []);
 
   const selectedArtists = useMemo(() => {
     return savedArtists.filter((artist) =>
@@ -79,6 +102,7 @@ export default function SavedPage() {
     } = await supabase.auth.getUser();
 
     if (!user) return;
+
 
     setSavedArtists((artists) =>
       artists.filter((artist) => artist.id !== artistId)
@@ -118,6 +142,25 @@ export default function SavedPage() {
   const clearCompare = () => {
     setSelectedCompareIds([]);
   };
+  const getDistanceMiles = (
+  userLat: number,
+  userLng: number,
+  artistLat: number,
+  artistLng: number
+) => {
+  const R = 3958.8;
+  const dLat = ((artistLat - userLat) * Math.PI) / 180;
+  const dLng = ((artistLng - userLng) * Math.PI) / 180;
+
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos((userLat * Math.PI) / 180) *
+      Math.cos((artistLat * Math.PI) / 180) *
+      Math.sin(dLng / 2) *
+      Math.sin(dLng / 2);
+
+  return R * (2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)));
+};
 
   return (
     <main className="min-h-screen bg-white text-black">
@@ -244,8 +287,19 @@ export default function SavedPage() {
 
                         {selectedArtists.map((artist) => (
                           <td key={artist.id} className="py-4 pr-4">
-                            {artist.location}
-                          </td>
+  <p>{artist.location}</p>
+
+  {userLocation && artist.latitude && artist.longitude && (
+    <p className="mt-1 text-[13px] text-neutral-500">
+      {getDistanceMiles(
+        userLocation.latitude,
+        userLocation.longitude,
+        artist.latitude,
+        artist.longitude
+      ).toFixed(1)} miles away
+    </p>
+  )}
+</td>
                         ))}
                       </tr>
 
@@ -330,7 +384,27 @@ export default function SavedPage() {
                     <p className="mt-3 text-sm text-neutral-500">
                       {artist.location}
                     </p>
+                    {userLocation && artist.latitude && artist.longitude && (
 
+  <p className="mt-1 text-[13px] text-neutral-400">
+
+    {getDistanceMiles(
+
+      userLocation.latitude,
+
+      userLocation.longitude,
+
+      artist.latitude,
+
+      artist.longitude
+
+    ).toFixed(1)}{" "}
+
+    miles away
+
+  </p>
+
+)}
                     <p className="mt-2 font-medium">
                       From ${artist.price_start}
                     </p>

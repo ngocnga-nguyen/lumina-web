@@ -13,6 +13,8 @@ type Artist = {
   bio?: string | null;
   profile_image_url?: string | null;
   availability?: string | null;
+  is_verified?: boolean;
+  years_experience?: number | null;
 };
 
 type Service = {
@@ -123,6 +125,19 @@ export default function DashboardPage() {
 
     fetchDashboardData();
   }, []);
+
+const professionalHighlights = [
+  artist?.is_verified && "Verified Professional",
+
+  artist?.years_experience &&
+    `${artist.years_experience}+ Years Experience`,
+
+  services.length > 0 &&
+    `${services.length} Service${services.length > 1 ? "s" : ""} Listed`,
+
+  artist?.profile_image_url && "Professional Portfolio",
+
+].filter(Boolean);
 
   return (
     <main className="min-h-screen bg-white text-black">
@@ -256,7 +271,9 @@ export default function DashboardPage() {
             </p>
 
             <div className="mt-7 flex flex-col gap-3 text-[16px] sm:flex-row sm:flex-wrap sm:gap-x-12">
-              <span>New profile</span>
+              <span>
+  {artist?.is_verified ? "Verified Professional" : "Professional Profile"}
+</span>
               <span>From ${artist?.price_start || 0}</span>
               <span>{artist?.location || "Location"}</span>
             </div>
@@ -269,22 +286,22 @@ export default function DashboardPage() {
                 "Your bio preview will appear here after you update your profile."}
             </p>
 
-            <div className="mt-8">
-              <p className="text-[13px] uppercase tracking-[0.14em] text-neutral-400">
-                Trust Highlights
-              </p>
+            <div className="mt-10">
+  <p className="text-[12px] uppercase tracking-[0.18em] text-neutral-400">
+    Professional Highlights
+  </p>
 
-              <div className="mt-4 space-y-2 text-[15px] text-neutral-800">
-                <p>✔ Profile listed on Lumina</p>
-                <p>◔ Contact available through request form</p>
-                <p>◉ Pricing shown upfront</p>
-                <p>
-                  {artist?.profile_image_url
-                    ? "◌ Profile photo uploaded"
-                    : "◌ Profile photo needed"}
-                </p>
-              </div>
-            </div>
+  <div className="mt-4 flex flex-wrap gap-3">
+    {professionalHighlights.map((item, index) => (
+      <div
+        key={index}
+        className="rounded-full border border-[#eadfdb] bg-[#faf6f5] px-4 py-2 text-[14px] text-neutral-800"
+      >
+        {item}
+      </div>
+    ))}
+  </div>
+</div>
           </div>
         </div>
 
