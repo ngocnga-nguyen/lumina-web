@@ -142,8 +142,7 @@ const professionalHighlights = [
   return (
     <main className="min-h-screen bg-white text-black">
       <header className="sticky top-0 z-30 flex items-center justify-between bg-[#faf6f5]/95 px-4 py-4 text-[14px] backdrop-blur md:px-10 md:py-5 md:text-[15px]">
-        <div className="w-[80px]" />
-
+      
         <Link href="/" className="font-medium transition hover:opacity-70">
           Lumina
         </Link>
