@@ -3,6 +3,9 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabase";
+import { CircleUser } from "lucide-react";
+import SaveArtistButton from "@/components/SaveArtistButton";
+import ArtistCard from "@/components/ArtistCard";
 
 type Artist = {
   id: string;
@@ -12,12 +15,32 @@ type Artist = {
   price_start: number;
   profile_image_url?: string | null;
 };
-
+const categoryImages: Record<string, string> = {
+  "Nail Technician": "/categories/nail.jpg",
+  "Facial Esthetician": "/categories/facial.jpg",
+  "Aesthetician": "/categories/facial.jpg",
+  "Lash Technician": "/categories/lash.jpg",
+  "Lash Artist": "/categories/lash.jpg",
+  "Hair Stylist": "/categories/hair.jpg",
+  "Makeup Artist": "/categories/makeup.jpg",
+  "Brow Artist": "/categories/brow.jpg",
+};
 export default function Home() {
   const [artists, setArtists] = useState<Artist[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [user, setUser] = useState<any>(null);
   const [artistId, setArtistId] = useState<string | null>(null);
+  const [artistProfile, setArtistProfile] = useState<any>(null);
+  const [accountMenuOpen, setAccountMenuOpen] = useState(false);
+  const accountName =
+  artistProfile?.name ||
+  user?.user_metadata?.full_name ||
+  user?.email ||
+  "User";
+
+const accountInitial = accountName.charAt(0).toUpperCase();
+
+const accountImage = artistProfile?.profile_image_url || null;
 
   useEffect(() => {
     const fetchArtists = async () => {
@@ -52,12 +75,13 @@ export default function Home() {
       }
 
       const { data: artist } = await supabase
-        .from("artists")
-        .select("id")
-        .eq("id", user.id)
-        .maybeSingle();
+  .from("artists")
+  .select("*")
+  .eq("id", user.id)
+  .maybeSingle();
 
-      setArtistId(artist?.id || null);
+setArtistId(artist?.id || null);
+setArtistProfile(artist);
     };
 
     getUser();
@@ -70,7 +94,7 @@ export default function Home() {
   }, [artists]);
 
   const filteredArtists = useMemo(() => {
-    if (!searchQuery.trim()) return artists.slice(0, 4);
+    if (!searchQuery.trim()) return artists.slice(0, 12);
 
     const query = searchQuery.toLowerCase();
 
@@ -94,89 +118,180 @@ export default function Home() {
           Lumina
         </Link>
 
-        <nav className="flex items-center gap-4 text-sm md:gap-10 md:text-[15px]">
-          {user ? (
-            artistId ? (
-              <>
-                <Link href="/browse" className="transition hover:opacity-70">
-                  Browse Artists
-                </Link>
+        <nav className="relative flex items-center gap-5 text-sm md:text-[15px]">
+  <Link href="/browse" className="transition hover:opacity-70">
+    Browse Artists
+  </Link>
 
-                <Link href="/dashboard" className="transition hover:opacity-70">
-                  Dashboard
-                </Link>
+  {!user ? (
+    <>
+      <Link href="/login" className="transition hover:opacity-70">
+        Login
+      </Link>
 
-                <button
-                  onClick={handleLogout}
-                  className="transition hover:opacity-70"
-                >
-                  Sign Out
-                </button>
-              </>
-            ) : (
-              <>
-                <Link href="/browse" className="transition hover:opacity-70">
-                  Browse Artists
-                </Link>
+      <Link href="/join-as-artist" className="transition hover:opacity-70">
+        Join as Artist
+      </Link>
+    </>
+  ) : (
+    <>
+      <button
+        onClick={() => setAccountMenuOpen((current) => !current)}
+        className="flex h-10 w-10 items-center justify-center rounded-full transition hover:opacity-80"
+        aria-label="Account menu"
+      >
+        {accountImage ? (
+  <img
+    src={accountImage}
+    alt={accountName}
+    className="h-9 w-9 rounded-full object-cover"
+  />
+) : (
+  <span className="flex h-9 w-9 items-center justify-center rounded-full bg-black text-[13px] font-medium text-white">
+    {accountInitial}
+  </span>
+)}
+      </button>
 
-                <Link href="/saved" className="transition hover:opacity-70">
-                  Saved
-                </Link>
-
-                <button
-                  onClick={handleLogout}
-                  className="transition hover:opacity-70"
-                >
-                  Sign Out
-                </button>
-              </>
-            )
-          ) : (
+      {accountMenuOpen && (
+        <div className="absolute right-0 top-12 z-50 w-[220px] rounded-[20px] border border-neutral-200 bg-white p-2 shadow-xl">
+          {artistId ? (
             <>
-              <Link href="/browse" className="transition hover:opacity-70">
-                Browse Artists
-              </Link>
-
-              <Link href="/login" className="transition hover:opacity-70">
-                Login
+              <Link
+                href="/dashboard"
+                className="block rounded-[14px] px-4 py-3 hover:bg-[#faf6f5]"
+              >
+                Dashboard
               </Link>
 
               <Link
-                href="/join-as-artist"
-                className="transition hover:opacity-70"
+                href="/dashboard/profile"
+                className="block rounded-[14px] px-4 py-3 hover:bg-[#faf6f5]"
               >
-                Join as an Artist
+                Edit Profile
+              </Link>
+            </>
+          ) : (
+            <>
+              <Link
+                href="/saved"
+                className="block rounded-[14px] px-4 py-3 hover:bg-[#faf6f5]"
+              >
+                Saved Artists
+              </Link>
+
+              <Link
+                href="/my-requests"
+                className="block rounded-[14px] px-4 py-3 hover:bg-[#faf6f5]"
+              >
+                My Requests
+              </Link>
+
+              <Link
+                href="/account"
+                className="block rounded-[14px] px-4 py-3 hover:bg-[#faf6f5]"
+              >
+                Account
               </Link>
             </>
           )}
-        </nav>
+          <div className="my-1 border-t border-neutral-100" />
+          <button
+            onClick={handleLogout}
+            className="block w-full rounded-[14px] px-4 py-3 text-left text-neutral-500 hover:bg-[#faf6f5] hover:text-black"
+          >
+            Sign Out
+          </button>
+        </div>
+      )}
+    </>
+  )}
+</nav>
       </header>
 
-      <section className="bg-white px-4 pt-10 pb-12 md:px-14 md:pt-20 md:pb-20">
-        <div className="max-w-[960px]">
+      <section className="bg-white px-6 pt-14 pb-8 md:px-14 md:pt-20 md:pb-10">
+        <div className="max-w-[760px]">
+  <div>
           <h1
-            className="max-w-[820px] text-[42px] leading-[1.0] tracking-[-0.03em] font-semibold md:text-[68px] lg:text-[84px]"
+            className="max-w-[700px] text-[38px] leading-[0.95] tracking-[-0.03em] font-semibold md:text-[60px] lg:text-[72px]"
             style={{ fontFamily: "Georgia, Times New Roman, serif" }}
           >
-            Know who’s
-            <br />
-            actually worth
-            <br />
-            booking
+            Find beauty
+          <br />
+          professionals
+          <br />
+          you can trust
           </h1>
 
           <p
-            className="mt-8 max-w-[930px] text-[22px] leading-[1.2] md:mt-12 md:text-[30px] lg:mt-14 lg:text-[34px]"
+            className="mt-8 max-w-[760px] text-[20px] leading-[1.35] text-neutral-700 md:text-[26px] lg:text-[28px]"
             style={{ fontFamily: "Georgia, Times New Roman, serif" }}
           >
-            Explore beauty professionals with clearer pricing, real portfolio
-            results, and trust signals before you commit.
+            Compare portfolios, pricing, reviews, and verified results before you book.
           </p>
+<div className="mt-8">
+            <div className="relative w-full max-w-[720px]">
+              <div className="flex w-full items-center rounded-full border border-[#e7e3df] bg-white p-2 pl-6 shadow-sm transition focus-within:border-neutral-400 focus-within:shadow-md">
+                <span className="mr-4 text-[20px] text-neutral-400">⌕</span>
+
+                <input
+                  type="text"
+                  placeholder="search by city, artist, or service"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full bg-transparent text-[16px] outline-none placeholder:text-neutral-400"
+                />
+              
+              <Link
+  href={
+    searchQuery.trim()
+      ? `/browse?search=${encodeURIComponent(searchQuery.trim())}`
+      : "/browse"
+  }
+  className="shrink-0 rounded-full bg-black px-6 py-3 text-[14px] font-medium text-white transition hover:opacity-85"
+>
+  Search
+</Link>
+</div>
+              {searchQuery.trim() && (
+                <div className="absolute left-0 top-[52px] z-20 w-full rounded-[18px] bg-white p-3 shadow-lg">
+                  {filteredArtists.length > 0 ? (
+                    filteredArtists.slice(0, 5).map((artist) => (
+                      <Link
+                        key={artist.id}
+                        href={`/artist/${artist.id}`}
+                        className="block rounded-[14px] px-3 py-3 transition hover:bg-[#fbf7f6]"
+                      >
+                        <p className="text-[15px] font-medium">
+                          {artist.name}
+                        </p>
+
+                        <p className="text-[13px] text-neutral-500">
+                          {artist.category} • {artist.location}
+                        </p>
+                      </Link>
+                    ))
+                  ) : (
+                    <p className="px-3 py-3 text-[14px] text-neutral-500">
+                      No artists found.
+                    </p>
+                  )}
+
+                  <Link
+                    href={`/browse?search=${encodeURIComponent(searchQuery)}`}
+                    className="mt-2 block rounded-full bg-black px-4 py-2 text-center text-[13px] text-white"
+                  >
+                    Search all artists
+                  </Link>
+                </div>
+                         )}
+            </div>
+          </div>
 
           <div className="mt-8 flex flex-col gap-3 sm:flex-row md:mt-12">
             <Link
               href="/browse"
-              className="rounded-full bg-black px-7 py-3 text-center text-[14px] text-white transition hover:opacity-90"
+              className="rounded-full bg-black px-8 py-3.5 text-[15px] font-medium text-white transition hover:opacity-90"
             >
               Browse Artists
             </Link>
@@ -209,67 +324,26 @@ export default function Home() {
             </p>
           )}
 
-          <div className="mt-10 md:mt-14">
-            <div className="relative w-full max-w-[620px]">
-              <div className="flex w-full items-center rounded-full bg-[#efedeb] px-5 py-3">
-                <span className="mr-3 text-lg text-neutral-500">⌕</span>
-
-                <input
-                  type="text"
-                  placeholder="search by city, artist, or service"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full bg-transparent text-sm outline-none placeholder:text-neutral-400"
-                />
-              </div>
-
-              {searchQuery.trim() && (
-                <div className="absolute left-0 top-[52px] z-20 w-full rounded-[18px] bg-white p-3 shadow-lg">
-                  {filteredArtists.length > 0 ? (
-                    filteredArtists.slice(0, 5).map((artist) => (
-                      <Link
-                        key={artist.id}
-                        href={`/artist/${artist.id}`}
-                        className="block rounded-[14px] px-3 py-3 transition hover:bg-[#fbf7f6]"
-                      >
-                        <p className="text-[15px] font-medium">
-                          {artist.name}
-                        </p>
-
-                        <p className="text-[13px] text-neutral-500">
-                          {artist.category} • {artist.location}
-                        </p>
-                      </Link>
-                    ))
-                  ) : (
-                    <p className="px-3 py-3 text-[14px] text-neutral-500">
-                      No artists found.
-                    </p>
-                  )}
-
-                  <Link
-                    href={`/browse?search=${encodeURIComponent(searchQuery)}`}
-                    className="mt-2 block rounded-full bg-black px-4 py-2 text-center text-[13px] text-white"
-                  >
-                    Search all artists
-                  </Link>
-                </div>
-              )}
-            </div>
-          </div>
+          
         </div>
+
+        
+       </div>
       </section>
 
-      <section className="px-4 pb-10 md:px-14 md:pb-16 lg:pb-20">
-        <div className="text-center">
-          <h2 className="text-[16px] font-semibold uppercase tracking-[0.08em] md:text-[18px]">
-            Explore active categories
-          </h2>
+      <section className="px-6 pt-4 pb-10 md:px-14 md:pt-6 md:pb-16 lg:pb-20">
+        <div className="max-w-[760px]">
+  <p className="text-[12px] font-semibold uppercase tracking-[0.18em] text-neutral-500">
+    Browse by category
+  </p>
 
-          <p className="mt-3 text-[16px] text-neutral-700 md:text-[18px]">
-            Categories appear as real artists join Lumina
-          </p>
-        </div>
+  <h2
+    className="mt-3 text-[30px] leading-[1.12] md:text-[40px]"
+    style={{ fontFamily: "Georgia, Times New Roman, serif" }}
+  >
+    Start with the service you’re looking for.
+  </h2>
+</div>
 
         {categories.length === 0 ? (
           <div className="mx-auto mt-10 max-w-[520px] rounded-[22px] bg-[#fbf7f6] p-6 text-center">
@@ -279,30 +353,44 @@ export default function Home() {
             </p>
           </div>
         ) : (
-          <div className="mt-10 grid grid-cols-2 gap-5 md:mt-14 md:grid-cols-3 lg:grid-cols-5 lg:gap-8">
+          <div className="mt-8 grid max-w-[1280px] grid-cols-2 gap-5 md:mt-10 md:grid-cols-3 lg:grid-cols-5 lg:gap-8">
             {categories.map((category) => {
               const count = artists.filter(
                 (artist) => artist.category === category
               ).length;
 
               return (
-                <Link
-                  key={category}
-                  href={`/browse?category=${encodeURIComponent(category)}`}
-                  className="rounded-[22px] bg-[#fbf7f6] p-6 text-center transition hover:-translate-y-1 hover:shadow-sm"
-                >
-                  <p
-                    className="text-[24px] font-semibold"
-                    style={{ fontFamily: "Georgia, Times New Roman, serif" }}
-                  >
-                    {category}
-                  </p>
+  <Link
+    key={category}
+    href={`/browse?category=${encodeURIComponent(category)}`}
+    className="group overflow-hidden rounded-[22px] border border-[#eee6e2] bg-white transition duration-300 hover:-translate-y-1 hover:shadow-lg"
+  >
+    <div className="aspect-[4/3] overflow-hidden bg-[#f8f5f3]">
+      <img
+        src={categoryImages[category] || "/categories/default.jpg"}
+        alt={category}
+        className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
+      />
+    </div>
 
-                  <p className="mt-2 text-[14px] text-neutral-500">
-                    {count} listed
-                  </p>
-                </Link>
-              );
+    <div className="p-4 text-center">
+      <p
+        className="text-[18px] md:text-[20px]"
+        style={{ fontFamily: "Georgia, Times New Roman, serif" }}
+      >
+        {category}
+      </p>
+
+      <p className="mt-1 text-[14px] text-neutral-500">
+        {count} {count === 1 ? "Artist" : "Artists"}
+      </p>
+
+      <div className="mt-3 text-[22px] text-neutral-400 transition group-hover:translate-x-1">
+        →
+      </div>
+    </div>
+  </Link>
+);
             })}
           </div>
         )}
@@ -370,15 +458,24 @@ export default function Home() {
       </section>
 
       <section className="px-4 pb-16 md:px-14 md:pb-24 lg:pb-28">
-        <div className="text-center">
-          <h2 className="text-[16px] font-semibold uppercase tracking-[0.08em] md:text-[18px]">
-            Artists on Lumina
-          </h2>
+        <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+  <div>
+    <p className="text-[12px] font-semibold uppercase tracking-[0.18em] text-neutral-500">
+      Artists on Lumina
+    </p>
 
-          <p className="mt-3 text-[16px] text-neutral-700 md:text-[18px]">
-            Real profiles appear here as beauty professionals join
-          </p>
-        </div>
+    <h2
+      className="mt-3 text-[30px] leading-[1.12] md:text-[40px]"
+      style={{ fontFamily: "Georgia, Times New Roman, serif" }}
+    >
+      Discover professionals worth exploring.
+    </h2>
+  </div>
+
+  <p className="text-[13px] text-neutral-500">
+    Scroll to explore →
+  </p>
+</div>
 
         {filteredArtists.length === 0 ? (
           <div className="mx-auto mt-10 max-w-[520px] rounded-[22px] bg-[#fbf7f6] p-6 text-center">
@@ -388,54 +485,14 @@ export default function Home() {
             </p>
           </div>
         ) : (
-          <div className="mt-10 grid grid-cols-1 gap-8 md:mt-14 md:grid-cols-2 lg:grid-cols-4 lg:gap-12">
+          <div className="-mx-4 mt-10 flex snap-x snap-mandatory gap-5 overflow-x-auto px-4 pb-5 md:-mx-14 md:mt-14 md:gap-7 md:px-14">
             {filteredArtists.map((artist) => (
-              <div key={artist.id}>
-                <div className="h-[220px] w-full overflow-hidden rounded-[16px] bg-[#eeeeee]">
-                  {artist.profile_image_url ? (
-                    <img
-                      src={artist.profile_image_url}
-                      alt={artist.name}
-                      className="h-full w-full object-cover"
-                    />
-                  ) : (
-                    <div className="flex h-full w-full items-center justify-center text-center text-neutral-400">
-                      <div>
-                        <p className="text-[15px]">Profile Image</p>
-                        <p className="mt-1 text-[12px]">Coming soon</p>
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                <h3 className="mt-4 text-[18px] font-medium md:mt-5">
-                  {artist.name}
-                </h3>
-
-                <p className="text-[15px] text-neutral-500 md:text-[16px]">
-                  {artist.category}
-                </p>
-
-                <p className="mt-3 text-[14px] text-neutral-500">
-                  ⭐ New profile
-                </p>
-
-                <p className="mt-2 text-[14px] font-medium">
-                  From ${artist.price_start}
-                </p>
-
-                <div className="mt-6 flex items-center justify-between text-[14px] md:mt-8">
-                  <span className="text-neutral-700">{artist.location}</span>
-
-                  <Link
-                    href={`/artist/${artist.id}`}
-                    className="text-[#d8b4b4] transition hover:text-black"
-                  >
-                    View Profile
-                  </Link>
-                </div>
-              </div>
-            ))}
+    <ArtistCard
+      key={artist.id}
+      artist={artist}
+      className="w-[82vw] shrink-0 snap-start sm:w-[360px] md:w-[390px] lg:w-[410px]"
+    />
+  ))}
           </div>
         )}
 
@@ -604,6 +661,10 @@ export default function Home() {
 
               <Link href="/signup" className="block transition hover:opacity-60">
                 Create Account
+              </Link>
+
+              <Link href="/my-requests" className="block transition hover:opacity-60">
+              My Requests
               </Link>
 
               <Link href="/saved" className="block transition hover:opacity-60">

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { supabase } from "@/lib/supabase";
+import SaveArtistButton from "@/components/SaveArtistButton";
 
 type Artist = {
   id: string;
@@ -51,19 +52,33 @@ export default function ArtistProfile() {
   const artistId = params.slug as string;
 
   const [artist, setArtist] = useState<Artist | null>(null);
-  const [saved, setSaved] = useState<string[]>([]);
   const [portfolioImages, setPortfolioImages] = useState<PortfolioImage[]>([]);
   const [selectedPortfolioImage, setSelectedPortfolioImage] =
     useState<PortfolioImage | null>(null);
+    const [toast, setToast] = useState("");
   const [services, setServices] = useState<Service[]>([]);
   const [reviews, setReviews] = useState<Review[]>([]);
+  const [user, setUser] = useState<any>(null);
+const [clientProfile, setClientProfile] = useState<any>(null);
+const [accountMenuOpen, setAccountMenuOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<
     "service" | "portfolio" | "reviews"
   >("service");
 
   const [openRequest, setOpenRequest] = useState(false);
   const [requestLoading, setRequestLoading] = useState(false);
+  const accountName =
+  clientProfile?.full_name ||
+  user?.user_metadata?.full_name ||
+  user?.email ||
+  "User";
 
+const accountInitial = accountName.charAt(0).toUpperCase();
+
+const accountImage =
+  clientProfile?.profile_image_url ||
+  user?.user_metadata?.avatar_url ||
+  null;
   const [requestForm, setRequestForm] = useState({
     client_name: "",
     client_contact: "",
@@ -79,28 +94,34 @@ export default function ArtistProfile() {
     comment: "",
   });
 
-  useEffect(() => {
-  const fetchSavedArtists = async () => {
+useEffect(() => {
+  const loadAccount = async () => {
     const {
-      data: { user },
+      data: { user: currentUser },
     } = await supabase.auth.getUser();
 
-    if (!user) return;
+    setUser(currentUser);
 
-    const { data, error } = await supabase
-      .from("saved_artists")
-      .select("artist_id")
-      .eq("user_id", user.id);
-
-    if (error) {
-      console.log(error);
+    if (!currentUser) {
+      setClientProfile(null);
       return;
     }
 
-    setSaved((data || []).map((item) => item.artist_id));
+    const { data: profileData, error } = await supabase
+      .from("profiles")
+      .select("full_name, profile_image_url")
+      .eq("id", currentUser.id)
+      .maybeSingle();
+
+    if (error) {
+      console.log("Client profile fetch error:", error);
+      return;
+    }
+
+    setClientProfile(profileData);
   };
 
-  fetchSavedArtists();
+  loadAccount();
 }, []);
 
   useEffect(() => {
@@ -147,50 +168,6 @@ export default function ArtistProfile() {
     if (artistId) fetchArtistData();
   }, [artistId]);
 
-  const toggleSave = async (artistId: string) => {
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    window.location.href = "/login";
-    return;
-  }
-
-  const isAlreadySaved = saved.includes(artistId);
-
-  if (isAlreadySaved) {
-    setSaved((current) => current.filter((id) => id !== artistId));
-
-    const { error } = await supabase
-      .from("saved_artists")
-      .delete()
-      .eq("user_id", user.id)
-      .eq("artist_id", artistId);
-
-    if (error) {
-      alert(error.message);
-      setSaved((current) => [...current, artistId]);
-    }
-
-    return;
-  }
-
-  setSaved((current) => [...current, artistId]);
-
-  const { error } = await supabase.from("saved_artists").insert([
-    {
-      user_id: user.id,
-      artist_id: artistId,
-    },
-  ]);
-
-  if (error) {
-    alert(error.message);
-    setSaved((current) => current.filter((id) => id !== artistId));
-  }
-};
-
   const handleRequestSubmit = async () => {
     if (!artist) return;
 
@@ -200,16 +177,35 @@ export default function ArtistProfile() {
     }
 
     setRequestLoading(true);
+const {
+  data: { user },
+} = await supabase.auth.getUser();
 
+if (!user) {
+  setRequestLoading(false);
+  alert("Please log in or create a client account before sending a request.");
+  return;
+}
     const { error } = await supabase.from("client_requests").insert([
       {
         artist_id: artist.id,
+        artist_name: artist.name,
+        artist_image_url: artist.profile_image_url || null,
+        artist_slug: artist.id,
+        artist_category: artist.category || null,
+
+        client_id: user.id,
         client_name: requestForm.client_name,
         client_contact: requestForm.client_contact,
         service_requested: requestForm.service_requested,
         preferred_date: requestForm.preferred_date || null,
         preferred_time: requestForm.preferred_time,
         notes: requestForm.notes,
+        status: "new",
+        client_status: "pending",
+        booking_status: "pending",
+        artist_hidden: false,
+        client_hidden: false,
       },
     ]);
 
@@ -337,7 +333,70 @@ export default function ArtistProfile() {
           Lumina
         </Link>
 
-        <div className="w-[60px]" />
+        <div className="relative justify-self-end">
+  {user ? (
+    <>
+      <button
+        onClick={() => setAccountMenuOpen((current) => !current)}
+        className="flex h-10 w-10 items-center justify-center rounded-full transition hover:opacity-80"
+        aria-label="Account menu"
+      >
+        {accountImage ? (
+          <img
+            src={accountImage}
+            alt={accountName}
+            className="h-9 w-9 shrink-0 rounded-full object-cover"
+          />
+        ) : (
+          <span className="flex h-9 w-9 items-center justify-center rounded-full bg-black text-[13px] font-medium text-white">
+            {accountInitial}
+          </span>
+        )}
+      </button>
+
+      {accountMenuOpen && (
+        <div className="absolute right-0 top-12 z-50 w-[220px] rounded-[20px] border border-neutral-200 bg-white p-2 shadow-xl">
+          <div className="mb-2 border-b border-neutral-100 pb-2">
+            <p className="truncate px-3 pt-2 text-[14px] font-medium">
+              {accountName}
+            </p>
+            <p className="truncate px-3 pb-2 text-[12px] text-neutral-500">
+              Client account
+            </p>
+          </div>
+
+          <Link
+            href="/saved"
+            className="block rounded-[14px] px-4 py-3 text-sm hover:bg-[#faf6f5]"
+          >
+            Saved Artists
+          </Link>
+
+          <Link
+            href="/my-requests"
+            className="block rounded-[14px] px-4 py-3 text-sm hover:bg-[#faf6f5]"
+          >
+            My Requests
+          </Link>
+
+          <Link
+            href="/account"
+            className="block rounded-[14px] px-4 py-3 text-sm hover:bg-[#faf6f5]"
+          >
+            Account
+          </Link>
+        </div>
+      )}
+    </>
+  ) : (
+    <Link
+      href="/login"
+      className="text-sm transition hover:opacity-70"
+    >
+      Login
+    </Link>
+  )}
+</div>
       </header>
 
       <section className="px-4 py-8 md:px-10">
@@ -376,7 +435,7 @@ export default function ArtistProfile() {
 
               <button
                 onClick={() => setOpenRequest(true)}
-                className="mt-5 rounded-full bg-black px-5 py-3 text-[13px] text-white transition hover:opacity-90"
+                className="mt-5 rounded-full border border-black bg-transparent px-5 py-3 text-[13px] text-black transition hover:bg-black hover:text-white"
               >
                 Send Request
               </button>
@@ -391,26 +450,11 @@ export default function ArtistProfile() {
     >
       {artist.name}
     </h1>
-    <button
 
-    onClick={() => toggleSave(artist.id)}
-
-    className={`rounded-full px-4 py-2 text-[14px] transition-all duration-200 ${
-
-      saved.includes(artist.id)
-
-        ? "bg-[#f7e8ec] border border-[#e8c9d1] text-[#9c6a78]"
-
-        : "bg-white border border-neutral-200 text-neutral-700 hover:bg-[#faf6f5]"
-
-    }`}
-
-  >
-
-    {saved.includes(artist.id) ? "♥ Saved" : "♡ Save"}
-
-  </button>
-
+    <SaveArtistButton
+  artistId={artist.id}
+  artistName={artist.name}
+/>
 </div>
               
             <p
@@ -426,42 +470,114 @@ export default function ArtistProfile() {
             </div>
 
           <div className="mt-8 max-w-[760px] border-t border-[#eadfdb] pt-6">
+
+    <h2
+  className="text-[30px] font-semibold"
+  style={{ fontFamily: "Georgia, Times New Roman, serif" }}
+>
+  Profile Highlights
+</h2>
+
+<div className="mt-6 grid grid-cols-2 gap-4 md:grid-cols-3">
+  {artist.is_verified && (
+    <div className="rounded-[18px] border border-neutral-200 p-5">
+      <div className="flex h-8 w-8 items-center justify-center rounded-full bg-black text-[14px] text-white">
+        ✓
+      </div>
+
+      <p className="mt-3 text-[16px] font-medium">
+        Verified Professional
+      </p>
+
+      <p className="mt-1 text-[12px] leading-[1.4] text-neutral-500">
+        Identity and professional profile reviewed by Lumina
+      </p>
+    </div>
+  )}
+
+  {artist.years_experience != null && artist.years_experience > 0 && (
+    <div className="rounded-[18px] border border-neutral-200 p-5">
+      <p className="text-[28px] font-semibold">
+        {artist.years_experience}
+      </p>
+
+      <p className="mt-2 text-[15px] text-neutral-600">
+        Years Experience
+      </p>
+    </div>
+  )}
+
+  {artist.verified_results_count != null &&
+    artist.verified_results_count > 0 && (
+      <div className="rounded-[18px] border border-neutral-200 p-5">
+        <p className="text-[28px] font-semibold">
+          {artist.verified_results_count}
+        </p>
+
+        <p className="mt-2 text-[15px] text-neutral-600">
+          Verified Portfolio Results
+        </p>
+      </div>
+    )}
+
+  {artist.repeat_client_rate != null &&
+    artist.repeat_client_rate > 0 && (
+      <div className="rounded-[18px] border border-neutral-200 p-5">
+        <p className="text-[28px] font-semibold">
+          {artist.repeat_client_rate}%
+        </p>
+
+        <p className="mt-2 text-[15px] text-neutral-600">
+          Repeat Client Rate
+        </p>
+      </div>
+    )}
+
+  {services.length > 0 && (
+    <div className="rounded-[18px] border border-neutral-200 p-5">
+      <p className="text-[28px] font-semibold">
+        {services.length}
+      </p>
+
+      <p className="mt-2 text-[15px] text-neutral-600">
+        {services.length === 1 ? "Service Listed" : "Services Listed"}
+      </p>
+    </div>
+  )}
+
+  {portfolioImages.length > 0 && (
+    <div className="rounded-[18px] border border-neutral-200 p-5">
+      <p className="text-[28px] font-semibold">
+        {portfolioImages.length}
+      </p>
+
+      <p className="mt-2 text-[15px] text-neutral-600">
+        Portfolio Results
+      </p>
+    </div>
+  )}
+</div>
+
+<div className="mt-10">
+  <h3
+    className="text-[28px] font-semibold"
+    style={{ fontFamily: "Georgia, Times New Roman, serif" }}
+  >
+    About
+  </h3>
+
   <p
-    className="text-[22px] leading-[1.5]"
+    className="mt-4 text-[18px] leading-[1.7] text-neutral-700"
     style={{ fontFamily: "Georgia, Times New Roman, serif" }}
   >
     {artist.bio ||
-      `Professional ${artist.category.toLowerCase()} services in Pryor, Oklahoma.`}
-  </p>
-
-  <p className="mt-4 text-[14px] tracking-[0.02em] text-neutral-500">
-    {artist.is_verified && "Verified Professional"}
-
-    {artist.is_verified && artist.years_experience && " · "}
-
-    {artist.years_experience &&
-      `${artist.years_experience}+ Years Experience`}
+      `Professional ${artist.category.toLowerCase()} serving clients in ${artist.location}.`}
   </p>
 </div>
-            {artist.social_link && (
-              <a
-                href={
-                  artist.social_link.startsWith("http")
-                    ? artist.social_link
-                    : `https://${artist.social_link}`
-                }
-                target="_blank"
-                rel="noopener noreferrer"
-                className="mt-6 inline-block rounded-full border border-black px-5 py-2 text-[14px] transition hover:bg-black hover:text-white"
-              >
-                Visit social / website
-              </a>
-            )}
-
             
             </div>
           </div>
-      
+      </div>
 
         <section className="mt-6 pb-16">
           <div className="flex justify-center gap-6 text-[16px]">
@@ -682,7 +798,17 @@ export default function ArtistProfile() {
           </div>
         </div>
       )}
+{toast && (
+  <div className="fixed bottom-6 left-6 z-[100] animate-in fade-in slide-in-from-bottom-3 duration-300">
+    <div className="flex items-center gap-3 rounded-2xl bg-black px-5 py-4 text-white shadow-2xl">
+      <span className="text-lg">✓</span>
 
+      <span className="text-[14px] font-medium">
+        {toast}
+      </span>
+    </div>
+  </div>
+)}
       {openRequest && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 px-4">
           <div className="w-full max-w-[460px] rounded-[22px] bg-white p-6 shadow-xl">

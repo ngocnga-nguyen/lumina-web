@@ -1,13 +1,35 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 
 export default function LoginPage() {
   const router = useRouter();
+useEffect(() => {
+  const checkSession = async () => {
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
 
+    if (!session?.user) return;
+
+    const { data: artist } = await supabase
+      .from("artists")
+      .select("id")
+      .eq("id", session.user.id)
+      .single();
+
+    if (artist) {
+      router.push("/dashboard");
+    } else {
+      router.push("/browse");
+    }
+  };
+
+  checkSession();
+}, [router]);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 

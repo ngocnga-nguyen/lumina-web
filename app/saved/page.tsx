@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabase";
+import AccountMenu from "@/components/AccountMenu";
+import ArtistCard from "@/components/ArtistCard";
 
 type Artist = {
   id: string;
@@ -173,7 +175,7 @@ export default function SavedPage() {
           Lumina
         </Link>
 
-        <div className="w-[60px]" />
+        <AccountMenu />
       </header>
 
       <section className="px-4 py-8 md:px-10 md:py-10">
@@ -225,7 +227,7 @@ export default function SavedPage() {
           </div>
         ) : (
           <>
-            {selectedArtists.length > 0 && (
+            {selectedArtists.length >= 2 && (
               <section className="mb-12 rounded-[26px] bg-[#fbf7f6] p-5 md:p-7">
                 <div className="mb-5 flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
                   <div>
@@ -343,101 +345,34 @@ export default function SavedPage() {
                   selectedCompareIds.includes(artist.id);
 
                 return (
-                  <div key={artist.id}>
-                    <div className="relative h-[190px] overflow-hidden rounded-[14px] bg-[#eeeeee] md:h-[210px]">
-                      {artist.profile_image_url ? (
-                        <img
-                          src={artist.profile_image_url}
-                          alt={artist.name}
-                          className="h-full w-full object-cover"
-                        />
-                      ) : (
-                        <div className="flex h-full w-full items-center justify-center text-center text-neutral-400">
-                          <div>
-                            <p className="text-[15px]">
-                              Profile Image
-                            </p>
+                <ArtistCard
+  key={artist.id}
+  artist={artist}
+  distance={
+    userLocation &&
+    artist.latitude !== null &&
+    artist.longitude !== null
+      ? getDistanceMiles(
+          userLocation.latitude,
+          userLocation.longitude,
+          artist.latitude,
+          artist.longitude
+        )
+      : null
+  }
+  showCompare
+  isSelected={isSelected}
+  onCompare={() => toggleCompare(artist.id)}
+  onRemoved={() => {
+    setSavedArtists((current) =>
+      current.filter((item) => item.id !== artist.id)
+    );
 
-                            <p className="mt-1 text-[12px]">
-                              Coming soon
-                            </p>
-                          </div>
-                        </div>
-                      )}
-
-                      <button
-                        onClick={() => removeSaved(artist.id)}
-                        className="absolute right-3 top-3 rounded-full bg-white/80 px-2 py-1 text-[20px] transition hover:scale-110"
-                      >
-                        <span className="text-[#e9a8a8]">♥</span>
-                      </button>
-                    </div>
-
-                    <h2 className="mt-4 text-[18px] font-medium">
-                      {artist.name}
-                    </h2>
-
-                    <p className="text-neutral-500">
-                      {artist.category}
-                    </p>
-
-                    <p className="mt-3 text-sm text-neutral-500">
-                      {artist.location}
-                    </p>
-                    {userLocation && artist.latitude && artist.longitude && (
-
-  <p className="mt-1 text-[13px] text-neutral-400">
-
-    {getDistanceMiles(
-
-      userLocation.latitude,
-
-      userLocation.longitude,
-
-      artist.latitude,
-
-      artist.longitude
-
-    ).toFixed(1)}{" "}
-
-    miles away
-
-  </p>
-
-)}
-                    <p className="mt-2 font-medium">
-                      From ${artist.price_start}
-                    </p>
-
-                    <div className="mt-5 flex items-center justify-between text-sm">
-                      <Link
-                        href={`/artist/${artist.id}`}
-                        className="text-[#d8b4b4] transition hover:text-black"
-                      >
-                        View Profile
-                      </Link>
-
-                      <button
-                        onClick={() => removeSaved(artist.id)}
-                        className="text-neutral-400 transition hover:text-black"
-                      >
-                        Remove
-                      </button>
-                    </div>
-
-                    <button
-                      onClick={() => toggleCompare(artist.id)}
-                      className={
-                        isSelected
-                          ? "mt-4 w-full rounded-full bg-black px-4 py-2 text-[13px] text-white"
-                          : "mt-4 w-full rounded-full border border-black px-4 py-2 text-[13px] transition hover:bg-black hover:text-white"
-                      }
-                    >
-                      {isSelected
-                        ? "Selected for Compare"
-                        : "Compare"}
-                    </button>
-                  </div>
+    setSelectedCompareIds((current) =>
+      current.filter((id) => id !== artist.id)
+    );
+  }}
+/>  
                 );
               })}
             </div>

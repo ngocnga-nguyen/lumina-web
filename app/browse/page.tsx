@@ -3,6 +3,10 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabase";
+import { useSearchParams } from "next/navigation";
+import AccountMenu from "@/components/AccountMenu";
+import SaveArtistButton from "@/components/SaveArtistButton";
+import ArtistCard from "@/components/ArtistCard";
 
 type Artist = {
   id: string;
@@ -41,19 +45,34 @@ function getDistanceMiles(
 }
 
 export default function BrowsePage() {
+  const searchParams = useSearchParams();
   const [openSort, setOpenSort] = useState(false);
   const [openFilter, setOpenFilter] = useState(false);
-  const [saved, setSaved] = useState<string[]>([]);
   const [sortBy, setSortBy] = useState("newest");
   const [artists, setArtists] = useState<Artist[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [userLocation, setUserLocation] = useState<UserLocation | null>(null);
   const [locationStatus, setLocationStatus] = useState("");
-  const [saveStatus, setSaveStatus] = useState("");
+  const [user, setUser] = useState<any>(null);
+const [isArtist, setIsArtist] = useState(false);
+const [accountMenuOpen, setAccountMenuOpen] = useState(false);
 
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [minPrice, setMinPrice] = useState("");
   const [maxPrice, setMaxPrice] = useState("");
+  const buildViewLink = (path: string) => {
+  const params = new URLSearchParams();
+
+  if (searchQuery) params.set("q", searchQuery);
+  if (sortBy) params.set("sort", sortBy);
+  if (selectedCategories.length > 0) {
+    params.set("categories", selectedCategories.join(","));
+  }
+
+  const queryString = params.toString();
+
+  return queryString ? `${path}?${queryString}` : path;
+};
 
   useEffect(() => {
     const fetchInitialData = async () => {
@@ -70,25 +89,37 @@ export default function BrowsePage() {
       }
 
       const {
-        data: { user },
-      } = await supabase.auth.getUser();
+  data: { user: currentUser },
+} = await supabase.auth.getUser();
 
-      if (!user) return;
+setUser(currentUser);
 
-      const { data: savedData, error: savedError } = await supabase
-        .from("saved_artists")
-        .select("artist_id")
-        .eq("user_id", user.id);
+      if (!currentUser) return;
+      const { data: artistProfile } = await supabase
+  .from("artists")
+  .select("id")
+  .eq("id", currentUser.id)
+  .maybeSingle();
 
-      if (savedError) {
-        console.log(savedError);
-        return;
-      }
+setIsArtist(!!artistProfile);
 
-      setSaved((savedData || []).map((item) => item.artist_id));
     };
 
     fetchInitialData();
+    const q = searchParams.get("q");
+if (q) {
+  setSearchQuery(q);
+}
+
+const sort = searchParams.get("sort");
+if (sort) {
+  setSortBy(sort);
+}
+
+const categories = searchParams.get("categories");
+if (categories) {
+  setSelectedCategories(categories.split(","));
+}
   }, []);
 
   const useMyLocation = () => {
@@ -113,57 +144,6 @@ export default function BrowsePage() {
         setLocationStatus("Location permission was denied.");
       }
     );
-  };
-
-  const toggleSave = async (artistId: string) => {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) {
-      setSaveStatus("Please log in to save artists.");
-      return;
-    }
-
-    const isAlreadySaved = saved.includes(artistId);
-
-    if (isAlreadySaved) {
-      setSaved((current) => current.filter((id) => id !== artistId));
-
-      const { error } = await supabase
-        .from("saved_artists")
-        .delete()
-        .eq("user_id", user.id)
-        .eq("artist_id", artistId);
-
-      if (error) {
-        console.log(error);
-        setSaved((current) => [...current, artistId]);
-        setSaveStatus("Could not remove saved artist.");
-        return;
-      }
-
-      setSaveStatus("");
-      return;
-    }
-
-    setSaved((current) => [...current, artistId]);
-
-    const { error } = await supabase.from("saved_artists").insert([
-      {
-        user_id: user.id,
-        artist_id: artistId,
-      },
-    ]);
-
-    if (error) {
-      console.log(error);
-      setSaved((current) => current.filter((id) => id !== artistId));
-      setSaveStatus("Could not save artist.");
-      return;
-    }
-
-    setSaveStatus("");
   };
 
   const toggleCategory = (category: string) => {
@@ -260,32 +240,54 @@ export default function BrowsePage() {
 
   return (
     <main className="min-h-screen bg-white text-black">
-      <header className="flex items-center justify-between bg-[#faf6f5] px-4 py-5 md:px-10">
-        <Link href="/" className="font-medium transition hover:opacity-70">
-          Lumina
-        </Link>
+     <header className="grid grid-cols-3 items-center bg-[#faf6f5] px-4 py-5 md:px-10">
 
-        <div className="hidden md:block">Browse Artists</div>
+  <div className="justify-self-start">
+    <Link
+      href="/"
+      className="font-medium transition hover:opacity-70"
+    >
+      Lumina
+    </Link>
+  </div>
 
-        <Link href="/saved" className="flex items-center gap-2">
-          <span className="text-[16px] text-[#e9a8a8]">♡</span>
-          <span className="text-sm">Saved</span>
-        </Link>
-      </header>
+  <div className="hidden justify-self-center md:block">
+    Browse Artists
+  </div>
+  <div className="justify-self-end">
+
+  <AccountMenu />
+
+</div>
+
+</header>
 
       <section className="px-4 pt-8 pb-16 md:px-10 md:pt-10 md:pb-20">
-        <div className="flex flex-col gap-6 md:flex-row md:items-start md:justify-between">
+        <div className="grid gap-8 md:grid-cols-[1fr_520px] md:items-start">
           <div>
+            <div className="mb-5 inline-flex items-center rounded-full border border-neutral-200 p-1 text-sm">
+  <span className="rounded-full bg-black px-4 py-1.5 text-white">
+    List
+  </span>
+
+  <Link
+    href={buildViewLink("/browse/map")}
+    className="rounded-full px-4 py-1.5 text-neutral-500 transition hover:text-black"
+  >
+    Map
+  </Link>
+</div>
             <h1
               className="text-[32px] font-semibold leading-[1.02] md:text-[54px]"
               style={{ fontFamily: "Georgia, Times New Roman, serif" }}
             >
-              Find beauty professionals
+              Browse beauty professionals
             </h1>
 
             <p className="mt-2 text-sm text-neutral-700 md:mt-3 md:text-[18px]">
-              Discover {filteredAndSortedArtists.length} beauty professionals
-            </p>
+  Discover {filteredAndSortedArtists.length} trusted beauty professional
+  {filteredAndSortedArtists.length !== 1 ? "s" : ""}.
+</p>
 
             <button
               onClick={useMyLocation}
@@ -300,14 +302,9 @@ export default function BrowsePage() {
               </p>
             )}
 
-            {saveStatus && (
-              <p className="mt-2 text-[13px] text-neutral-500">
-                {saveStatus}
-              </p>
-            )}
           </div>
 
-          <div className="w-full md:w-[580px]">
+          <div className="w-full">
             <div className="flex items-center rounded-full bg-[#efedeb] px-4 py-3 md:px-5">
               <span className="mr-3 text-lg text-neutral-500">⌕</span>
 
@@ -318,6 +315,7 @@ export default function BrowsePage() {
                 placeholder="search by city, artist, or service"
                 className="w-full bg-transparent text-sm outline-none placeholder:text-neutral-400"
               />
+
             </div>
 
             {searchQuery && (
@@ -328,17 +326,8 @@ export default function BrowsePage() {
                 Clear search
               </button>
             )}
-          </div>
-
-          <Link
-            href="/browse/map"
-            className="text-sm transition hover:opacity-60 md:mt-2 md:text-[15px]"
-          >
-            Map
-          </Link>
-        </div>
-
-        <div className="mt-8 flex items-center gap-6 text-sm text-neutral-700 md:mt-10 md:gap-10 md:text-[15px]">
+          
+<div className="mt-4 flex items-center gap-8 text-sm text-neutral-700 md:justify-end md:text-[15px]">
           <div className="relative">
             <button
               onClick={() => setOpenFilter(!openFilter)}
@@ -463,63 +452,23 @@ export default function BrowsePage() {
             )}
           </div>
         </div>
+      </div>
+        </div>
+
+        
 
         <div className="mt-10 grid grid-cols-1 gap-8 md:mt-16 md:grid-cols-2 lg:grid-cols-4 lg:gap-12">
           {filteredAndSortedArtists.map((artist) => {
-            const distance = getArtistDistance(artist);
+  const distance = getArtistDistance(artist);
 
-            return (
-              <div key={artist.id}>
-                <div className="relative h-[180px] overflow-hidden rounded-[12px] bg-[#dddddd] md:h-[200px]">
-                  {artist.profile_image_url ? (
-                    <img
-                      src={artist.profile_image_url}
-                      alt={artist.name}
-                      className="h-full w-full object-cover"
-                    />
-                  ) : (
-                    <div className="flex h-full w-full items-center justify-center text-neutral-400">
-                      Profile Image
-                    </div>
-                  )}
-
-                  <button
-                    onClick={() => toggleSave(artist.id)}
-                    className="absolute right-3 top-3 rounded-full bg-white/80 px-2 py-1 text-[19px] transition hover:scale-110"
-                  >
-                    <span className="text-[#e9a8a8]">
-                      {saved.includes(artist.id) ? "♥" : "♡"}
-                    </span>
-                  </button>
-                </div>
-
-                <h2 className="mt-4 text-[18px] font-medium">{artist.name}</h2>
-
-                <p className="text-neutral-500">{artist.category}</p>
-
-                <p className="mt-3 text-sm text-neutral-500">⭐ New profile</p>
-
-                <p className="mt-2 font-medium">From ${artist.price_start}</p>
-
-                {distance !== null && (
-                  <p className="mt-1 text-[13px] text-neutral-500">
-                    {distance.toFixed(1)} miles away
-                  </p>
-                )}
-
-                <div className="mt-6 flex justify-between text-sm">
-                  <span>{artist.location}</span>
-
-                  <Link
-                    href={`/artist/${artist.id}`}
-                    className="text-[#d8b4b4] transition hover:text-black"
-                  >
-                    View
-                  </Link>
-                </div>
-              </div>
-            );
-          })}
+  return (
+    <ArtistCard
+      key={artist.id}
+      artist={artist}
+      distance={distance}
+    />
+  );
+})}
         </div>
 
         {filteredAndSortedArtists.length === 0 && (

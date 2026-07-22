@@ -373,7 +373,7 @@ export default function DashboardProfilePage() {
 
                 <input
                   type="text"
-                  placeholder="Instagram, website, or booking link"
+                  placeholder="Booking link (GlossGenius, Square, Fresha, Instagram...)"
                   value={form.social_link}
                   onChange={(e) =>
                     setForm({ ...form, social_link: e.target.value })

@@ -5,6 +5,9 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 import { supabase } from "@/lib/supabase";
+import AccountMenu from "@/components/AccountMenu";
+import { useSearchParams } from "next/navigation";
+import SaveArtistButton from "@/components/SaveArtistButton";
 
 type Artist = {
   id: string;
@@ -52,24 +55,35 @@ export default function BrowseMapPage() {
   const [selectedArtist, setSelectedArtist] = useState<Artist | null>(null);
 
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedCategory, setSelectedCategory] = useState("All");
+  const [openSort, setOpenSort] = useState(false);
+const [openFilter, setOpenFilter] = useState(false);
+const searchParams = useSearchParams();
+
+const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
+
+const [sortBy, setSortBy] = useState("newest");
+const buildViewLink = (path: string) => {
+  const params = new URLSearchParams();
+
+  if (searchQuery) params.set("q", searchQuery);
+  if (sortBy) params.set("sort", sortBy);
+  if (selectedCategories.length > 0) {
+    params.set("categories", selectedCategories.join(","));
+  }
+
+  const queryString = params.toString();
+
+  return queryString ? `${path}?${queryString}` : path;
+};
 
   const [userLocation, setUserLocation] =
     useState<UserLocation | null>(null);
 
   const [locationStatus, setLocationStatus] = useState("");
 
-  const [saved, setSaved] = useState<string[]>([]);
+  
 
-  const categoryButtons = [
-    "All",
-    "Nail",
-    "Hair",
-    "Aesthetician",
-    "Lash",
-    "Makeup",
-    "Brow",
-  ];
+
 
   useEffect(() => {
     const fetchArtists = async () => {
@@ -85,26 +99,23 @@ export default function BrowseMapPage() {
 
       setArtists(data || []);
 
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-
-      if (!user) return;
-
-      const { data: savedData, error: savedError } = await supabase
-        .from("saved_artists")
-        .select("artist_id")
-        .eq("user_id", user.id);
-
-      if (savedError) {
-        console.log(savedError);
-        return;
-      }
-
-      setSaved((savedData || []).map((item) => item.artist_id));
     };
 
     fetchArtists();
+    const q = searchParams.get("q");
+if (q) {
+  setSearchQuery(q);
+}
+
+const sort = searchParams.get("sort");
+if (sort) {
+  setSortBy(sort);
+}
+
+const categories = searchParams.get("categories");
+if (categories) {
+  setSelectedCategories(categories.split(","));
+}
   }, []);
 
   useEffect(() => {
@@ -126,51 +137,6 @@ export default function BrowseMapPage() {
     );
   }, []);
 
-  const toggleSave = async (artistId: string) => {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) {
-      alert("Please log in to save artists.");
-      return;
-    }
-
-    const isAlreadySaved = saved.includes(artistId);
-
-    if (isAlreadySaved) {
-      setSaved((current) =>
-        current.filter((id) => id !== artistId)
-      );
-
-      const { error } = await supabase
-        .from("saved_artists")
-        .delete()
-        .eq("user_id", user.id)
-        .eq("artist_id", artistId);
-
-      if (error) {
-        console.log(error);
-      }
-
-      return;
-    }
-
-    setSaved((current) => [...current, artistId]);
-
-    const { error } = await supabase
-      .from("saved_artists")
-      .insert([
-        {
-          user_id: user.id,
-          artist_id: artistId,
-        },
-      ]);
-
-    if (error) {
-      console.log(error);
-    }
-  };
 
   const useMyLocation = () => {
     if (!navigator.geolocation) {
@@ -246,6 +212,20 @@ export default function BrowseMapPage() {
       artist.longitude
     );
   };
+const toggleCategory = (category: string) => {
+  setSelectedCategories((current) =>
+    current.includes(category)
+      ? current.filter((item) => item !== category)
+      : [...current, category]
+  );
+};
+
+const clearFilters = () => {
+  setSelectedCategories([]);
+  setSearchQuery("");
+};
+
+const activeFilterCount = selectedCategories.length;
 
   const filteredArtists = useMemo(() => {
     let result = [...artists];
@@ -261,35 +241,37 @@ export default function BrowseMapPage() {
       );
     }
 
-    if (selectedCategory !== "All") {
-      result = result.filter((artist) =>
-        artist.category
-          .toLowerCase()
-          .includes(selectedCategory.toLowerCase())
-      );
-    }
+    if (selectedCategories.length > 0) {
+  result = result.filter((artist) =>
+    selectedCategories.includes(artist.category)
+  );
+}
 
-    if (userLocation) {
-      result.sort((a, b) => {
-        const aDistance = getArtistDistance(a);
-        const bDistance = getArtistDistance(b);
+    result.sort((a, b) => {
+  if (sortBy === "low") return a.price_start - b.price_start;
 
-        if (aDistance === null && bDistance === null)
-          return 0;
+  if (sortBy === "high") return b.price_start - a.price_start;
 
-        if (aDistance === null) return 1;
+  if (sortBy === "nearest" && userLocation) {
+    const aDistance = getArtistDistance(a);
+    const bDistance = getArtistDistance(b);
 
-        if (bDistance === null) return -1;
+    if (aDistance === null && bDistance === null) return 0;
+    if (aDistance === null) return 1;
+    if (bDistance === null) return -1;
 
-        return aDistance - bDistance;
-      });
-    }
+    return aDistance - bDistance;
+  }
+
+  return 0;
+});
 
     return result;
   }, [
     artists,
     searchQuery,
-    selectedCategory,
+    selectedCategories,
+    sortBy,
     userLocation,
   ]);
 
@@ -366,37 +348,41 @@ export default function BrowseMapPage() {
 
   return (
     <main className="min-h-screen bg-white text-black">
-      <header className="flex items-center justify-between bg-[#faf6f5] px-4 py-5 text-[15px] md:px-10 md:py-6">
-        <Link href="/" className="font-medium">
-          Lumina
-        </Link>
+      <header className="grid grid-cols-3 items-center bg-[#faf6f5] px-4 py-5 text-[15px] md:px-10 md:py-6">
+  <div className="justify-self-start">
+    <Link href="/" className="font-medium transition hover:opacity-70">
+      Lumina
+    </Link>
+  </div>
 
-        <div className="hidden text-[15px] md:block">
-          Browse Artists
-        </div>
+  <Link
+  href="/browse"
+  className="hidden justify-self-center transition hover:opacity-70 md:block"
+>
+  Browse Artists
+</Link>
 
-        <Link
-          href="/saved"
-          className="flex items-center gap-2"
-        >
-          <span className="text-[16px] text-[#e9a8a8]">
-            ♡
-          </span>
-
-          <span className="text-sm">Saved</span>
-        </Link>
-      </header>
+  <div className="justify-self-end">
+  <AccountMenu />
+</div>
+</header>
 
       <section className="px-4 pt-8 pb-16 md:px-10 md:pt-10 md:pb-20">
         <div className="flex flex-col gap-6 md:flex-row md:items-start md:justify-between">
           <div>
-            <Link
-              href="/browse"
-              className="text-[14px] md:text-[16px]"
-            >
-              ← Back
-            </Link>
+            
+<div className="mb-5 flex items-center rounded-full border border-neutral-200 p-1 text-sm w-fit">
+  <Link
+      href={buildViewLink("/browse")}
+    className="rounded-full px-4 py-1.5 text-neutral-500 transition hover:text-black"
+  >
+    List
+  </Link>
 
+  <span className="rounded-full bg-black px-4 py-1.5 text-white">
+    Map
+  </span>
+</div>
             <h1
               className="mt-5 text-[32px] leading-[1.02] font-semibold md:mt-8 md:text-[54px]"
               style={{
@@ -404,7 +390,7 @@ export default function BrowseMapPage() {
                   "Georgia, Times New Roman, serif",
               }}
             >
-              Map of beauty professionals
+              Explore on map
             </h1>
 
             <p className="mt-2 text-[15px] text-neutral-700 md:mt-3 md:text-[18px]">
@@ -427,120 +413,199 @@ export default function BrowseMapPage() {
           </div>
 
           <div className="w-full md:w-[620px]">
-            <div className="flex items-center rounded-full bg-[#efedeb] px-4 py-3 md:px-5">
-              <span className="mr-3 text-lg text-neutral-500">
-                ⌕
-              </span>
+  <div className="flex items-center rounded-full bg-[#efedeb] px-4 py-3 md:px-5">
+    <span className="mr-3 text-lg text-neutral-500">⌕</span>
 
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) =>
-                  setSearchQuery(e.target.value)
-                }
-                placeholder="search by city, artist, or service"
-                className="w-full bg-transparent text-sm outline-none placeholder:text-neutral-400"
-              />
-            </div>
+    <input
+      type="text"
+      value={searchQuery}
+      onChange={(e) => setSearchQuery(e.target.value)}
+      placeholder="search by city, artist, or service"
+      className="w-full bg-transparent text-sm outline-none placeholder:text-neutral-400"
+    />
+  </div>
 
-            <div className="mt-6 flex flex-wrap justify-start gap-4 text-[14px] text-neutral-700 md:mt-8 md:justify-center md:gap-8 md:text-[15px]">
-              {categoryButtons.map((category) => (
-                <button
-                  key={category}
-                  onClick={() =>
-                    setSelectedCategory(category)
-                  }
-                  className={
-                    selectedCategory === category
-                      ? "font-medium text-black"
-                      : "text-neutral-600"
-                  }
-                >
-                  {category}
-                </button>
-              ))}
-            </div>
+  <div className="mt-4 flex items-center justify-end gap-8 text-sm text-neutral-700 md:text-[15px]">
+    <div className="relative">
+      <button
+        onClick={() => setOpenFilter(!openFilter)}
+        className="transition hover:text-black"
+      >
+        ☷ Filter {activeFilterCount > 0 && `(${activeFilterCount})`}
+      </button>
 
-            {(searchQuery ||
-              selectedCategory !== "All") && (
-              <button
-                onClick={() => {
-                  setSearchQuery("");
-                  setSelectedCategory("All");
-                }}
-                className="mt-4 text-[13px] text-neutral-500 hover:text-black"
-              >
-                Clear map search
-              </button>
-            )}
+      {openFilter && (
+        <div className="absolute right-0 top-8 z-20 w-[280px] rounded-[18px] border border-neutral-200 bg-white p-4 shadow-lg">
+          <div className="mb-4 flex items-center justify-between">
+            <p className="font-medium">Filters</p>
+
+            <button
+              onClick={clearFilters}
+              className="text-xs text-neutral-500 hover:text-black"
+            >
+              Clear all
+            </button>
           </div>
 
-          <div className="hidden text-[16px] md:block">
-            Map
-          </div>
+          <p className="mb-2 font-medium">Category</p>
+
+          {[
+            "Hair Stylist",
+            "Lash Artist",
+            "Nail Technician",
+            "Aesthetician",
+            "Makeup Artist",
+            "Brow Artist",
+          ].map((item) => (
+            <button
+              key={item}
+              onClick={() => toggleCategory(item)}
+              className={`block w-full rounded-[10px] px-2 py-2 text-left text-sm ${
+                selectedCategories.includes(item)
+                  ? "bg-[#faf6f5] font-medium text-black"
+                  : "text-neutral-600 hover:bg-[#faf6f5]"
+              }`}
+            >
+              {item}
+            </button>
+          ))}
         </div>
+      )}
+    </div>
 
-        <div className="mt-10 grid grid-cols-1 gap-6 lg:grid-cols-[1fr_320px]">
-          <div
-            ref={mapContainer}
-            className="h-[430px] w-full overflow-hidden rounded-[22px] bg-[#f1ece8] md:h-[620px]"
-          />
+    <div className="relative">
+      <button
+        onClick={() => setOpenSort(!openSort)}
+        className="transition hover:text-black"
+      >
+        ☰ Sort
+      </button>
 
-          <div className="rounded-[22px] bg-[#fbf7f6] p-5">
-            {selectedArtist ? (
-              <>
-                <h3 className="text-[22px] font-medium">
-                  {selectedArtist.name}
-                </h3>
+      {openSort && (
+        <div className="absolute right-0 top-8 z-20 w-[220px] rounded-[18px] border border-neutral-200 bg-white p-3 shadow-lg">
+          <button
+            className="block w-full rounded-[10px] px-3 py-2 text-left hover:bg-[#faf6f5]"
+            onClick={() => {
+              setSortBy("newest");
+              setOpenSort(false);
+            }}
+          >
+            Newest
+          </button>
 
-                <p className="mt-1 text-[15px] text-neutral-500">
-                  {selectedArtist.category}
-                </p>
+          <button
+            className="block w-full rounded-[10px] px-3 py-2 text-left hover:bg-[#faf6f5]"
+            onClick={() => {
+              setSortBy("nearest");
+              setOpenSort(false);
+            }}
+          >
+            Nearest first
+          </button>
 
-                <div className="mt-5">
-                  <button
-                    onClick={() =>
-                      toggleSave(selectedArtist.id)
-                    }
-                    className="rounded-full border border-black px-4 py-2 text-[14px] transition hover:bg-black hover:text-white"
-                  >
-                    {saved.includes(selectedArtist.id)
-                      ? "♥ Saved"
-                      : "♡ Save Artist"}
-                  </button>
-                </div>
+          <button
+            className="block w-full rounded-[10px] px-3 py-2 text-left hover:bg-[#faf6f5]"
+            onClick={() => {
+              setSortBy("low");
+              setOpenSort(false);
+            }}
+          >
+            Price low → high
+          </button>
 
-                <p className="mt-4 text-[14px] text-neutral-700">
-                  📍 {selectedArtist.location}
-                </p>
+          <button
+            className="block w-full rounded-[10px] px-3 py-2 text-left hover:bg-[#faf6f5]"
+            onClick={() => {
+              setSortBy("high");
+              setOpenSort(false);
+            }}
+          >
+            Price high → low
+          </button>
+        </div>
+      )}
+    </div>
+  </div>
+</div>
+</div>
 
-                <p className="mt-2 text-[14px] text-neutral-700">
-                  From $
-                  {selectedArtist.price_start}
-                </p>
 
-                {getArtistDistance(selectedArtist) !==
-                  null && (
-                  <p className="mt-2 text-[14px] text-neutral-500">
-                    {getArtistDistance(
-                      selectedArtist
-                    )?.toFixed(1)}{" "}
-                    miles away
-                  </p>
-                )}
+        <div className="relative mt-10">
+          <div className="relative">
+  <div
+    ref={mapContainer}
+    className="h-[430px] w-full overflow-hidden rounded-[28px] bg-[#f1ece8] md:h-[620px]"
+  />
 
-                <Link
-                  href={`/artist/${selectedArtist.id}`}
-                  className="mt-6 inline-block rounded-full bg-black px-5 py-2 text-[14px] text-white"
-                >
-                  View Profile
-                </Link>
-              </>
-            ) : (
-              <p className="text-[14px] text-neutral-500">
-                Select a pin to view artist details.
+  <div className="absolute bottom-5 right-5 z-20 w-[calc(100%-40px)] max-w-[340px]">
+    <div className="relative overflow-hidden rounded-[26px] border border-white/30 bg-white/20 p-5 shadow-[0_20px_60px_rgba(0,0,0,0.20),inset_0_1px_0_rgba(255,255,255,0.40)] backdrop-blur-3xl">
+    <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-white/30 via-white/10 to-transparent" />
+
+<div className="relative z-10">
+
+
+      {selectedArtist ? (
+        <>
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <p className="text-[11px] uppercase tracking-[0.16em] text-neutral-500">
+                Selected artist
               </p>
-            )}
+
+              <h3
+                className="mt-2 text-[25px] leading-[1.05]"
+                style={{ fontFamily: "Georgia, Times New Roman, serif" }}
+              >
+                {selectedArtist.name}
+              </h3>
+
+              <p className="mt-2 text-[14px] text-neutral-600">
+                {selectedArtist.category}
+              </p>
+            </div>
+
+            <SaveArtistButton
+              artistId={selectedArtist.id}
+              artistName={selectedArtist.name}
+            />
+          </div>
+
+          <div className="mt-5 flex items-center gap-3 text-[13px] text-neutral-700">
+            <span>From ${selectedArtist.price_start}</span>
+            <span className="text-neutral-400">•</span>
+            <span>
+              {getArtistDistance(selectedArtist) !== null
+                ? `${getArtistDistance(selectedArtist)?.toFixed(1)} mi`
+                : "Distance unavailable"}
+            </span>
+          </div>
+
+          <p className="mt-3 text-[13px] leading-[1.5] text-neutral-600">
+            {selectedArtist.location}
+          </p>
+
+          <Link
+            href={`/artist/${selectedArtist.id}`}
+            className="mt-5 inline-flex w-full items-center justify-between rounded-full bg-black px-5 py-3 text-[14px] text-white transition hover:opacity-85"
+          >
+            View Profile
+            <span>→</span>
+          </Link>
+        </>
+            ) : (
+        <div className="py-3 text-center">
+          <p className="text-[15px] font-medium">
+            Select an artist
+          </p>
+
+          <p className="mt-1 text-[13px] text-neutral-500">
+            Choose a map marker to preview their profile.
+          </p>
+        </div>
+      )}
+    </div>
+  </div>
+</div>
           </div>
         </div>
       </section>

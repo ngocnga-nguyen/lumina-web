@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import ArtistCard from "@/components/ArtistCard";
 
 export default function LashPage() {
   const [compareMode, setCompareMode] = useState(false);
