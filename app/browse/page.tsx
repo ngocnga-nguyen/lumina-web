@@ -1,12 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { useSearchParams } from "next/navigation";
 import AccountMenu from "@/components/AccountMenu";
 import SaveArtistButton from "@/components/SaveArtistButton";
 import ArtistCard from "@/components/ArtistCard";
+
 
 type Artist = {
   id: string;
@@ -44,7 +45,7 @@ function getDistanceMiles(
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
-export default function BrowsePage() {
+function BrowseContent() {
   const searchParams = useSearchParams();
   const [openSort, setOpenSort] = useState(false);
   const [openFilter, setOpenFilter] = useState(false);
@@ -480,5 +481,18 @@ if (categories) {
         )}
       </section>
     </main>
+  );
+}
+export default function BrowsePage() {
+  return (
+    <Suspense
+      fallback={
+        <main className="min-h-screen bg-white px-4 py-10 text-black md:px-10">
+          <p className="text-neutral-500">Loading artists...</p>
+        </main>
+      }
+    >
+      <BrowseContent />
+    </Suspense>
   );
 }

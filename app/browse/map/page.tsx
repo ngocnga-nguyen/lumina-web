@@ -1,5 +1,6 @@
 "use client";
 
+import { Suspense } from "react";
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import mapboxgl from "mapbox-gl";
@@ -45,7 +46,7 @@ function getDistanceMiles(
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
-export default function BrowseMapPage() {
+function BrowseMapContent() {
   const mapContainer = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<mapboxgl.Map | null>(null);
   const markersRef = useRef<mapboxgl.Marker[]>([]);
@@ -610,5 +611,18 @@ const activeFilterCount = selectedCategories.length;
         </div>
       </section>
     </main>
+  );
+}
+export default function BrowseMapPage() {
+  return (
+    <Suspense
+      fallback={
+        <main className="min-h-screen bg-white px-4 py-10 text-black md:px-10">
+          <p className="text-neutral-500">Loading map...</p>
+        </main>
+      }
+    >
+      <BrowseMapContent />
+    </Suspense>
   );
 }
