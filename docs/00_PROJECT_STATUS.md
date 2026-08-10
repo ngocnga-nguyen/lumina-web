@@ -1,54 +1,137 @@
-# Lumina Project Status
+# Lumina — Project Status
 
-**Last Updated:** June 29, 2026
+**Last Updated:** August 11, 2026
 
-## Current Focus
+## Current Stage
 
-Continue building the messaging/conversation experience for Lumina.
+Private Beta / Production Testing
+
+**Production:** [joinlumina.co](https://joinlumina.co)
 
 ## What Lumina Is
 
-Lumina is a beauty marketplace that helps clients discover, compare, message, and eventually book trustworthy beauty professionals.
+Lumina is a beauty marketplace that helps clients discover, compare, message, and request trustworthy beauty professionals. Its core trust system connects verified reviews to completed appointments.
 
-## Tech Stack
+## Stack
 
 - Next.js
 - TypeScript
 - Tailwind CSS
 - Supabase
+- GitHub
+- Resend
 
-## Completed
+## Production Status
 
-- Landing page
-- Browse page
-- Map page
-- Artist profile pages
+- 28 production routes verified
+- GitHub deployment working
+- Production domain live
+- Responsive desktop and mobile experience
+
+## Authentication
+
+- Client signup and login
+- Professional signup and login
+- Persistent sessions
+- Email confirmation
+- Forgot password
+- Secure password reset
+- Branded authentication emails
+- Account and profile settings
+
+## Marketplace Discovery
+
+- Homepage search
+- Browse
+- Map
+- Search suggestions
+- Category and service filtering
+- Filter and Sort controls
+- Featured service carousel
+- Mobile swipe
+- Desktop drag
+- Trackpad gesture support
+- Artist profiles
 - Saved artists
-- Compare artists
-- Artist signup page
-- Booking request flow
-- Live updates without refreshing
-- Basic messaging/request system
+- Compare
 
-## Currently Working On
+## Professional Profiles
 
-Turn the request history layout into a real conversation UI.
+- Profile editing
+- Services
+- Pricing
+- Portfolio
+- Availability
+- Professional settings
+- Public artist profile
 
-## Current Files
+## Request / Booking Lifecycle
 
-- app/messages/page.tsx
-- lib/supabase.ts
+Client Request
+→ Artist Response / Proposal
+→ Client Confirmation
+→ Messaging
+→ Appointment
+→ Artist Completion
+→ Verified Review
+→ Artist Response
 
-## Next Build Steps
+## Messaging
 
-1. Improve conversation header
-2. Make chat bubbles look stronger
-3. Add message input fixed at bottom
-4. Add auto-scroll to newest message
-5. Later: unread badge, typing indicator, read receipts, image messages
+- Realtime conversations
+- Unread states
+- Notifications
+- Request-linked conversations
 
-## Notes
+## Reviews & Trust
 
-The app already has real-time updates working without refreshing.
+- Reviews require completed appointments
+- Authenticated reviewer identity
+- One review per completed appointment
+- Supabase and database protections
+- Anonymous fake-review insertion blocked
+- Artist review responses
+- Average ratings and review counts
+- Verified review UI
 
-Continue from the messaging/conversation UI.
+## Request Management
+
+- Active requests
+- Client archiving
+- Artist archiving
+- Realtime updates
+- Notifications
+
+## Private Beta Goals
+
+**Primary:** Validate professional supply adoption.
+
+**Initial target:** 5 high-quality active beauty professionals.
+
+**Measure:**
+
+- Outreach sent
+- Responses
+- Interested professionals
+- Accounts created
+- Profiles completed
+- Requests received
+- Returning professionals
+- Feedback and friction
+
+## Current Priorities
+
+1. Complete one production end-to-end test.
+2. Recruit private-beta professionals.
+3. Observe onboarding without intervention.
+4. Track bugs and repeated UX friction.
+5. Validate client-to-professional demand.
+6. Begin testing monetization assumptions.
+
+## Do Not Prioritize Yet
+
+- Large feature expansion
+- Major redesigns based on one person’s feedback
+- Scaling infrastructure without demand
+- Large team hiring
+- Premature monetization
