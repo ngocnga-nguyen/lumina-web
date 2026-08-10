@@ -42,7 +42,7 @@ export default function Home() {
   const [artistProfile, setArtistProfile] = useState<any>(null);
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
   const [heroServiceIndex, setHeroServiceIndex] = useState(0);
-  const heroTouchStartX = useRef<number | null>(null);
+  const heroPointerStartX = useRef<number | null>(null);
   const heroDidSwipe = useRef(false);
   const accountName =
   artistProfile?.name ||
@@ -64,17 +64,19 @@ const accountImage = artistProfile?.profile_image_url || null;
     );
   };
 
-  const handleHeroTouchStart = (event: React.TouchEvent) => {
-    heroTouchStartX.current = event.touches[0]?.clientX ?? null;
+  const handleHeroPointerDown = (event: React.PointerEvent<HTMLAnchorElement>) => {
+    if (!event.isPrimary || event.button !== 0) return;
+
+    heroPointerStartX.current = event.clientX;
     heroDidSwipe.current = false;
+    event.currentTarget.setPointerCapture(event.pointerId);
   };
 
-  const handleHeroTouchEnd = (event: React.TouchEvent) => {
-    if (heroTouchStartX.current === null) return;
+  const handleHeroPointerUp = (event: React.PointerEvent<HTMLAnchorElement>) => {
+    if (heroPointerStartX.current === null || !event.isPrimary) return;
 
-    const endX = event.changedTouches[0]?.clientX ?? heroTouchStartX.current;
-    const distance = endX - heroTouchStartX.current;
-    heroTouchStartX.current = null;
+    const distance = event.clientX - heroPointerStartX.current;
+    heroPointerStartX.current = null;
 
     if (Math.abs(distance) < 40) return;
 
@@ -84,6 +86,10 @@ const accountImage = artistProfile?.profile_image_url || null;
     } else {
       showPreviousHeroService();
     }
+  };
+
+  const cancelHeroPointer = () => {
+    heroPointerStartX.current = null;
   };
 
   useEffect(() => {
@@ -415,9 +421,10 @@ setArtistProfile(artist);
     <div className="relative ml-auto w-full max-w-[520px] overflow-hidden rounded-[26px] bg-[#f5f1ef] shadow-[0_16px_48px_rgba(45,35,30,0.08)] lg:rounded-[30px]">
       <Link
         href={`/browse?categories=${encodeURIComponent(heroServices[heroServiceIndex][0])}`}
-        className="group block touch-pan-y"
-        onTouchStart={handleHeroTouchStart}
-        onTouchEnd={handleHeroTouchEnd}
+        className="group block cursor-grab touch-pan-y select-none active:cursor-grabbing"
+        onPointerDown={handleHeroPointerDown}
+        onPointerUp={handleHeroPointerUp}
+        onPointerCancel={cancelHeroPointer}
         onClick={(event) => {
           if (heroDidSwipe.current) {
             event.preventDefault();
@@ -431,6 +438,7 @@ setArtistProfile(artist);
             key={heroServices[heroServiceIndex][1]}
             src={heroServices[heroServiceIndex][1]}
             alt={heroServices[heroServiceIndex][0]}
+            draggable={false}
             className="h-full w-full object-cover transition duration-1000 group-hover:scale-[1.035]"
           />
           <div className="absolute inset-0 bg-gradient-to-tr from-black/60 via-black/5 to-white/10" />
