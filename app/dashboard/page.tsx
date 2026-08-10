@@ -16,6 +16,8 @@ type Artist = {
   availability?: string | null;
   is_verified?: boolean;
   years_experience?: number | null;
+  experience_unit?: "new" | "months" | "years" | null;
+  experience_amount?: number | null;
 };
 
 type Service = {
@@ -130,11 +132,19 @@ const accountImage = artist?.profile_image_url || null;
     fetchDashboardData();
   }, []);
 
+const experienceLabel =
+  artist?.experience_unit === "new"
+    ? "New Artist"
+    : artist?.experience_amount && artist?.experience_unit
+      ? `${artist.experience_amount} ${artist.experience_unit === "months" ? "Months" : "Years"} Experience`
+      : artist?.years_experience
+        ? `${artist.years_experience}+ Years Experience`
+        : null;
+
 const professionalHighlights = [
   artist?.is_verified && "Verified Professional",
 
-  artist?.years_experience &&
-    `${artist.years_experience}+ Years Experience`,
+  experienceLabel,
 
   services.length > 0 &&
     `${services.length} Service${services.length > 1 ? "s" : ""} Listed`,

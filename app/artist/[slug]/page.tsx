@@ -20,6 +20,8 @@ type Artist = {
 
   is_verified?: boolean;
   years_experience?: number | null;
+  experience_unit?: "new" | "months" | "years" | null;
+  experience_amount?: number | null;
   verified_results_count?: number | null;
   repeat_client_rate?: number | null;
   verified_reviews?: boolean | null;
@@ -601,13 +603,21 @@ setAverageRating(updatedAverage);
     );
   }
 
+  const experienceLabel =
+    artist.experience_unit === "new"
+      ? "New Artist"
+      : artist.experience_amount && artist.experience_unit
+        ? `${artist.experience_amount} ${artist.experience_unit === "months" ? "Months" : "Years"} Experience`
+        : artist.years_experience
+          ? `${artist.years_experience} Years Experience`
+          : null;
+
   const professionalHighlights = [
   artist.is_verified && "✓ Verified Professional",
 
 
 
-  artist.years_experience &&
-    `${artist.years_experience} Years Experience`,
+  experienceLabel,
 
   artist.verified_results_count &&
     `${artist.verified_results_count} Portfolio Results`,
@@ -829,14 +839,12 @@ setAverageRating(updatedAverage);
     </div>
   )}
 
-  {artist.years_experience != null && artist.years_experience > 0 && (
+  {experienceLabel && (
     <div className="rounded-[18px] border border-neutral-200 p-5">
-      <p className="text-[28px] font-semibold">
-        {artist.years_experience}
-      </p>
+      <p className="text-[24px] font-semibold">{artist.experience_unit === "new" ? "New" : artist.experience_amount || artist.years_experience}</p>
 
       <p className="mt-2 text-[15px] text-neutral-600">
-        Years Experience
+        {artist.experience_unit === "new" ? "Artist" : artist.experience_unit === "months" ? "Months Experience" : "Years Experience"}
       </p>
     </div>
   )}

@@ -10,6 +10,13 @@ type ProfileForm = {
   business_name: string;
   category: string;
   address: string;
+  address_line_1: string;
+  city: string;
+  region: string;
+  postal_code: string;
+  travels_to_clients: boolean;
+  service_area: string;
+  hide_street_address: boolean;
   latitude: string;
   longitude: string;
   price_start: string;
@@ -19,6 +26,8 @@ type ProfileForm = {
   availability: string;
   profile_image_url: string;
   years_experience: string;
+  experience_unit: "new" | "months" | "years";
+  experience_amount: string;
 };
 
 export default function DashboardProfilePage() {
@@ -31,6 +40,13 @@ export default function DashboardProfilePage() {
     business_name: "",
     category: "",
     address: "",
+    address_line_1: "",
+    city: "",
+    region: "",
+    postal_code: "",
+    travels_to_clients: false,
+    service_area: "",
+    hide_street_address: false,
     latitude: "",
     longitude: "",
     price_start: "",
@@ -39,7 +55,9 @@ export default function DashboardProfilePage() {
     bio: "",
     availability: "",
     profile_image_url: "",
-   years_experience: "", 
+    years_experience: "",
+    experience_unit: "new",
+    experience_amount: "",
   });
 
   useEffect(() => {
@@ -64,12 +82,23 @@ export default function DashboardProfilePage() {
       if (data) {
         const savedName = data.name || "";
         const businessMatch = savedName.match(/^(.*?)\s*\((.+)\)\s*$/);
+        const legacyAddressParts = (data.address || data.location || "")
+          .split(",")
+          .map((part: string) => part.trim());
+        const legacyRegionParts = (legacyAddressParts[2] || "").split(/\s+/);
 
         setForm({
           name: businessMatch?.[1]?.trim() || savedName,
           business_name: businessMatch?.[2]?.trim() || "",
           category: data.category || "",
           address: data.address || data.location || "",
+          address_line_1: data.address_line_1 || legacyAddressParts[0] || "",
+          city: data.city || legacyAddressParts[1] || "",
+          region: data.region || legacyRegionParts[0] || "",
+          postal_code: data.postal_code || legacyRegionParts.slice(1).join(" ") || "",
+          travels_to_clients: Boolean(data.travels_to_clients),
+          service_area: data.service_area || "",
+          hide_street_address: Boolean(data.hide_street_address),
           latitude: data.latitude?.toString() || "",
           longitude: data.longitude?.toString() || "",
           price_start: data.price_start?.toString() || "",
@@ -79,6 +108,14 @@ export default function DashboardProfilePage() {
           availability: data.availability || "",
           profile_image_url: data.profile_image_url || "",
           years_experience: data.years_experience?.toString() || "",
+          experience_unit:
+            data.experience_unit ||
+            (Number(data.years_experience) > 0 ? "years" : "new"),
+          experience_amount:
+            data.experience_amount?.toString() ||
+            (Number(data.years_experience) > 0
+              ? data.years_experience.toString()
+              : ""),
         });
 
         if (data.latitude && data.longitude) {
@@ -125,9 +162,30 @@ export default function DashboardProfilePage() {
       : cleanName;
     const cleanCategory = form.category.trim();
     const startingPrice = Number(form.price_start);
-    const yearsExperience = form.years_experience
-      ? Number(form.years_experience)
+    const experienceAmount = form.experience_amount
+      ? Number(form.experience_amount)
       : null;
+    const yearsExperience =
+      form.experience_unit === "new"
+        ? 0
+        : form.experience_unit === "months" && experienceAmount !== null
+          ? experienceAmount / 12
+          : experienceAmount;
+    const fullAddress = [
+      form.address_line_1.trim(),
+      form.city.trim(),
+      [form.region.trim(), form.postal_code.trim()].filter(Boolean).join(" "),
+    ]
+      .filter(Boolean)
+      .join(", ");
+    const cityAndState = [form.city.trim(), form.region.trim()]
+      .filter(Boolean)
+      .join(", ");
+    const publicLocation = form.travels_to_clients
+      ? form.service_area.trim() || cityAndState || "Travels to clients"
+      : form.hide_street_address
+        ? cityAndState
+        : fullAddress;
     let bookingLink = form.social_link.trim();
 
     if (!cleanName || !cleanCategory || !form.price_start) {
@@ -141,10 +199,15 @@ export default function DashboardProfilePage() {
     }
 
     if (
-      yearsExperience !== null &&
-      (!Number.isFinite(yearsExperience) || yearsExperience < 0)
+      experienceAmount !== null &&
+      (!Number.isFinite(experienceAmount) || experienceAmount < 0)
     ) {
       alert("Please enter valid years of experience.");
+      return;
+    }
+
+    if (form.experience_unit !== "new" && (!experienceAmount || experienceAmount < 1)) {
+      alert(`Please enter your number of ${form.experience_unit}.`);
       return;
     }
 
@@ -176,8 +239,8 @@ export default function DashboardProfilePage() {
     let finalLatitude = form.latitude ? Number(form.latitude) : null;
     let finalLongitude = form.longitude ? Number(form.longitude) : null;
 
-    if (form.address.trim()) {
-      const coordinates = await getCoordinatesFromAddress(form.address);
+    if (fullAddress) {
+      const coordinates = await getCoordinatesFromAddress(fullAddress);
 
       if (coordinates) {
         finalLatitude = coordinates.latitude;
@@ -199,8 +262,15 @@ export default function DashboardProfilePage() {
       .update({
         name: publicName,
         category: cleanCategory,
-        location: form.address,
-        address: form.address,
+        location: publicLocation,
+        address: fullAddress,
+        address_line_1: form.address_line_1.trim(),
+        city: form.city.trim(),
+        region: form.region.trim(),
+        postal_code: form.postal_code.trim(),
+        travels_to_clients: form.travels_to_clients,
+        service_area: form.service_area.trim(),
+        hide_street_address: form.hide_street_address,
         latitude: finalLatitude,
         longitude: finalLongitude,
         price_start: startingPrice,
@@ -210,6 +280,8 @@ export default function DashboardProfilePage() {
         availability: form.availability,
         profile_image_url: form.profile_image_url,
         years_experience: yearsExperience,
+        experience_unit: form.experience_unit,
+        experience_amount: experienceAmount,
       })
       .eq("id", user.id);
 
@@ -224,6 +296,7 @@ export default function DashboardProfilePage() {
       ...current,
       name: cleanName,
       business_name: cleanBusinessName,
+      address: fullAddress,
       category: cleanCategory,
       social_link: bookingLink,
     }));
@@ -291,12 +364,31 @@ export default function DashboardProfilePage() {
                   <input type="number" placeholder="Example: 35" value={form.price_start} onChange={(e) => setForm({ ...form, price_start: e.target.value })} className={inputClass} />
                 </label>
 
-                <label className="block">
-                  <span className="mb-2 block text-[13px] font-medium text-neutral-700">
-                    Years of experience <span className="font-normal text-neutral-400">(optional)</span>
-                  </span>
-                  <input type="number" placeholder="Example: 5" value={form.years_experience} onChange={(e) => setForm({ ...form, years_experience: e.target.value })} className={inputClass} />
-                </label>
+                <div className="rounded-[18px] bg-neutral-50 p-4">
+                  <p className="text-[13px] font-medium text-neutral-700">Professional experience</p>
+                  <div className="mt-3 grid grid-cols-3 gap-2">
+                    {(["new", "months", "years"] as const).map((unit) => (
+                      <button
+                        key={unit}
+                        type="button"
+                        onClick={() => setForm({ ...form, experience_unit: unit, experience_amount: unit === "new" ? "" : form.experience_amount })}
+                        className={`rounded-full px-3 py-2 text-[13px] capitalize transition ${form.experience_unit === unit ? "bg-black text-white" : "border border-neutral-200 bg-white text-neutral-600"}`}
+                      >
+                        {unit === "new" ? "New artist" : unit}
+                      </button>
+                    ))}
+                  </div>
+                  {form.experience_unit !== "new" && (
+                    <input
+                      type="number"
+                      min="1"
+                      placeholder={`Number of ${form.experience_unit}`}
+                      value={form.experience_amount}
+                      onChange={(e) => setForm({ ...form, experience_amount: e.target.value })}
+                      className={`${inputClass} mt-3`}
+                    />
+                  )}
+                </div>
 
               </div>
             </section>
@@ -306,18 +398,51 @@ export default function DashboardProfilePage() {
 
               <div className="mt-4 space-y-4">
                 <label className="block">
-                  <span className="mb-2 block text-[13px] font-medium text-neutral-700">Work or salon address</span>
+                  <span className="mb-2 block text-[13px] font-medium text-neutral-700">Street address</span>
                   <input
                     type="text"
-                    placeholder="Example: 123 Beauty Ave, Tulsa, OK 74103"
-                    value={form.address}
+                    placeholder="Example: 123 Beauty Ave"
+                    value={form.address_line_1}
                     onChange={(e) => {
                       setLocationSaved(false);
-                      setForm({ ...form, address: e.target.value });
+                      setForm({ ...form, address_line_1: e.target.value });
                     }}
                     className={inputClass}
                   />
                 </label>
+
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  <label className="block">
+                    <span className="mb-2 block text-[13px] font-medium text-neutral-700">City</span>
+                    <input type="text" placeholder="Example: Tulsa" value={form.city} onChange={(e) => { setLocationSaved(false); setForm({ ...form, city: e.target.value }); }} className={inputClass} />
+                  </label>
+                  <label className="block">
+                    <span className="mb-2 block text-[13px] font-medium text-neutral-700">State</span>
+                    <input type="text" placeholder="Example: OK" value={form.region} onChange={(e) => { setLocationSaved(false); setForm({ ...form, region: e.target.value }); }} className={inputClass} />
+                  </label>
+                </div>
+
+                <label className="block sm:max-w-[50%] sm:pr-2">
+                  <span className="mb-2 block text-[13px] font-medium text-neutral-700">ZIP code</span>
+                  <input type="text" inputMode="numeric" placeholder="Example: 74103" value={form.postal_code} onChange={(e) => { setLocationSaved(false); setForm({ ...form, postal_code: e.target.value }); }} className={inputClass} />
+                </label>
+
+                <div className="space-y-3 rounded-[18px] bg-neutral-50 p-4">
+                  <label className="flex cursor-pointer items-start gap-3 text-[14px] text-neutral-700">
+                    <input type="checkbox" checked={form.travels_to_clients} onChange={(e) => setForm({ ...form, travels_to_clients: e.target.checked })} className="mt-0.5 h-4 w-4 accent-black" />
+                    <span>I travel to clients</span>
+                  </label>
+                  {form.travels_to_clients && (
+                    <label className="block">
+                      <span className="mb-2 block text-[13px] font-medium text-neutral-700">Service area</span>
+                      <input type="text" placeholder="Example: Tulsa and surrounding areas" value={form.service_area} onChange={(e) => setForm({ ...form, service_area: e.target.value })} className={inputClass} />
+                    </label>
+                  )}
+                  <label className="flex cursor-pointer items-start gap-3 text-[14px] text-neutral-700">
+                    <input type="checkbox" checked={form.hide_street_address} onChange={(e) => setForm({ ...form, hide_street_address: e.target.checked })} className="mt-0.5 h-4 w-4 accent-black" />
+                    <span>Hide my exact street address from clients</span>
+                  </label>
+                </div>
 
                 <p className="text-[13px] leading-[1.5] text-neutral-500">
                   Your map pin will be created automatically from this address
