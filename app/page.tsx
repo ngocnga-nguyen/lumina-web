@@ -322,7 +322,7 @@ setArtistProfile(artist);
     <div className="mt-7 flex flex-col gap-2.5 sm:flex-row md:mt-8">
       <Link
         href="/browse"
-        className="rounded-full bg-black px-6 py-2.5 text-[14px] font-medium text-white transition hover:opacity-90"
+        className="rounded-full bg-black px-6 py-2.5 text-center text-[14px] font-medium text-white transition hover:opacity-90"
       >
         Browse Artists
       </Link>
@@ -330,7 +330,7 @@ setArtistProfile(artist);
       {!user && (
         <Link
           href="/signup"
-          className="rounded-full border border-neutral-300 bg-white px-6 py-2.5 text-[14px] font-medium text-black transition hover:bg-neutral-50"
+          className="rounded-full border border-neutral-300 bg-white px-6 py-2.5 text-center text-[14px] font-medium text-black transition hover:bg-neutral-50"
         >
           Create Client Account
         </Link>
@@ -347,7 +347,7 @@ setArtistProfile(artist);
     </div>
 
     {!user && (
-      <p className="mt-4 text-[13px] text-neutral-500">
+      <p className="mt-4 text-center text-[13px] text-neutral-500 sm:text-left">
         Beauty professional?{" "}
         <Link href="/join-as-artist" className="text-black underline">
           Create a professional account
