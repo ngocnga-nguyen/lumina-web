@@ -3,9 +3,9 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabase";
-import { CircleUser } from "lucide-react";
-import SaveArtistButton from "@/components/SaveArtistButton";
 import ArtistCard from "@/components/ArtistCard";
+import SearchBar from "@/components/SearchBar";
+import { useRouter } from "next/navigation";
 
 type Artist = {
   id: string;
@@ -26,6 +26,7 @@ const categoryImages: Record<string, string> = {
   "Brow Artist": "/categories/brow.jpg",
 };
 export default function Home() {
+  const router = useRouter();
   const [artists, setArtists] = useState<Artist[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [user, setUser] = useState<any>(null);
@@ -41,6 +42,29 @@ export default function Home() {
 const accountInitial = accountName.charAt(0).toUpperCase();
 
 const accountImage = artistProfile?.profile_image_url || null;
+
+  useEffect(() => {
+    const recoveryLinkLandedOnHome =
+      window.location.hash.includes("type=recovery") ||
+      new URLSearchParams(window.location.search).get("type") === "recovery";
+
+    if (recoveryLinkLandedOnHome) {
+      router.replace(
+        `/account/reset-password${window.location.search}${window.location.hash}`
+      );
+      return;
+    }
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((event) => {
+      if (event === "PASSWORD_RECOVERY") {
+        router.replace("/account/reset-password");
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, [router]);
 
   useEffect(() => {
     const fetchArtists = async () => {
@@ -106,6 +130,15 @@ setArtistProfile(artist);
     );
   }, [artists, searchQuery]);
 
+  const handleSearch = () => {
+  const query = searchQuery.trim();
+
+  router.push(
+    query
+      ? `/browse?search=${encodeURIComponent(query)}`
+      : "/browse"
+  );
+};
   const handleLogout = async () => {
     await supabase.auth.signOut();
     window.location.reload();
@@ -170,6 +203,13 @@ setArtistProfile(artist);
               >
                 Edit Profile
               </Link>
+
+              <Link
+                href="/dashboard/settings"
+                className="block rounded-[14px] px-4 py-3 hover:bg-[#faf6f5]"
+              >
+                Settings &amp; Privacy
+              </Link>
             </>
           ) : (
             <>
@@ -208,129 +248,114 @@ setArtistProfile(artist);
   )}
 </nav>
       </header>
+<section className="bg-white px-6 pb-6 pt-10 md:px-14 md:pb-8 md:pt-14">
+  <div className="max-w-[760px]">
+    <h1
+      className="max-w-[700px] text-[38px] font-semibold leading-[0.95] tracking-[-0.03em] md:text-[60px] lg:text-[72px]"
+      style={{ fontFamily: "Georgia, Times New Roman, serif" }}
+    >
+      Find beauty
+      <br />
+      professionals
+      <br />
+      you can trust
+    </h1>
 
-      <section className="bg-white px-6 pt-14 pb-8 md:px-14 md:pt-20 md:pb-10">
-        <div className="max-w-[760px]">
-  <div>
-          <h1
-            className="max-w-[700px] text-[38px] leading-[0.95] tracking-[-0.03em] font-semibold md:text-[60px] lg:text-[72px]"
-            style={{ fontFamily: "Georgia, Times New Roman, serif" }}
-          >
-            Find beauty
-          <br />
-          professionals
-          <br />
-          you can trust
-          </h1>
+    <p
+      className="mt-8 max-w-[760px] text-[20px] leading-[1.35] text-neutral-700 md:text-[26px] lg:text-[28px]"
+      style={{ fontFamily: "Georgia, Times New Roman, serif" }}
+    >
+      Compare portfolios, pricing, reviews, and verified results before you
+      book.
+    </p>
 
-          <p
-            className="mt-8 max-w-[760px] text-[20px] leading-[1.35] text-neutral-700 md:text-[26px] lg:text-[28px]"
-            style={{ fontFamily: "Georgia, Times New Roman, serif" }}
-          >
-            Compare portfolios, pricing, reviews, and verified results before you book.
-          </p>
-<div className="mt-8">
-            <div className="relative w-full max-w-[720px]">
-              <div className="flex w-full items-center rounded-full border border-[#e7e3df] bg-white p-2 pl-6 shadow-sm transition focus-within:border-neutral-400 focus-within:shadow-md">
-                <span className="mr-4 text-[20px] text-neutral-400">⌕</span>
+    <div className="mt-6">
+      <div className="relative w-full max-w-[720px]">
 
-                <input
-                  type="text"
-                  placeholder="search by city, artist, or service"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full bg-transparent text-[16px] outline-none placeholder:text-neutral-400"
-                />
-              
-              <Link
-  href={
-    searchQuery.trim()
-      ? `/browse?search=${encodeURIComponent(searchQuery.trim())}`
-      : "/browse"
-  }
-  className="shrink-0 rounded-full bg-black px-6 py-3 text-[14px] font-medium text-white transition hover:opacity-85"
->
-  Search
-</Link>
-</div>
-              {searchQuery.trim() && (
-                <div className="absolute left-0 top-[52px] z-20 w-full rounded-[18px] bg-white p-3 shadow-lg">
-                  {filteredArtists.length > 0 ? (
-                    filteredArtists.slice(0, 5).map((artist) => (
-                      <Link
-                        key={artist.id}
-                        href={`/artist/${artist.id}`}
-                        className="block rounded-[14px] px-3 py-3 transition hover:bg-[#fbf7f6]"
-                      >
-                        <p className="text-[15px] font-medium">
-                          {artist.name}
-                        </p>
+    <SearchBar
 
-                        <p className="text-[13px] text-neutral-500">
-                          {artist.category} • {artist.location}
-                        </p>
-                      </Link>
-                    ))
-                  ) : (
-                    <p className="px-3 py-3 text-[14px] text-neutral-500">
-                      No artists found.
-                    </p>
-                  )}
+      value={searchQuery}
 
-                  <Link
-                    href={`/browse?search=${encodeURIComponent(searchQuery)}`}
-                    className="mt-2 block rounded-full bg-black px-4 py-2 text-center text-[13px] text-white"
-                  >
-                    Search all artists
-                  </Link>
-                </div>
-                         )}
-            </div>
-          </div>
+      onChange={setSearchQuery}
 
-          <div className="mt-8 flex flex-col gap-3 sm:flex-row md:mt-12">
+      placeholder="Search by city, artist, or service"
+
+      showButton={true}
+
+      onSearch={handleSearch}
+
+    />
+
+        {searchQuery.trim() && (
+          <div className="absolute left-0 top-[52px] z-20 w-full rounded-[18px] bg-white p-3 shadow-lg">
+            {filteredArtists.length > 0 ? (
+              filteredArtists.slice(0, 5).map((artist) => (
+                <Link
+                  key={artist.id}
+                  href={`/artist/${artist.id}`}
+                  className="block rounded-[14px] px-3 py-3 transition hover:bg-[#fbf7f6]"
+                >
+                  <p className="text-[15px] font-medium">{artist.name}</p>
+
+                  <p className="text-[13px] text-neutral-500">
+                    {artist.category} • {artist.location}
+                  </p>
+                </Link>
+              ))
+            ) : (
+              <p className="px-3 py-3 text-[14px] text-neutral-500">
+                No artists found.
+              </p>
+            )}
+
             <Link
-              href="/browse"
-              className="rounded-full bg-black px-8 py-3.5 text-[15px] font-medium text-white transition hover:opacity-90"
+              href={`/browse?search=${encodeURIComponent(searchQuery)}`}
+              className="mt-2 block rounded-full bg-black px-4 py-2 text-center text-[13px] text-white"
             >
-              Browse Artists
+              Search all artists
             </Link>
-
-            {!user && (
-              <Link
-                href="/signup"
-                className="rounded-full border border-black px-7 py-3 text-center text-[14px] transition hover:bg-black hover:text-white"
-              >
-                Create Client Account
-              </Link>
-            )}
-
-            {user && artistId && (
-              <Link
-                href="/dashboard"
-                className="rounded-full border border-black px-7 py-3 text-center text-[14px] transition hover:bg-black hover:text-white"
-              >
-                Go to Dashboard
-              </Link>
-            )}
           </div>
+        )}
+      </div>
+    </div>
 
-          {!user && (
-            <p className="mt-4 text-[13px] text-neutral-500">
-              Beauty professional?{" "}
-              <Link href="/join-as-artist" className="text-black underline">
-                Create a professional account
-              </Link>
-            </p>
-          )}
+    <div className="mt-6 flex flex-col gap-2 sm:flex-row md:mt-8">
+      <Link
+        href="/browse"
+        className="rounded-full bg-black px-6 py-2.5 text-[14px] font-medium text-white transition hover:opacity-90"
+      >
+        Browse Artists
+      </Link>
 
-          
-        </div>
+      {!user && (
+        <Link
+          href="/signup"
+          className="rounded-full border border-neutral-300 bg-white px-6 py-2.5 text-[14px] font-medium text-black transition hover:bg-neutral-50"
+        >
+          Create Client Account
+        </Link>
+      )}
 
-        
-       </div>
-      </section>
+      {user && artistId && (
+        <Link
+          href="/dashboard"
+          className="rounded-full border border-black px-6 py-2.5 text-center text-[14px] transition hover:bg-black hover:text-white"
+        >
+          Go to Dashboard
+        </Link>
+      )}
+    </div>
 
+    {!user && (
+      <p className="mt-4 text-[13px] text-neutral-500">
+        Beauty professional?{" "}
+        <Link href="/join-as-artist" className="text-black underline">
+          Create a professional account
+        </Link>
+      </p>
+    )}
+  </div>
+</section>
       <section className="px-6 pt-4 pb-10 md:px-14 md:pt-6 md:pb-16 lg:pb-20">
         <div className="max-w-[760px]">
   <p className="text-[12px] font-semibold uppercase tracking-[0.18em] text-neutral-500">
@@ -396,7 +421,7 @@ setArtistProfile(artist);
         )}
       </section>
 
-      <section className="px-4 pb-14 md:px-14 md:pb-20 lg:pb-24">
+      <section className="bg-[#faf6f5] px-4 py-14 md:px-14 md:py-20 lg:py-24">
         <div className="grid grid-cols-1 gap-8 md:grid-cols-2 md:gap-14">
           <div>
             <h2

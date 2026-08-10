@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import Cropper, { Area } from "react-easy-crop";
 import { supabase } from "@/lib/supabase";
+import AccountMenu from "@/components/AccountMenu";
 
 type PortfolioImage = {
   id: string;
@@ -110,6 +111,16 @@ export default function DashboardPortfolioPage() {
   }, []);
 
   const handleFileSelect = (file: File | null) => {
+    if (file && !file.type.startsWith("image/")) {
+      alert("Please choose an image file.");
+      return;
+    }
+
+    if (file && file.size > 10 * 1024 * 1024) {
+      alert("Please choose an image smaller than 10 MB.");
+      return;
+    }
+
     setSelectedFile(file);
     setCrop({ x: 0, y: 0 });
     setZoom(1);
@@ -200,6 +211,8 @@ export default function DashboardPortfolioPage() {
   };
 
   const deletePortfolioImage = async (id: string) => {
+    if (!window.confirm("Delete this portfolio image?")) return;
+
     const { error } = await supabase
       .from("portfolio_images")
       .delete()
@@ -222,7 +235,7 @@ export default function DashboardPortfolioPage() {
           Lumina
         </Link>
 
-        <div className="w-[80px]" />
+        <AccountMenu />
       </header>
 
       <section className="px-5 py-10 md:px-10">

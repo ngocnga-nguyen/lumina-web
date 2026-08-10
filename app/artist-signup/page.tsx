@@ -95,7 +95,13 @@ export default function ArtistSignupPage() {
           This account is for beauty professionals who want to manage a public Lumina profile.
         </p>
 
-        <div className="mt-8 space-y-4">
+        <form
+  className="mt-8 space-y-4"
+  onSubmit={(e) => {
+    e.preventDefault();
+    handleSignup();
+  }}
+>
           <input
             type="text"
             placeholder="Full name"
@@ -127,15 +133,16 @@ export default function ArtistSignupPage() {
             onChange={(e) => setPassword(e.target.value)}
             className="w-full rounded-[16px] border border-neutral-200 px-4 py-4 text-[15px] outline-none"
           />
-        </div>
+
 
         <button
-          onClick={handleSignup}
+          type="submit"
           disabled={loading}
           className="mt-8 w-full rounded-full bg-black px-6 py-4 text-[15px] text-white transition hover:opacity-90 disabled:opacity-50"
         >
           {loading ? "Creating professional account..." : "Create Professional Account"}
         </button>
+        </form>
 
         <p className="mt-6 text-center text-[14px] text-neutral-500">
           Already have a professional account?{" "}

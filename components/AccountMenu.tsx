@@ -155,6 +155,13 @@ export default function AccountMenu({
               >
                 Edit Profile
               </Link>
+
+              <Link
+                href="/dashboard/settings"
+                className="block rounded-[14px] px-4 py-3 text-sm hover:bg-[#faf6f5]"
+              >
+                Settings &amp; Privacy
+              </Link>
             </>
           ) : (
             <>

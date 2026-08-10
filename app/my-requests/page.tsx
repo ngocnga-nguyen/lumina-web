@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/lib/supabase";
-import { Bell, MessageCircle, CalendarDays } from "lucide-react";
+import { Bell, MessageCircle, CalendarDays, Star } from "lucide-react";
 import ChatModal from "@/components/ChatModal";
 import AccountMenu from "@/components/AccountMenu";
 
@@ -66,6 +66,7 @@ export default function MyRequestsPage() {
   const [expandedRequestId, setExpandedRequestId] = useState<string | null>(null);
   const [highlightedRequestId, setHighlightedRequestId] = useState<string | null>(null);
   const requestRefs = useRef<Record<string, HTMLDivElement | null>>({});
+  const openChatRequestIdRef = useRef<string | null>(null);
   const [requestTab, setRequestTab] = useState<"active" | "archived">("active");
   const [updates, setUpdates] = useState<Record<string, RequestUpdate[]>>({});
   const [notifications, setNotifications] = useState<Notification[]>([]);
@@ -157,14 +158,19 @@ useEffect(() => {
 }, [requestTab]);
 
 useEffect(() => {
+  openChatRequestIdRef.current = openHistoryId;
+}, [openHistoryId]);
+
+useEffect(() => {
   let channel: ReturnType<typeof supabase.channel> | null = null;
+  let cancelled = false;
 
   const setupRealtime = async () => {
     const {
       data: { user },
     } = await supabase.auth.getUser();
 
-    if (!user) return;
+    if (!user || cancelled) return;
 
     channel = supabase
       .channel(`client-realtime-${user.id}`)
@@ -192,14 +198,27 @@ useEffect(() => {
         },
         (payload) => {
           const update = payload.new as RequestUpdate;
+          const isOpenIncomingMessage =
+            openChatRequestIdRef.current === update.request_id &&
+            update.sender_type !== "client";
+          const visibleUpdate = isOpenIncomingMessage
+            ? { ...update, is_read_by_client: true }
+            : update;
 
           setUpdates((prev) => ({
             ...prev,
             [update.request_id]: [
               ...(prev[update.request_id] || []),
-              update,
+              visibleUpdate,
             ],
           }));
+
+          if (isOpenIncomingMessage) {
+            void supabase
+              .from("request_updates")
+              .update({ is_read_by_client: true })
+              .eq("id", update.id);
+          }
         }
       )
       .on(
@@ -227,6 +246,7 @@ useEffect(() => {
   setupRealtime();
 
   return () => {
+    cancelled = true;
     if (channel) {
       supabase.removeChannel(channel);
     }
@@ -408,15 +428,19 @@ const deleteMessage = async (messageId: string) => {
 
   await loadRequests();
 };
-const hideRequest = async (id: string) => {
-  const confirmed = window.confirm("Hide this request from your list?");
+const setRequestHidden = async (id: string, hidden: boolean) => {
+  const confirmed = window.confirm(
+    hidden
+      ? "Move this request to Archived?"
+      : "Move this request back to Active?"
+  );
 
   if (!confirmed) return;
 
   const { error } = await supabase
     .from("client_requests")
     .update({
-      client_hidden: true,
+      client_hidden: hidden,
     })
     .eq("id", id);
 
@@ -466,6 +490,60 @@ setTimeout(() => {
       )
     );
   }
+
+  if (
+    notification.title === "New Message" &&
+    notification.request_id
+  ) {
+    await markMessagesRead(notification.request_id);
+    setOpenHistoryId(notification.request_id);
+    return;
+  }
+
+  if (
+    notification.title === "Appointment Completed" &&
+    notification.request_id
+  ) {
+    let artistId = requests.find(
+      (request) => request.id === notification.request_id
+    )?.artist_id;
+
+    if (!artistId) {
+      const { data } = await supabase
+        .from("client_requests")
+        .select("artist_id")
+        .eq("id", notification.request_id)
+        .maybeSingle();
+
+      artistId = data?.artist_id;
+    }
+
+    if (artistId) {
+      window.location.assign(`/artist/${artistId}?tab=reviews#leave-review`);
+    }
+  }
+};
+const clearNotifications = async () => {
+  if (!notifications.length) return;
+  if (!window.confirm("Clear all notifications?")) return;
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) return;
+
+  const { error } = await supabase
+    .from("notifications")
+    .delete()
+    .eq("user_id", user.id);
+
+  if (error) {
+    alert(error.message);
+    return;
+  }
+
+  setNotifications([]);
 };
 const markMessagesRead = async (requestId: string) => {
   setUpdates((prev) => ({
@@ -490,7 +568,9 @@ const markMessagesRead = async (requestId: string) => {
 const getUnreadCount = (requestId: string) => {
   return (updates[requestId] || []).filter(
     (update) =>
-      update.sender_type !== "client" && update.is_read_by_client === false
+      !update.is_deleted &&
+      update.sender_type !== "client" &&
+      update.is_read_by_client === false
   ).length;
 };
 const getLatestUpdate = (requestId: string) => {
@@ -525,15 +605,42 @@ const getLatestUpdate = (requestId: string) => {
       </header>
       {showNotifications && (
   <div className="absolute right-5 top-[72px] z-40 w-[320px] rounded-[22px] border border-neutral-200 bg-white p-4 shadow-xl">
-    <p className="text-[15px] font-medium">Notifications</p>
+    <div className="flex items-center justify-between gap-4">
+      <p className="text-[15px] font-medium">Notifications</p>
+      {notifications.length > 0 && (
+        <button
+          onClick={() => void clearNotifications()}
+          className="text-[12px] text-neutral-500 transition hover:text-black"
+        >
+          Clear all
+        </button>
+      )}
+    </div>
 
-    <div className="mt-4 space-y-3">
+    <div className="mt-4 max-h-[70vh] space-y-3 overflow-y-auto pr-1">
       {notifications.length === 0 ? (
         <p className="text-[14px] text-neutral-500">
           No notifications yet.
         </p>
       ) : (
-        notifications.map((notification) => (
+        notifications.map((notification) => {
+          const relatedRequest = requests.find(
+            (request) => request.id === notification.request_id
+          );
+          const senderName = relatedRequest?.artist_name || "Your artist";
+          const senderImage = relatedRequest?.artist_image_url;
+          const notificationMessage =
+            notification.title === "New Message"
+              ? `${senderName} sent you a message.`
+              : notification.title === "New Proposal"
+              ? `${senderName} sent you a proposal.`
+              : notification.title === "Proposal Updated"
+              ? `${senderName} updated your proposal.`
+              : notification.title === "Appointment Completed"
+              ? `${senderName} marked your appointment completed. You can now leave a verified review.`
+              : notification.message;
+
+          return (
           <div
   key={notification.id}
   onClick={() => openNotification(notification)}
@@ -541,20 +648,40 @@ const getLatestUpdate = (requestId: string) => {
     notification.is_read ? "bg-white" : "bg-[#faf6f5]"
   }`}
 >
-            <p className="text-[14px] font-medium">
-              {notification.title}
-            </p>
+            <div className="flex items-start gap-3">
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full bg-neutral-100 text-[12px] font-medium text-neutral-600">
+                {senderImage ? (
+                  <img
+                    src={senderImage}
+                    alt={senderName}
+                    className="h-full w-full object-cover"
+                  />
+                ) : (
+                  senderName.charAt(0).toUpperCase()
+                )}
+              </div>
 
-            {notification.message && (
-              <p className="mt-1 text-[13px] text-neutral-600">
-                {notification.message}
-              </p>
-            )}
-          <p className="mt-2 text-[11px] text-neutral-400">
-  {new Date(notification.created_at).toLocaleDateString()}
-</p>  
+              <div className="min-w-0">
+                <p className="truncate text-[13px] font-medium text-neutral-800">
+                  {senderName}
+                </p>
+                <p className="text-[14px] font-medium">
+                  {notification.title}
+                </p>
+
+                {notificationMessage && (
+                  <p className="mt-1 text-[13px] text-neutral-600">
+                    {notificationMessage}
+                  </p>
+                )}
+                <p className="mt-2 text-[11px] text-neutral-400">
+                  {new Date(notification.created_at).toLocaleDateString()}
+                </p>
+              </div>
+            </div>
           </div>
-        ))
+          );
+        })
       )}
     </div>
   </div>
@@ -684,14 +811,18 @@ requests.map((request) => {
 
                       <span
   className={`rounded-full px-3 py-1 text-[13px] ${
-    request.status === "needs_changes"
+    request.booking_status === "completed"
+      ? "bg-neutral-100 text-neutral-500"
+      : request.status === "needs_changes"
       ? "bg-[#f7e8e7] text-[#8f5d5a]"
       : request.status === "accepted"
       ? "bg-[#e9f6ec] text-[#3b6b4a]"
       : "bg-neutral-100 text-neutral-600"
   }`}
 >
-  {request.client_status === "confirmed"
+  {request.booking_status === "completed"
+  ? "Service completed"
+  : request.client_status === "confirmed"
   ? "Accepted"
   : request.status === "accepted" || request.status === "needs_changes"
   ? "Artist replied"
@@ -717,6 +848,17 @@ requests.map((request) => {
                   </div>
 
   <div className="flex items-center gap-3">
+  {request.booking_status === "completed" && (
+    <Link
+      href={`/artist/${request.artist_id}?tab=reviews#leave-review`}
+      onClick={(e) => e.stopPropagation()}
+      className="flex h-10 w-10 items-center justify-center rounded-full bg-[#fff0f5] text-[#d86f91] shadow-sm transition hover:-translate-y-0.5 hover:bg-[#ffe4ee] hover:shadow-md"
+      aria-label="Leave a review"
+      title="Leave a review"
+    >
+      <Star size={18} fill="currentColor" strokeWidth={1.5} />
+    </Link>
+  )}
   <button
   onClick={async (e) => {
   e.stopPropagation();
@@ -735,18 +877,15 @@ className="relative flex h-10 w-10 items-center justify-center rounded-full bord
 )}
 </button>
 
-{(request.client_status === "confirmed" ||
-  request.client_status === "declined") && (
   <button
     onClick={(e) => {
       e.stopPropagation();
-      hideRequest(request.id);
+      setRequestHidden(request.id, requestTab === "active");
     }}
     className="rounded-full border border-neutral-200 px-3 py-1 text-[12px] text-neutral-500 transition hover:text-black"
   >
-    Hide
+    {requestTab === "active" ? "Hide" : "Unhide"}
   </button>
-)}
   <span className="text-[15px] text-neutral-400">
     {expandedRequestId === request.id ? "⌃" : "⌄"}
   </span>
@@ -764,7 +903,7 @@ className="relative flex h-10 w-10 items-center justify-center rounded-full bord
                 {(proposedDate ||
                 proposedTime ||
                 proposedPrice) && ( 
-<div className="mt-6 rounded-[24px] border border-[#eadfdb] bg-[#fffaf8] p-5 shadow-sm">                    
+<div className="mt-6 rounded-[24px] border border-neutral-200 bg-[#fcfbfa] p-5 shadow-[0_10px_30px_rgba(30,25,20,0.04)]">
     <div>
   <p className="text-[12px] uppercase tracking-[0.16em] text-neutral-400">
     Artist Proposal
@@ -772,14 +911,14 @@ className="relative flex h-10 w-10 items-center justify-center rounded-full bord
   
 </div>
 
-<div className="mt-4 rounded-[20px] border border-[#f3e8e4] bg-white px-6 py-5">
+<div className="mt-4 rounded-[20px] border border-neutral-200 bg-white px-6 py-5 shadow-[0_6px_18px_rgba(30,25,20,0.025)]">
 <div className="flex items-center justify-between">
     
 <div className="flex items-center gap-3">
       <CalendarDays
     size={22}
     strokeWidth={1.7}
-    className="text-[#b78b80]"
+    className="text-neutral-500"
   />
 
   <div>
@@ -823,9 +962,10 @@ style={{ fontFamily: "Georgia, Times New Roman, serif" }}
 </div>
 
                     {(request.status === "accepted" || request.status === "needs_changes") &&
+request.booking_status !== "completed" &&
 request.client_status !== "confirmed" &&
 request.client_status !== "declined" && (
-<div className="mt-5 flex flex-wrap items-center gap-4 border-t border-[#eadfdb] pt-5">                      
+<div className="mt-5 flex flex-wrap items-center gap-4 border-t border-neutral-200 pt-5">
     <button
   onClick={() => {
   if (request.social_link) {
@@ -838,7 +978,6 @@ request.client_status !== "declined" && (
 
 className="group rounded-full bg-black px-6 py-2.5 text-[13px] font-medium text-white shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md">
 Continue to Booking <span className="ml-1 inline-block transition-transform duration-200 group-hover:translate-x-1">→</span></button>
-
 
                       <button
   onClick={() => {
@@ -854,6 +993,27 @@ Continue to Booking <span className="ml-1 inline-block transition-transform dura
   Not Interested
 </button>
                     </div>
+)}
+{request.booking_status === "completed" && (
+  <div className="mt-5 flex flex-wrap items-center justify-between gap-4 border-t border-neutral-200 pt-5">
+    <div>
+      <p className="text-[13px] font-medium text-neutral-800">
+        Your service is complete
+      </p>
+      <p className="mt-1 text-[12px] text-neutral-500">
+        Share your experience to help other Lumina clients.
+      </p>
+    </div>
+
+    <Link
+      href={`/artist/${request.artist_id}?tab=reviews#leave-review`}
+      className="group flex items-center gap-2 rounded-full bg-black px-6 py-2.5 text-[13px] font-medium text-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
+    >
+      <Star size={16} fill="currentColor" strokeWidth={1.5} />
+      Leave a review
+      <span className="transition-transform group-hover:translate-x-1">→</span>
+    </Link>
+  </div>
 )}
                   </div>
                                 )}

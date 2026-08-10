@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import ProposalBubble from "./ProposalBubble";
 import MessageBubble from "./MessageBubble";
 
@@ -37,7 +37,7 @@ type ChatModalProps = {
   onDraftChange: (value: string) => void;
   selectedImage: File | null;
 onImageChange: (file: File | null) => void;
-  onSend: () => void;
+  onSend: () => void | Promise<void>;
   onClose: () => void;
   onAccept: () => void;
   onDecline: () => void;
@@ -61,7 +61,24 @@ onImageChange,
   onRequestDifferentTime,
 currentUserType = "client",
 }: ChatModalProps) {
-  const [activeMessageId, setActiveMessageId] = useState<string | null>(null);  
+  const [activeMessageId, setActiveMessageId] = useState<string | null>(null);
+  const [isSending, setIsSending] = useState(false);
+  const messageInputRef = useRef<HTMLTextAreaElement | null>(null);
+  const canSend = Boolean(draft.trim() || selectedImage) && !isSending;
+
+  const handleSend = async () => {
+    if (!canSend) return;
+
+    setIsSending(true);
+
+    try {
+      await onSend();
+    } finally {
+      setIsSending(false);
+      requestAnimationFrame(() => messageInputRef.current?.focus());
+    }
+  };
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 px-4">
       <div className="flex h-[84vh] w-full max-w-[640px] flex-col overflow-hidden rounded-[32px] bg-white shadow-2xl">
@@ -248,19 +265,42 @@ currentUserType = "client",
     }}
   />
 </label>
-            <textarea
-              value={draft}
-              onChange={(e) => onDraftChange(e.target.value)}
-              placeholder="Type a message..."
-              rows={1}
-              className="min-h-[44px] flex-1 resize-none rounded-[20px] border border-neutral-200 px-4 py-3 text-[14px] outline-none focus:border-black"
-            />
+            <div className="flex-1">
+              <textarea
+                ref={messageInputRef}
+                value={draft}
+                onChange={(e) => onDraftChange(e.target.value)}
+                onKeyDown={(e) => {
+                  const isTouchDevice = window.matchMedia(
+                    "(pointer: coarse)"
+                  ).matches;
+
+                  if (
+                    e.key === "Enter" &&
+                    !e.shiftKey &&
+                    !e.nativeEvent.isComposing &&
+                    !isTouchDevice
+                  ) {
+                    e.preventDefault();
+                    void handleSend();
+                  }
+                }}
+                placeholder="Type a message..."
+                rows={1}
+                autoFocus
+                className="min-h-[44px] w-full resize-none rounded-[20px] border border-neutral-200 px-4 py-3 text-[14px] outline-none focus:border-black"
+              />
+              <p className="hidden pl-2 pt-1 text-[11px] text-neutral-400 md:block">
+                Enter to send · Shift + Enter for a new line
+              </p>
+            </div>
 
             <button
-              onClick={onSend}
-              className="rounded-full bg-black px-5 py-3 text-[13px] text-white transition hover:bg-neutral-800"
+              onClick={() => void handleSend()}
+              disabled={!canSend}
+              className="rounded-full bg-black px-5 py-3 text-[13px] text-white transition hover:bg-neutral-800 disabled:cursor-not-allowed disabled:bg-neutral-300"
             >
-              Send
+              {isSending ? "Sending…" : "Send"}
             </button>
           </div>
         </div>

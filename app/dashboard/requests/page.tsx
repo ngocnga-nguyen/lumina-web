@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { Bell, MessageCircle, Sparkles, CalendarDays, Clock } from "lucide-react";
 import ChatModal from "@/components/ChatModal";
+import AccountMenu from "@/components/AccountMenu";
 
 type ClientRequest = {
   id: string;
@@ -27,6 +28,7 @@ booking_status: string | null;
 artist_hidden: boolean | null;
 client_id: string;
 client_response_note: string | null;
+client_image_url?: string | null;
 };
 type RequestUpdate = {
   id: string;
@@ -72,6 +74,8 @@ export default function DashboardRequestsPage() {
   const [showNotifications, setShowNotifications] = useState(false);
   const [highlightedRequestId, setHighlightedRequestId] = useState<string | null>(null);
   const requestRefs = useRef<Record<string, HTMLDivElement | null>>({});
+  const openChatRequestIdRef = useRef<string | null>(null);
+  const requestTabRef = useRef<"active" | "archived">("active");
 
   const fetchRequests = async () => {
     const {
@@ -99,7 +103,29 @@ setNotifications(notificationData || []);
       return;
     }
 
-    setRequests(data || []);
+    const clientIds = [
+      ...new Set((data || []).map((request) => request.client_id)),
+    ];
+    const { data: clientProfiles } = clientIds.length
+      ? await supabase
+          .from("profiles")
+          .select("id, full_name, profile_image_url")
+          .in("id", clientIds)
+      : { data: [] };
+    const clientProfileMap = new Map(
+      (clientProfiles || []).map((profile) => [profile.id, profile])
+    );
+    const requestsWithProfiles = (data || []).map((request) => {
+      const profile = clientProfileMap.get(request.client_id);
+
+      return {
+        ...request,
+        client_name: profile?.full_name || request.client_name,
+        client_image_url: profile?.profile_image_url || null,
+      };
+    });
+
+    setRequests(requestsWithProfiles);
     const { data: updateData } = await supabase
   .from("request_updates")
   .select("*")
@@ -122,7 +148,7 @@ setUpdates(updateMap);
     const timeMap: Record<string, string> = {};
     const priceMap: Record<string, string> = {};
 
-    (data || []).forEach((request) => {
+    requestsWithProfiles.forEach((request) => {
       responseMap[request.id] = request.artist_response || "";
       dateMap[request.id] = request.proposed_date || "";
       timeMap[request.id] = request.proposed_time || "";
@@ -139,14 +165,21 @@ setUpdates(updateMap);
   fetchRequests();
 }, [requestTab]);
 useEffect(() => {
+  openChatRequestIdRef.current = chatRequest?.id || null;
+}, [chatRequest]);
+useEffect(() => {
+  requestTabRef.current = requestTab;
+}, [requestTab]);
+useEffect(() => {
   let channel: ReturnType<typeof supabase.channel> | null = null;
+  let cancelled = false;
 
   const setupRealtime = async () => {
     const {
       data: { user },
     } = await supabase.auth.getUser();
 
-    if (!user) return;
+    if (!user || cancelled) return;
 
     channel = supabase
       .channel(`artist-dashboard-${user.id}`)
@@ -159,14 +192,27 @@ useEffect(() => {
         },
         (payload) => {
           const update = payload.new as RequestUpdate;
+          const isOpenIncomingMessage =
+            openChatRequestIdRef.current === update.request_id &&
+            update.sender_type !== "artist";
+          const visibleUpdate = isOpenIncomingMessage
+            ? { ...update, is_read_by_artist: true }
+            : update;
 
           setUpdates((prev) => ({
             ...prev,
             [update.request_id]: [
               ...(prev[update.request_id] || []),
-              update,
+              visibleUpdate,
             ],
           }));
+
+          if (isOpenIncomingMessage) {
+            void supabase
+              .from("request_updates")
+              .update({ is_read_by_artist: true })
+              .eq("id", update.id);
+          }
         }
       )
       .on(
@@ -182,6 +228,28 @@ useEffect(() => {
             payload.new as Notification,
             ...prev,
           ]);
+        }
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "client_requests",
+          filter: `artist_id=eq.${user.id}`,
+        },
+        (payload) => {
+          const newRequest = payload.new as ClientRequest;
+
+          if (requestTabRef.current !== "active" || newRequest.artist_hidden) {
+            return;
+          }
+
+          setRequests((prev) =>
+            prev.some((request) => request.id === newRequest.id)
+              ? prev
+              : [newRequest, ...prev]
+          );
         }
       )
       .on(
@@ -209,6 +277,7 @@ useEffect(() => {
   setupRealtime();
 
   return () => {
+    cancelled = true;
     if (channel) {
       supabase.removeChannel(channel);
     }
@@ -216,6 +285,9 @@ useEffect(() => {
 }, []);
   const updateRequest = async (id: string, status: string) => {
   setSavingId(id);
+  const existingRequest = requests.find((request) => request.id === id);
+  const isProposalRevision =
+    status === "accepted" && existingRequest?.status === "accepted";
 
   const { error } = await supabase
     .from("client_requests")
@@ -257,8 +329,10 @@ useEffect(() => {
         .insert({
           user_id: request.client_id,
           request_id: id,
-          title: "New Proposal",
-          message: "An artist responded to your request.",
+          title: isProposalRevision ? "Proposal Updated" : "New Proposal",
+          message: isProposalRevision
+            ? "Your artist updated the appointment proposal."
+            : "An artist responded to your request.",
         });
 
       if (notificationError) {
@@ -270,6 +344,69 @@ useEffect(() => {
   await fetchRequests();
   alert("Request updated ✨");
 };
+const markRequestCompleted = async (
+  requestId: string,
+  clientId: string
+) => {
+  const confirmed = window.confirm(
+    "Mark this appointment as completed? The client will then be able to leave a verified review."
+  );
+
+  if (!confirmed) return;
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    alert("Please log in again.");
+    return;
+  }
+
+  const { data: completedRequest, error } = await supabase
+    .from("client_requests")
+    .update({
+      booking_status: "completed",
+      completed_at: new Date().toISOString(),
+      completed_by: user.id,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", requestId)
+    .eq("artist_id", user.id)
+    .eq("status", "accepted")
+    .eq("client_status", "confirmed")
+    .select("id")
+    .maybeSingle();
+
+  if (error) {
+    alert(error.message);
+    return;
+  }
+
+  if (!completedRequest) {
+    alert(
+      "This appointment could not be completed. Make sure the client confirmed it first."
+    );
+    await fetchRequests();
+    return;
+  }
+
+  const { error: notificationError } = await supabase
+    .from("notifications")
+    .insert({
+      user_id: clientId,
+      request_id: requestId,
+      title: "Appointment Completed",
+      message:
+        "Your artist marked this appointment as completed. You can now leave a verified review.",
+    });
+
+  if (notificationError) {
+    console.log(notificationError);
+  }
+
+  await fetchRequests();
+};
 
   const statusLabel = (status: string | null) => {
     if (!status || status === "new") return "New";
@@ -279,16 +416,11 @@ useEffect(() => {
     return status;
   };
 
-  const isFinishedRequest = (request: ClientRequest) => {
-  return (
-    request.client_status === "confirmed" ||
-    request.client_status === "declined"
-  );
-};
-
-const hideRequest = async (id: string) => {
+const setRequestHidden = async (id: string, hidden: boolean) => {
   const confirmed = window.confirm(
-    "Hide this request from your dashboard?"
+    hidden
+      ? "Move this request to Archived?"
+      : "Move this request back to Active?"
   );
 
   if (!confirmed) return;
@@ -296,7 +428,7 @@ const hideRequest = async (id: string) => {
   const { error } = await supabase
     .from("client_requests")
     .update({
-      artist_hidden: true,
+      artist_hidden: hidden,
     })
     .eq("id", id);
 
@@ -340,6 +472,44 @@ const openNotification = async (notification: Notification) => {
       )
     );
   }
+
+  if (
+    notification.title === "New Message" &&
+    notification.request_id
+  ) {
+    const request = requests.find(
+      (item) => item.id === notification.request_id
+    );
+
+    if (request) {
+      await markMessagesRead(request.id);
+      setChatRequest(request);
+      setDraftMessage("");
+    }
+  }
+};
+
+const clearNotifications = async () => {
+  if (!notifications.length) return;
+  if (!window.confirm("Clear all notifications?")) return;
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) return;
+
+  const { error } = await supabase
+    .from("notifications")
+    .delete()
+    .eq("user_id", user.id);
+
+  if (error) {
+    alert(error.message);
+    return;
+  }
+
+  setNotifications([]);
 };
 
   const markMessagesRead = async (requestId: string) => {
@@ -422,6 +592,7 @@ const deleteMessage = async (messageId: string) => {
           Lumina
         </Link>
 
+<div className="flex items-center gap-2">
 <button
   onClick={() => setShowNotifications(!showNotifications)}
   className="relative flex h-9 w-9 items-center justify-center rounded-full border border-neutral-200 bg-white transition hover:bg-[#faf6f5]"
@@ -435,18 +606,47 @@ const deleteMessage = async (messageId: string) => {
     </span>
   )}
 </button>
+<AccountMenu />
+</div>
       </header>
 {showNotifications && (
   <div className="absolute right-5 top-[72px] z-40 w-[320px] rounded-[22px] border border-neutral-200 bg-white p-4 shadow-xl">
-    <p className="text-[15px] font-medium">Notifications</p>
+    <div className="flex items-center justify-between gap-4">
+      <p className="text-[15px] font-medium">Notifications</p>
+      {notifications.length > 0 && (
+        <button
+          onClick={() => void clearNotifications()}
+          className="text-[12px] text-neutral-500 transition hover:text-black"
+        >
+          Clear all
+        </button>
+      )}
+    </div>
 
-    <div className="mt-4 space-y-3">
+    <div className="mt-4 max-h-[70vh] space-y-3 overflow-y-auto pr-1">
       {notifications.length === 0 ? (
         <p className="text-[14px] text-neutral-500">
           No notifications yet.
         </p>
       ) : (
-        notifications.map((notification) => (
+        notifications.map((notification) => {
+          const relatedRequest = requests.find(
+            (request) => request.id === notification.request_id
+          );
+          const senderName = relatedRequest?.client_name || "Your client";
+          const senderImage = relatedRequest?.client_image_url;
+          const notificationMessage =
+            notification.title === "New Message"
+              ? `${senderName} sent you a message.`
+              : notification.title === "Appointment Confirmed"
+              ? `${senderName} confirmed the appointment.`
+              : notification.title === "Proposal Declined"
+              ? `${senderName} declined the proposal.`
+              : notification.title === "Client Requested a New Time"
+              ? `${senderName} requested a different time.`
+              : notification.message;
+
+          return (
           <div
             key={notification.id}
             onClick={() => openNotification(notification)}
@@ -454,21 +654,41 @@ const deleteMessage = async (messageId: string) => {
               notification.is_read ? "bg-white" : "bg-[#faf6f5]"
             }`}
           >
-            <p className="text-[14px] font-medium">
-              {notification.title}
-            </p>
+            <div className="flex items-start gap-3">
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full bg-neutral-100 text-[12px] font-medium text-neutral-600">
+                {senderImage ? (
+                  <img
+                    src={senderImage}
+                    alt={senderName}
+                    className="h-full w-full object-cover"
+                  />
+                ) : (
+                  senderName.charAt(0).toUpperCase()
+                )}
+              </div>
 
-            {notification.message && (
-              <p className="mt-1 text-[13px] text-neutral-600">
-                {notification.message}
-              </p>
-            )}
+              <div className="min-w-0">
+                <p className="truncate text-[13px] font-medium text-neutral-800">
+                  {senderName}
+                </p>
+                <p className="text-[14px] font-medium">
+                  {notification.title}
+                </p>
 
-            <p className="mt-2 text-[11px] text-neutral-400">
-              {new Date(notification.created_at).toLocaleDateString()}
-            </p>
+                {notificationMessage && (
+                  <p className="mt-1 text-[13px] text-neutral-600">
+                    {notificationMessage}
+                  </p>
+                )}
+
+                <p className="mt-2 text-[11px] text-neutral-400">
+                  {new Date(notification.created_at).toLocaleDateString()}
+                </p>
+              </div>
+            </div>
           </div>
-        ))
+          );
+        })
       )}
     </div>
   </div>
@@ -548,7 +768,9 @@ const deleteMessage = async (messageId: string) => {
 
                       <span
   className={`rounded-full px-3 py-1 text-[12px] ${
-    request.status === "accepted"
+    request.booking_status === "completed"
+      ? "bg-neutral-100 text-neutral-500"
+      : request.status === "accepted"
       ? "bg-[#e9f6ec] text-[#3b6b4a]"
       : request.status === "needs_changes"
       ? "bg-[#f7e8e7] text-[#8f5d5a]"
@@ -557,7 +779,9 @@ const deleteMessage = async (messageId: string) => {
       : "bg-neutral-100 text-neutral-600"
   }`}
 >
-  {statusLabel(request.status)}
+  {request.booking_status === "completed"
+    ? "Completed"
+    : statusLabel(request.status)}
 </span>
 
 {request.client_status && request.client_status !== "pending" && (
@@ -603,18 +827,27 @@ const deleteMessage = async (messageId: string) => {
   )}
 </button>
 )}
-
-{isFinishedRequest(request) && (
+{request.status === "accepted" &&
+  request.booking_status !== "completed" && (
+    <button
+      onClick={(e) => {
+        e.stopPropagation();
+        markRequestCompleted(request.id, request.client_id);
+      }}
+      className="rounded-full bg-black px-4 py-2 text-[12px] font-medium text-white transition hover:opacity-85"
+    >
+      Mark completed
+    </button>
+  )}
   <button
     onClick={(e) => {
       e.stopPropagation();
-      hideRequest(request.id);
+      setRequestHidden(request.id, requestTab === "active");
     }}
     className="rounded-full border border-neutral-200 px-3 py-1 text-[12px] text-neutral-500 transition hover:text-black"
   >
-    Hide
+    {requestTab === "active" ? "Hide" : "Unhide"}
   </button>
-)}
 
   <span className="text-[15px] text-neutral-400">
     {expandedRequestId === request.id ? "⌃" : "⌄"}
@@ -676,11 +909,12 @@ const deleteMessage = async (messageId: string) => {
                 )}
 
                 <div className="mt-6 rounded-[22px] bg-[#fbf7f6] p-5">
-                  {isFinishedRequest(request) ? (
+                  {(request.booking_status === "completed" ||
+                    request.client_status === "declined") ? (
                      <>
  <div className="flex items-center justify-between">
   <p className="text-[13px] uppercase tracking-[0.14em] text-neutral-400">
-    Confirmed Appointment
+    Appointment Details
   </p>
 
   
@@ -810,7 +1044,11 @@ const deleteMessage = async (messageId: string) => {
     disabled={savingId === request.id}
     className="rounded-full bg-black px-7 py-3 text-[13px] font-medium text-white shadow-sm transition hover:bg-neutral-900 disabled:opacity-50"
   >
-    Send Proposal
+    {savingId === request.id
+      ? "Saving…"
+      : request.status === "accepted"
+      ? "Update Proposal"
+      : "Send Proposal"}
   </button>
 
   <button
@@ -838,7 +1076,7 @@ const deleteMessage = async (messageId: string) => {
     request={{
       id: chatRequest.id,
       artist_name: chatRequest.client_name,
-      artist_image_url: null,
+      artist_image_url: chatRequest.client_image_url || null,
       image_url: null,
       artist_category: "Client",
       status: chatRequest.status,

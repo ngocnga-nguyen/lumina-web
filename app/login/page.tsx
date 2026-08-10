@@ -34,6 +34,30 @@ useEffect(() => {
   const [password, setPassword] = useState("");
 
   const [loading, setLoading] = useState(false);
+  const [resetSending, setResetSending] = useState(false);
+  const [resetSent, setResetSent] = useState(false);
+
+  const handleForgotPassword = async () => {
+    const cleanEmail = email.trim();
+
+    if (!cleanEmail) {
+      alert("Enter your email above first.");
+      return;
+    }
+
+    setResetSending(true);
+    const { error } = await supabase.auth.resetPasswordForEmail(cleanEmail, {
+      redirectTo: `${window.location.origin}/account/reset-password`,
+    });
+    setResetSending(false);
+
+    if (error) {
+      alert(error.message);
+      return;
+    }
+
+    setResetSent(true);
+  };
 
   const handleLogin = async () => {
     if (!email || !password) {
@@ -98,7 +122,13 @@ useEffect(() => {
           Login to continue browsing, saving artists, or managing your professional profile.
         </p>
 
-        <div className="mt-8 space-y-4">
+        <form
+  className="mt-8 space-y-4"
+  onSubmit={(e) => {
+    e.preventDefault();
+    handleLogin();
+  }}
+>
           <input
             type="email"
             placeholder="Email"
@@ -114,15 +144,32 @@ useEffect(() => {
             onChange={(e) => setPassword(e.target.value)}
             className="w-full rounded-[16px] border border-neutral-200 px-4 py-4 text-[15px] outline-none"
           />
-        </div>
+
+          <div className="text-right">
+            <button
+              type="button"
+              onClick={handleForgotPassword}
+              disabled={resetSending}
+              className="text-[13px] text-neutral-600 underline underline-offset-4 transition hover:text-black disabled:opacity-50"
+            >
+              {resetSending ? "Sending reset link…" : "Forgot password?"}
+            </button>
+          </div>
+
+          {resetSent && (
+            <p className="rounded-[14px] bg-[#faf6f5] px-4 py-3 text-[13px] leading-[1.5] text-neutral-700">
+              Check your email for a secure password reset link.
+            </p>
+          )}
 
         <button
-          onClick={handleLogin}
+          type="submit"
           disabled={loading}
           className="mt-8 w-full rounded-full bg-black px-6 py-4 text-[15px] text-white transition hover:opacity-90 disabled:opacity-50"
         >
           {loading ? "Logging in..." : "Login"}
         </button>
+        </form>
 
         <p className="mt-6 text-center text-[14px] text-neutral-500">
           Don’t have an account?{" "}

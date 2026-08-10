@@ -116,12 +116,16 @@ export default function SaveArtistButton({
             : `Save ${artistName}`
         }
         aria-pressed={isSaved}
-        className={`flex h-10 w-10 items-center justify-center rounded-full border border-white/60 bg-white/90 shadow-sm backdrop-blur transition hover:scale-105 disabled:opacity-50 ${className}`}
+        className={`flex h-10 w-10 items-center justify-center rounded-full border shadow-sm backdrop-blur transition hover:scale-105 disabled:opacity-50 ${
+          isSaved
+            ? "border-neutral-200 bg-[#faf9f8]/95"
+            : "border-white/60 bg-white/90"
+        } ${className}`}
       >
         <Heart
           size={19}
           strokeWidth={1.8}
-          className={isSaved ? "fill-[#a46f7d] text-[#a46f7d]" : "text-neutral-700"}
+          className={isSaved ? "fill-[#9a7f86] text-[#9a7f86]" : "text-neutral-700"}
         />
       </button>
 

@@ -41,10 +41,17 @@ type Service = {
 
 type Review = {
   id: string;
+  artist_id: string;
+  client_id: string;
+  request_id: string;
+
   reviewer_name: string;
   rating: number;
   comment: string | null;
   created_at: string;
+
+  artist_response: string | null;
+  artist_response_at: string | null;
 };
 
 export default function ArtistProfile() {
@@ -58,16 +65,39 @@ export default function ArtistProfile() {
     const [toast, setToast] = useState("");
   const [services, setServices] = useState<Service[]>([]);
   const [reviews, setReviews] = useState<Review[]>([]);
+  const [replyingToReviewId, setReplyingToReviewId] = useState<string | null>(
+  null
+);
+const [artistResponseDraft, setArtistResponseDraft] = useState("");
+const [savingArtistResponse, setSavingArtistResponse] = useState(false);
+
+  const [eligibleRequest, setEligibleRequest] = useState<any>(null);
+const [hasReviewed, setHasReviewed] = useState(false);
+const [averageRating, setAverageRating] = useState(0);
+const formatReviewDate = (date: string) =>
+  new Date(date).toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+
   const [user, setUser] = useState<any>(null);
 const [clientProfile, setClientProfile] = useState<any>(null);
+const [accountArtistProfile, setAccountArtistProfile] = useState<any>(null);
 const [accountMenuOpen, setAccountMenuOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<
     "service" | "portfolio" | "reviews"
-  >("service");
+  >(() =>
+    typeof window !== "undefined" &&
+    new URLSearchParams(window.location.search).get("tab") === "reviews"
+      ? "reviews"
+      : "service"
+  );
 
   const [openRequest, setOpenRequest] = useState(false);
   const [requestLoading, setRequestLoading] = useState(false);
   const accountName =
+  accountArtistProfile?.name ||
   clientProfile?.full_name ||
   user?.user_metadata?.full_name ||
   user?.email ||
@@ -76,11 +106,11 @@ const [accountMenuOpen, setAccountMenuOpen] = useState(false);
 const accountInitial = accountName.charAt(0).toUpperCase();
 
 const accountImage =
+  accountArtistProfile?.profile_image_url ||
   clientProfile?.profile_image_url ||
   user?.user_metadata?.avatar_url ||
   null;
   const [requestForm, setRequestForm] = useState({
-    client_name: "",
     client_contact: "",
     service_requested: "",
     preferred_date: "",
@@ -89,7 +119,6 @@ const accountImage =
   });
 
   const [reviewForm, setReviewForm] = useState({
-    reviewer_name: "",
     rating: 5,
     comment: "",
   });
@@ -107,6 +136,11 @@ useEffect(() => {
       return;
     }
 
+    setRequestForm((currentForm) => ({
+      ...currentForm,
+      client_contact: currentForm.client_contact || currentUser.email || "",
+    }));
+
     const { data: profileData, error } = await supabase
       .from("profiles")
       .select("full_name, profile_image_url")
@@ -119,6 +153,14 @@ useEffect(() => {
     }
 
     setClientProfile(profileData);
+
+    const { data: accountArtistData } = await supabase
+      .from("artists")
+      .select("name, category, profile_image_url")
+      .eq("id", currentUser.id)
+      .maybeSingle();
+
+    setAccountArtistProfile(accountArtistData);
   };
 
   loadAccount();
@@ -163,16 +205,74 @@ useEffect(() => {
         .order("created_at", { ascending: false });
 
       setReviews(reviewData || []);
+      if (user?.id) {
+  const { data: completedRequests, error: completedRequestsError } =
+    await supabase
+      .from("client_requests")
+      .select("id, artist_id, client_id, booking_status, completed_at")
+      .eq("artist_id", artistId)
+      .eq("client_id", user.id)
+      .eq("booking_status", "completed")
+      .order("completed_at", { ascending: false });
+
+  if (completedRequestsError) {
+    console.log(completedRequestsError);
+  }
+
+  const reviewedRequestIds = new Set(
+    (reviewData || [])
+      .filter((review) => review.client_id === user.id)
+      .map((review) => review.request_id)
+  );
+
+  const nextEligibleRequest =
+    completedRequests?.find(
+      (request) => !reviewedRequestIds.has(request.id)
+    ) || null;
+
+  setEligibleRequest(nextEligibleRequest);
+  setHasReviewed(
+    Boolean(completedRequests?.length) && !nextEligibleRequest
+  );
+} else {
+  setEligibleRequest(null);
+  setHasReviewed(false);
+}
+
+const ratings = (reviewData || []).map((review) => review.rating);
+
+const nextAverageRating =
+  ratings.length > 0
+    ? ratings.reduce((total, rating) => total + rating, 0) /
+      ratings.length
+    : 0;
+
+setAverageRating(nextAverageRating);
     };
 
     if (artistId) fetchArtistData();
-  }, [artistId]);
+  }, [artistId, user?.id]);
+
+  useEffect(() => {
+    if (
+      activeTab === "reviews" &&
+      eligibleRequest &&
+      window.location.hash === "#leave-review"
+    ) {
+      requestAnimationFrame(() => {
+        document.getElementById("leave-review")?.scrollIntoView({
+          behavior: "smooth",
+          block: "center",
+        });
+      });
+    }
+  }, [activeTab, eligibleRequest]);
 
   const handleRequestSubmit = async () => {
     if (!artist) return;
 
-    if (!requestForm.client_name || !requestForm.client_contact) {
-      alert("Please enter your name and contact info.");
+    if (!requestForm.client_contact) {
+      alert("Please enter your contact info.");
       return;
     }
 
@@ -186,8 +286,20 @@ if (!user) {
   alert("Please log in or create a client account before sending a request.");
   return;
 }
-    const { error } = await supabase.from("client_requests").insert([
-      {
+    const clientName =
+      clientProfile?.full_name ||
+      user.user_metadata?.full_name ||
+      user.email;
+
+    if (!clientName) {
+      setRequestLoading(false);
+      alert("Please add your name in Account Settings before sending a request.");
+      return;
+    }
+    const { data: insertedRequest, error } = await supabase
+      .from("client_requests")
+      .insert([
+        {
         artist_id: artist.id,
         artist_name: artist.name,
         artist_image_url: artist.profile_image_url || null,
@@ -195,7 +307,7 @@ if (!user) {
         artist_category: artist.category || null,
 
         client_id: user.id,
-        client_name: requestForm.client_name,
+        client_name: clientName,
         client_contact: requestForm.client_contact,
         service_requested: requestForm.service_requested,
         preferred_date: requestForm.preferred_date || null,
@@ -206,13 +318,28 @@ if (!user) {
         booking_status: "pending",
         artist_hidden: false,
         client_hidden: false,
-      },
-    ]);
+        },
+      ])
+      .select("id")
+      .single();
 
     if (error) {
       setRequestLoading(false);
       alert(error.message);
       return;
+    }
+
+    const { error: notificationError } = await supabase
+      .from("notifications")
+      .insert({
+        user_id: artist.id,
+        request_id: insertedRequest.id,
+        title: "New Request",
+        message: `${clientName} sent you a service request.`,
+      });
+
+    if (notificationError) {
+      console.log("New request notification error:", notificationError);
     }
 
     if (artist.email) {
@@ -224,7 +351,7 @@ if (!user) {
         body: JSON.stringify({
           artistEmail: artist.email,
           artistName: artist.name,
-          clientName: requestForm.client_name,
+          clientName,
           clientContact: requestForm.client_contact,
           service: requestForm.service_requested,
           date: requestForm.preferred_date,
@@ -238,8 +365,7 @@ if (!user) {
     setOpenRequest(false);
 
     setRequestForm({
-      client_name: "",
-      client_contact: "",
+      client_contact: user.email || "",
       service_requested: "",
       preferred_date: "",
       preferred_time: "",
@@ -249,11 +375,145 @@ if (!user) {
     alert("Request sent ✨");
   };
 
+  const saveArtistResponse = async (review: Review) => {
+  const response = artistResponseDraft.trim();
+
+  if (!user || user.id !== review.artist_id) {
+    alert("Only this professional can respond to the review.");
+    return;
+  }
+
+  if (!response) {
+    alert("Please write a response first.");
+    return;
+  }
+
+  if (response.length > 2000) {
+    alert("Your response must be 2,000 characters or fewer.");
+    return;
+  }
+
+  setSavingArtistResponse(true);
+
+  const { data, error } = await supabase
+    .from("reviews")
+    .update({
+      artist_response: response,
+    })
+    .eq("id", review.id)
+    .eq("artist_id", user.id)
+    .select("*")
+    .single();
+
+  setSavingArtistResponse(false);
+
+  if (error) {
+  console.error("Artist response error:", error);
+
+  if (error.code === "42501") {
+    alert(
+      "You don't have permission to respond to this review. Please make sure you are signed in as the profile owner."
+    );
+    return;
+  }
+
+  alert("We couldn't save your response. Please try again.");
+  return;
+}
+
+  setReviews((currentReviews) =>
+    currentReviews.map((currentReview) =>
+      currentReview.id === review.id ? data : currentReview
+    )
+  );
+
+  setReplyingToReviewId(null);
+  setArtistResponseDraft("");
+};
+
+const removeArtistResponse = async (review: Review) => {
+  if (!user || user.id !== review.artist_id) {
+    alert("Only this professional can remove the response.");
+    return;
+  }
+
+  const confirmed = window.confirm(
+    "Remove your public response from this review?"
+  );
+
+  if (!confirmed) return;
+
+  setSavingArtistResponse(true);
+
+  const { data, error } = await supabase
+    .from("reviews")
+    .update({
+      artist_response: null,
+    })
+    .eq("id", review.id)
+    .eq("artist_id", user.id)
+    .select("*")
+    .single();
+
+  setSavingArtistResponse(false);
+
+  if (error) {
+  console.error("Remove artist response error:", error);
+
+  if (error.code === "42501") {
+    alert(
+      "You don't have permission to remove this response."
+    );
+    return;
+  }
+
+  alert("We couldn't remove your response. Please try again.");
+  return;
+}
+
+  setReviews((currentReviews) =>
+    currentReviews.map((currentReview) =>
+      currentReview.id === review.id ? data : currentReview
+    )
+  );
+
+  setReplyingToReviewId(null);
+  setArtistResponseDraft("");
+};
+
   const handleSubmitReview = async () => {
     if (!artist) return;
+const {
+  data: { user },
+} = await supabase.auth.getUser();
 
-    if (!reviewForm.reviewer_name || !reviewForm.comment) {
-      alert("Please add your name and review.");
+if (!user) {
+  alert("Please log in with a client account before leaving a review.");
+  return;
+}
+
+if (user.id === artist.id) {
+  alert("You cannot review your own professional profile.");
+  return;
+}
+if (!eligibleRequest) {
+  alert(
+    "You can only leave a review after completing an appointment with this professional."
+  );
+  return;
+}
+    const reviewerName =
+      clientProfile?.full_name ||
+      user.user_metadata?.full_name ||
+      user.email;
+
+    if (!reviewerName) {
+      alert("Please add your name in Account Settings before leaving a review.");
+      return;
+    }
+
+    if (!reviewForm.comment.trim()) {
+      alert("Please write your review.");
       return;
     }
 
@@ -262,23 +522,51 @@ if (!user) {
       .insert([
         {
           artist_id: artist.id,
-          reviewer_name: reviewForm.reviewer_name,
+          client_id: user.id,
+          request_id: eligibleRequest.id,
+          reviewer_name: reviewerName,
           rating: reviewForm.rating,
-          comment: reviewForm.comment,
+          comment: reviewForm.comment.trim(),
         },
       ])
       .select()
       .single();
 
     if (error) {
-      alert(error.message);
-      return;
-    }
+  if (error.code === "23505") {
+    alert("You have already reviewed this appointment.");
+    setEligibleRequest(null);
+    setHasReviewed(true);
+    return;
+  }
 
-    setReviews([data, ...reviews]);
+  if (error.code === "42501") {
+    alert(
+      "This review could not be verified. Please make sure the appointment is completed and you are signed in with the correct account."
+    );
+    return;
+  }
+
+  alert("We couldn't submit your review. Please try again.");
+  console.error("Review submission error:", error);
+  return;
+}
+
+    const updatedReviews = [data, ...reviews];
+
+setReviews(updatedReviews);
+setEligibleRequest(null);
+setHasReviewed(true);
+
+const updatedAverage =
+  updatedReviews.reduce(
+    (total, review) => total + review.rating,
+    0
+  ) / updatedReviews.length;
+
+setAverageRating(updatedAverage);
 
     setReviewForm({
-      reviewer_name: "",
       rating: 5,
       comment: "",
     });
@@ -361,30 +649,53 @@ if (!user) {
               {accountName}
             </p>
             <p className="truncate px-3 pb-2 text-[12px] text-neutral-500">
-              Client account
+              {accountArtistProfile?.category || "Client account"}
             </p>
           </div>
 
-          <Link
-            href="/saved"
-            className="block rounded-[14px] px-4 py-3 text-sm hover:bg-[#faf6f5]"
-          >
-            Saved Artists
-          </Link>
-
-          <Link
-            href="/my-requests"
-            className="block rounded-[14px] px-4 py-3 text-sm hover:bg-[#faf6f5]"
-          >
-            My Requests
-          </Link>
-
-          <Link
-            href="/account"
-            className="block rounded-[14px] px-4 py-3 text-sm hover:bg-[#faf6f5]"
-          >
-            Account
-          </Link>
+          {accountArtistProfile ? (
+            <>
+              <Link
+                href="/dashboard"
+                className="block rounded-[14px] px-4 py-3 text-sm hover:bg-[#faf6f5]"
+              >
+                Dashboard
+              </Link>
+              <Link
+                href="/dashboard/profile"
+                className="block rounded-[14px] px-4 py-3 text-sm hover:bg-[#faf6f5]"
+              >
+                Edit Profile
+              </Link>
+              <Link
+                href="/dashboard/settings"
+                className="block rounded-[14px] px-4 py-3 text-sm hover:bg-[#faf6f5]"
+              >
+                Settings &amp; Privacy
+              </Link>
+            </>
+          ) : (
+            <>
+              <Link
+                href="/saved"
+                className="block rounded-[14px] px-4 py-3 text-sm hover:bg-[#faf6f5]"
+              >
+                Saved Artists
+              </Link>
+              <Link
+                href="/my-requests"
+                className="block rounded-[14px] px-4 py-3 text-sm hover:bg-[#faf6f5]"
+              >
+                My Requests
+              </Link>
+              <Link
+                href="/account"
+                className="block rounded-[14px] px-4 py-3 text-sm hover:bg-[#faf6f5]"
+              >
+                Account
+              </Link>
+            </>
+          )}
         </div>
       )}
     </>
@@ -660,7 +971,11 @@ if (!user) {
 
           {activeTab === "reviews" && (
             <div className="mx-auto mt-10 max-w-[900px]">
-              <div className="rounded-[24px] border border-neutral-200 p-6">
+              {eligibleRequest && !hasReviewed && (
+              <div
+                id="leave-review"
+                className="rounded-[24px] border border-neutral-200 p-6"
+              >
                 <h3
                   className="text-[28px] font-semibold"
                   style={{ fontFamily: "Georgia, Times New Roman, serif" }}
@@ -669,18 +984,16 @@ if (!user) {
                 </h3>
 
                 <div className="mt-6 space-y-4">
-                  <input
-                    type="text"
-                    placeholder="Your name"
-                    value={reviewForm.reviewer_name}
-                    onChange={(e) =>
-                      setReviewForm({
-                        ...reviewForm,
-                        reviewer_name: e.target.value,
-                      })
-                    }
-                    className="w-full border border-neutral-200 px-4 py-3 outline-none"
-                  />
+                  <div className="rounded-[16px] bg-[#faf6f5] px-4 py-3">
+                    <p className="text-[12px] uppercase tracking-[0.12em] text-neutral-400">
+                      Reviewing as
+                    </p>
+                    <p className="mt-1 text-[14px] font-medium text-neutral-800">
+                      {clientProfile?.full_name ||
+                        user?.user_metadata?.full_name ||
+                        user?.email}
+                    </p>
+                  </div>
 
                   <div>
                     <p className="mb-2 text-[14px] text-neutral-500">
@@ -730,7 +1043,68 @@ if (!user) {
                   </button>
                 </div>
               </div>
+)}
+{!eligibleRequest && !hasReviewed && (
+  <div className="mb-8 rounded-[24px] border border-neutral-200 bg-[#faf6f5] p-6 text-center">
+    <p
+      className="text-[22px] font-semibold"
+      style={{ fontFamily: "Georgia, Times New Roman, serif" }}
+    >
+      Reviews are unlocked after your appointment.
+    </p>
 
+    <p className="mt-3 text-[15px] leading-[1.6] text-neutral-600">
+      Once you've completed a service with this beauty professional,
+      you'll be able to leave a verified review.
+    </p>
+  </div>
+)}
+
+{hasReviewed && (
+  <div className="mb-8 rounded-[24px] border border-neutral-200 bg-[#faf6f5] p-6 text-center">
+    <p
+      className="text-[22px] font-semibold"
+      style={{ fontFamily: "Georgia, Times New Roman, serif" }}
+    >
+      Thank you for your review ✨
+    </p>
+
+    <p className="mt-3 text-[15px] leading-[1.6] text-neutral-600">
+      Your feedback has been submitted and will help future clients.
+    </p>
+  </div>
+)}
+<div className="mb-8 rounded-[24px] border border-neutral-200 bg-white p-6">
+  <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+    <div>
+      <p className="text-[13px] uppercase tracking-[0.14em] text-neutral-400">
+        Verified reviews
+      </p>
+
+      <div className="mt-2 flex items-center gap-3">
+        <span className="text-[28px] text-[#e9a8a8]">★</span>
+
+        <span
+          className="text-[42px] leading-none font-semibold"
+          style={{ fontFamily: "Georgia, Times New Roman, serif" }}
+        >
+          {reviews.length > 0 ? averageRating.toFixed(1) : "—"}
+        </span>
+      </div>
+    </div>
+
+    <div className="sm:text-right">
+      <p className="text-[16px] font-medium">
+        {reviews.length} verified{" "}
+        {reviews.length === 1 ? "review" : "reviews"}
+      </p>
+
+      <p className="mt-1 max-w-[420px] text-[14px] leading-[1.5] text-neutral-500">
+        Only clients with a completed Lumina appointment can leave feedback.
+      </p>
+    </div>
+  </div>
+</div>
               <div className="mt-8 space-y-5">
                 {reviews.length > 0 ? (
                   reviews.map((review) => (
@@ -738,29 +1112,144 @@ if (!user) {
                       key={review.id}
                       className="rounded-[20px] bg-[#faf6f5] p-5"
                     >
-                      <div className="flex items-center justify-between gap-4">
-                        <div>
-                          <p className="font-medium">{review.reviewer_name}</p>
+                      <div className="flex items-start justify-between gap-4">
+  <div>
+    <div className="flex flex-wrap items-center gap-2">
+      <p className="font-medium">{review.reviewer_name}</p>
 
-                          <p className="mt-1 text-[#e9a8a8]">
-                            {"★".repeat(review.rating)}
-                            <span className="text-neutral-300">
-                              {"★".repeat(5 - review.rating)}
-                            </span>
-                          </p>
-                        </div>
+      <span className="rounded-full bg-white px-2.5 py-1 text-[11px] font-medium text-neutral-600">
+        ✓ Verified client
+      </span>
+    </div>
 
-                        <button
-                          onClick={() => deleteReview(review.id)}
-                          className="text-[13px] text-neutral-400 hover:text-black"
-                        >
-                          Delete
-                        </button>
-                      </div>
+    <p className="mt-2 text-[#e9a8a8]">
+      {"★".repeat(review.rating)}
+      <span className="text-neutral-300">
+        {"★".repeat(5 - review.rating)}
+      </span>
+    </p>
+
+    <p className="mt-2 text-[12px] text-neutral-400">
+      {formatReviewDate(review.created_at)}
+    </p>
+  </div>
+
+  {user?.id === review.client_id && (
+    <button
+      onClick={() => deleteReview(review.id)}
+      className="text-[13px] text-neutral-400 transition hover:text-black"
+    >
+      Delete
+    </button>
+  )}
+</div>
 
                       <p className="mt-3 whitespace-pre-line text-[15px] leading-[1.6] text-neutral-700">
                         {review.comment}
                       </p>
+                      {review.artist_response &&
+  replyingToReviewId !== review.id && (
+    <div className="mt-5 rounded-[18px] border border-neutral-200 bg-white p-5">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <p className="text-[12px] font-medium uppercase tracking-[0.12em] text-neutral-500">
+          Response from the professional
+        </p>
+
+        {review.artist_response_at && (
+          <p className="text-[12px] text-neutral-400">
+            {formatReviewDate(review.artist_response_at)}
+          </p>
+        )}
+      </div>
+
+      <p className="mt-3 whitespace-pre-line text-[14px] leading-[1.7] text-neutral-700">
+        {review.artist_response}
+      </p>
+    </div>
+  )}
+
+{user?.id === review.artist_id &&
+  replyingToReviewId !== review.id && (
+    <div className="mt-4 flex flex-wrap items-center gap-4">
+      <button
+        type="button"
+        onClick={() => {
+          setReplyingToReviewId(review.id);
+          setArtistResponseDraft(review.artist_response || "");
+        }}
+        className="text-[13px] font-medium text-neutral-600 transition hover:text-black"
+      >
+        {review.artist_response ? "Edit response" : "Reply"}
+      </button>
+
+      {review.artist_response && (
+        <button
+          type="button"
+          onClick={() => removeArtistResponse(review)}
+          disabled={savingArtistResponse}
+          className="text-[13px] text-neutral-400 transition hover:text-red-600 disabled:opacity-50"
+        >
+          Remove response
+        </button>
+      )}
+    </div>
+  )}
+
+{user?.id === review.artist_id &&
+  replyingToReviewId === review.id && (
+    <div className="mt-5 rounded-[18px] border border-neutral-200 bg-white p-5">
+      <label
+        htmlFor={`artist-response-${review.id}`}
+        className="text-[13px] font-medium text-neutral-700"
+      >
+        Public response
+      </label>
+
+      <textarea
+        id={`artist-response-${review.id}`}
+        value={artistResponseDraft}
+        onChange={(event) =>
+          setArtistResponseDraft(event.target.value)
+        }
+        maxLength={2000}
+        rows={4}
+        placeholder="Thank the client or respond thoughtfully to their feedback."
+        className="mt-3 w-full resize-none rounded-[16px] border border-neutral-200 bg-[#fafafa] px-4 py-3 text-[14px] leading-[1.6] outline-none transition focus:border-neutral-400"
+      />
+
+      <div className="mt-2 flex items-center justify-between gap-4">
+        <p className="text-[12px] text-neutral-400">
+          {artistResponseDraft.length}/2000
+        </p>
+
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={() => {
+              setReplyingToReviewId(null);
+              setArtistResponseDraft("");
+            }}
+            disabled={savingArtistResponse}
+            className="rounded-full border border-neutral-200 px-4 py-2 text-[13px] transition hover:border-neutral-400 disabled:opacity-50"
+          >
+            Cancel
+          </button>
+
+          <button
+            type="button"
+            onClick={() => saveArtistResponse(review)}
+            disabled={
+              savingArtistResponse ||
+              !artistResponseDraft.trim()
+            }
+            className="rounded-full bg-black px-5 py-2 text-[13px] font-medium text-white transition hover:opacity-85 disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            {savingArtistResponse ? "Saving..." : "Save response"}
+          </button>
+        </div>
+      </div>
+    </div>
+  )}
                     </div>
                   ))
                 ) : (
@@ -833,18 +1322,37 @@ if (!user) {
             </p>
 
             <div className="mt-5 space-y-4">
-              <input
-                type="text"
-                placeholder="Your name"
-                value={requestForm.client_name}
-                onChange={(e) =>
-                  setRequestForm({
-                    ...requestForm,
-                    client_name: e.target.value,
-                  })
-                }
-                className="w-full border border-neutral-200 px-4 py-3 text-[14px] outline-none"
-              />
+              <div className="flex items-center justify-between gap-4 rounded-[18px] border border-neutral-200 bg-[#faf9f7] px-4 py-3">
+                <div className="flex min-w-0 items-center gap-3">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-neutral-200 text-[13px] font-medium text-neutral-700">
+                    {accountImage ? (
+                      <img
+                        src={accountImage}
+                        alt={accountName}
+                        className="h-full w-full object-cover"
+                      />
+                    ) : (
+                      accountInitial
+                    )}
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-[11px] uppercase tracking-[0.12em] text-neutral-400">
+                      Sending as
+                    </p>
+                    <p className="truncate text-[14px] font-medium text-neutral-800">
+                      {user ? accountName : "Sign in to send a request"}
+                    </p>
+                  </div>
+                </div>
+                {user && (
+                  <Link
+                    href="/account"
+                    className="shrink-0 text-[12px] text-neutral-500 transition hover:text-black"
+                  >
+                    Edit profile
+                  </Link>
+                )}
+              </div>
 
               <input
                 type="text"
@@ -873,30 +1381,52 @@ if (!user) {
               />
 
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                <input
-                  type="date"
-                  value={requestForm.preferred_date}
-                  onChange={(e) =>
-                    setRequestForm({
-                      ...requestForm,
-                      preferred_date: e.target.value,
-                    })
-                  }
-                  className="w-full border border-neutral-200 px-4 py-3 text-[14px] outline-none"
-                />
+                <label>
+                  <span className="mb-2 block text-[12px] text-neutral-500">
+                    Preferred date <span className="text-neutral-400">(optional)</span>
+                  </span>
+                  <input
+                    type="date"
+                    value={requestForm.preferred_date}
+                    onChange={(e) =>
+                      setRequestForm({
+                        ...requestForm,
+                        preferred_date: e.target.value,
+                      })
+                    }
+                    className={`w-full border border-neutral-200 px-4 py-3 text-[14px] outline-none ${
+                      requestForm.preferred_date
+                        ? "text-black"
+                        : "text-neutral-400"
+                    }`}
+                  />
+                </label>
 
-                <input
-                  type="time"
-                  value={requestForm.preferred_time}
-                  onChange={(e) =>
-                    setRequestForm({
-                      ...requestForm,
-                      preferred_time: e.target.value,
-                    })
-                  }
-                  className="w-full border border-neutral-200 px-4 py-3 text-[14px] outline-none"
-                />
+                <label>
+                  <span className="mb-2 block text-[12px] text-neutral-500">
+                    Preferred time <span className="text-neutral-400">(optional)</span>
+                  </span>
+                  <input
+                    type="time"
+                    value={requestForm.preferred_time}
+                    onChange={(e) =>
+                      setRequestForm({
+                        ...requestForm,
+                        preferred_time: e.target.value,
+                      })
+                    }
+                    className={`w-full border border-neutral-200 px-4 py-3 text-[14px] outline-none ${
+                      requestForm.preferred_time
+                        ? "text-black"
+                        : "text-neutral-400"
+                    }`}
+                  />
+                </label>
               </div>
+
+              <p className="-mt-2 text-[12px] text-neutral-400">
+                Leave date or time blank if your schedule is flexible.
+              </p>
 
               <textarea
                 placeholder="Notes"

@@ -9,6 +9,7 @@ import { supabase } from "@/lib/supabase";
 import AccountMenu from "@/components/AccountMenu";
 import { useSearchParams } from "next/navigation";
 import SaveArtistButton from "@/components/SaveArtistButton";
+import SearchBar from "@/components/SearchBar";
 
 type Artist = {
   id: string;
@@ -54,6 +55,8 @@ function BrowseMapContent() {
 
   const [artists, setArtists] = useState<Artist[]>([]);
   const [selectedArtist, setSelectedArtist] = useState<Artist | null>(null);
+  const isPinnedRef = useRef(false);
+  const cardHoverRef = useRef(false);
 
   const [searchQuery, setSearchQuery] = useState("");
   const [openSort, setOpenSort] = useState(false);
@@ -309,23 +312,67 @@ const activeFilterCount = selectedCategories.length;
         ])
         .addTo(mapRef.current!);
 
-      markerEl.addEventListener("click", () => {
-        setSelectedArtist(artist);
+      markerEl.addEventListener("mouseenter", () => {
+  if (!isPinnedRef.current) {
+    setSelectedArtist(artist);
+  }
 
-        mapRef.current?.flyTo({
-          center: [
-            artist.longitude!,
-            artist.latitude!,
-          ],
-          zoom: 11.5,
-        });
-      });
+  mapRef.current?.flyTo({
+    center: [
+  artist.longitude!,
+  artist.latitude!,
+],
+    zoom: 11.5,
+  });
+});
+markerEl.addEventListener("click", () => {
 
+  if (
+
+    isPinnedRef.current &&
+
+    selectedArtist?.id === artist.id
+
+  ) {
+
+    isPinnedRef.current = false;
+
+    setSelectedArtist(null);
+
+    return;
+
+  }
+
+  isPinnedRef.current = true;
+
+  setSelectedArtist(artist);
+
+  mapRef.current?.flyTo({
+
+    center: [
+
+      artist.longitude!,
+
+      artist.latitude!,
+
+    ],
+
+    zoom: 11.5,
+
+  });
+
+});
+markerEl.addEventListener("mouseleave", () => {
+  setTimeout(() => {
+    if (!isPinnedRef.current && !cardHoverRef.current) {
+      setSelectedArtist(null);
+    }
+  }, 400);
+});
       markersRef.current.push(marker);
     });
 
     if (filteredArtists.length > 0) {
-      setSelectedArtist(filteredArtists[0]);
 
       const firstWithCoords = filteredArtists.find(
         (artist) =>
@@ -351,17 +398,14 @@ const activeFilterCount = selectedCategories.length;
     <main className="min-h-screen bg-white text-black">
       <header className="grid grid-cols-3 items-center bg-[#faf6f5] px-4 py-5 text-[15px] md:px-10 md:py-6">
   <div className="justify-self-start">
-    <Link href="/" className="font-medium transition hover:opacity-70">
-      Lumina
+    <Link href="/" className="text-sm transition hover:opacity-70">
+      ← Home
     </Link>
   </div>
 
-  <Link
-  href="/browse"
-  className="hidden justify-self-center transition hover:opacity-70 md:block"
->
-  Browse Artists
-</Link>
+  <Link href="/" className="justify-self-center font-medium transition hover:opacity-70">
+    Lumina
+  </Link>
 
   <div className="justify-self-end">
   <AccountMenu />
@@ -414,17 +458,14 @@ const activeFilterCount = selectedCategories.length;
           </div>
 
           <div className="w-full md:w-[620px]">
-  <div className="flex items-center rounded-full bg-[#efedeb] px-4 py-3 md:px-5">
-    <span className="mr-3 text-lg text-neutral-500">⌕</span>
-
-    <input
-      type="text"
-      value={searchQuery}
-      onChange={(e) => setSearchQuery(e.target.value)}
-      placeholder="search by city, artist, or service"
-      className="w-full bg-transparent text-sm outline-none placeholder:text-neutral-400"
-    />
-  </div>
+  <div className="w-full md:w-[620px]">
+  <SearchBar
+    value={searchQuery}
+    onChange={setSearchQuery}
+    placeholder="Search by city, artist, or service"
+    showButton={false}
+  />
+</div>
 
   <div className="mt-4 flex items-center justify-end gap-8 text-sm text-neutral-700 md:text-[15px]">
     <div className="relative">
@@ -538,8 +579,21 @@ const activeFilterCount = selectedCategories.length;
     className="h-[430px] w-full overflow-hidden rounded-[28px] bg-[#f1ece8] md:h-[620px]"
   />
 
-  <div className="absolute bottom-5 right-5 z-20 w-[calc(100%-40px)] max-w-[340px]">
-    <div className="relative overflow-hidden rounded-[26px] border border-white/30 bg-white/20 p-5 shadow-[0_20px_60px_rgba(0,0,0,0.20),inset_0_1px_0_rgba(255,255,255,0.40)] backdrop-blur-3xl">
+  <div className="absolute bottom-5 right-5 z-20 w-[calc(100%-40px)] max-w-[380px]"
+    onMouseEnter={() => {
+    cardHoverRef.current = true;
+  }}
+
+onMouseLeave={() => {
+  cardHoverRef.current = false;
+
+  if (!isPinnedRef.current) {
+    setSelectedArtist(null);
+   }
+
+  }}
+>
+    <div className="relative overflow-hidden rounded-[26px] border border-white/30 bg-white/20 p-6 shadow-[0_20px_60px_rgba(0,0,0,0.20),inset_0_1px_0_rgba(255,255,255,0.40)] backdrop-blur-3xl">
     <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-white/30 via-white/10 to-transparent" />
 
 <div className="relative z-10">

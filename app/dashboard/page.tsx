@@ -145,13 +145,17 @@ const professionalHighlights = [
 
   return (
     <main className="min-h-screen bg-white text-black">
-      <header className="sticky top-0 z-30 flex items-center justify-between bg-[#faf6f5]/95 px-4 py-4 text-[14px] backdrop-blur md:px-10 md:py-5 md:text-[15px]">
+      <header className="sticky top-0 z-30 grid grid-cols-3 items-center bg-[#faf6f5]/95 px-4 py-4 text-[14px] backdrop-blur md:px-10 md:py-5 md:text-[15px]">
       
-        <Link href="/" className="font-medium transition hover:opacity-70">
+        <Link href="/" className="justify-self-start text-sm transition hover:opacity-70">
+          ← Home
+        </Link>
+
+        <Link href="/" className="justify-self-center font-medium transition hover:opacity-70">
           Lumina
         </Link>
 
-        <div className="relative">
+        <div className="relative justify-self-end">
           <button
   onClick={() => setMenuOpen(!menuOpen)}
   className="flex h-10 w-10 items-center justify-center transition hover:opacity-70"
@@ -196,7 +200,7 @@ const professionalHighlights = [
   </div>
 </div>
               <Link
-                href="/dashboard/profile"
+                href="/dashboard/profile#availability"
                 className="block rounded-[12px] px-3 py-3 text-[14px] hover:bg-[#faf6f5]"
               >
                 Edit Profile
@@ -206,7 +210,7 @@ const professionalHighlights = [
                 href="/dashboard/services"
                 className="block rounded-[12px] px-3 py-3 text-[14px] hover:bg-[#faf6f5]"
               >
-                Add Services
+                Manage Services
               </Link>
 
               <Link
@@ -221,6 +225,15 @@ const professionalHighlights = [
                 className="block rounded-[12px] px-3 py-3 text-[14px] hover:bg-[#faf6f5]"
               >
                 Manage Requests
+              </Link>
+
+              <div className="my-1 border-t border-neutral-100" />
+
+              <Link
+                href="/dashboard/settings"
+                className="block rounded-[12px] px-3 py-3 text-[14px] hover:bg-[#faf6f5]"
+              >
+                Settings &amp; Privacy
               </Link>
 
               <button
@@ -367,7 +380,7 @@ const professionalHighlights = [
               href="/dashboard/services"
               className="text-[13px] transition hover:opacity-60"
             >
-              Add Services
+              Manage Services
             </Link>
           </div>
 

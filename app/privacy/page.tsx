@@ -1,16 +1,21 @@
 import Link from "next/link";
+import AccountMenu from "@/components/AccountMenu";
 
 export default function PrivacyPage() {
   return (
     <main className="min-h-screen bg-white text-black">
-      <header className="flex items-center justify-between bg-[#faf6f5] px-5 py-5">
-        <Link href="/" className="font-medium">
+      <header className="grid grid-cols-3 items-center bg-[#faf6f5] px-5 py-5">
+        <Link href="/" className="justify-self-start text-sm hover:opacity-70">
+          ← Home
+        </Link>
+
+        <Link href="/" className="justify-self-center font-medium">
           Lumina
         </Link>
 
-        <Link href="/" className="text-sm hover:opacity-70">
-          Back Home
-        </Link>
+        <div className="justify-self-end">
+          <AccountMenu />
+        </div>
       </header>
 
       <section className="mx-auto max-w-[820px] px-5 py-16 md:py-24">

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
+import AccountMenu from "@/components/AccountMenu";
 
 type ProfileForm = {
   name: string;
@@ -21,9 +22,8 @@ type ProfileForm = {
 
 export default function DashboardProfilePage() {
   const [loading, setLoading] = useState(false);
-  const [visibilityLoading, setVisibilityLoading] = useState(false);
+  const [uploadingImage, setUploadingImage] = useState(false);
   const [locationSaved, setLocationSaved] = useState(false);
-  const [isActive, setIsActive] = useState(true);
 
   const [form, setForm] = useState<ProfileForm>({
     name: "",
@@ -75,8 +75,6 @@ export default function DashboardProfilePage() {
           years_experience: data.years_experience?.toString() || "",
         });
 
-        setIsActive(data.is_active ?? true);
-
         if (data.latitude && data.longitude) {
           setLocationSaved(true);
         }
@@ -113,39 +111,46 @@ export default function DashboardProfilePage() {
     };
   };
 
-  const updateVisibility = async (nextStatus: boolean) => {
-    setVisibilityLoading(true);
-
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) {
-      setVisibilityLoading(false);
-      alert("You need to be logged in.");
-      return;
-    }
-
-    const { error } = await supabase
-      .from("artists")
-      .update({
-        is_active: nextStatus,
-      })
-      .eq("id", user.id);
-
-    setVisibilityLoading(false);
-
-    if (error) {
-      alert(error.message);
-      return;
-    }
-
-    setIsActive(nextStatus);
-
-    alert(nextStatus ? "Your profile is now visible." : "Your profile is now hidden.");
-  };
-
   const saveProfile = async () => {
+    const cleanName = form.name.trim();
+    const cleanCategory = form.category.trim();
+    const startingPrice = Number(form.price_start);
+    const yearsExperience = form.years_experience
+      ? Number(form.years_experience)
+      : null;
+    let bookingLink = form.social_link.trim();
+
+    if (!cleanName || !cleanCategory || !form.price_start) {
+      alert("Please add your professional name, category, and starting price.");
+      return;
+    }
+
+    if (!Number.isFinite(startingPrice) || startingPrice < 0) {
+      alert("Please enter a valid starting price.");
+      return;
+    }
+
+    if (
+      yearsExperience !== null &&
+      (!Number.isFinite(yearsExperience) || yearsExperience < 0)
+    ) {
+      alert("Please enter valid years of experience.");
+      return;
+    }
+
+    if (bookingLink && !/^https?:\/\//i.test(bookingLink)) {
+      bookingLink = `https://${bookingLink}`;
+    }
+
+    if (bookingLink) {
+      try {
+        new URL(bookingLink);
+      } catch {
+        alert("Please enter a valid booking link.");
+        return;
+      }
+    }
+
     setLoading(true);
 
     const {
@@ -182,23 +187,19 @@ export default function DashboardProfilePage() {
     const { error } = await supabase
       .from("artists")
       .update({
-        name: form.name,
-        category: form.category,
+        name: cleanName,
+        category: cleanCategory,
         location: form.address,
         address: form.address,
         latitude: finalLatitude,
         longitude: finalLongitude,
-        price_start: Number(form.price_start),
+        price_start: startingPrice,
         phone: form.phone,
-        social_link: form.social_link,
+        social_link: bookingLink,
         bio: form.bio,
         availability: form.availability,
         profile_image_url: form.profile_image_url,
-        years_experience: form.years_experience
-
-  ? Number(form.years_experience)
-
-  : null,
+        years_experience: yearsExperience,
       })
       .eq("id", user.id);
 
@@ -208,6 +209,13 @@ export default function DashboardProfilePage() {
       alert(error.message);
       return;
     }
+
+    setForm((current) => ({
+      ...current,
+      name: cleanName,
+      category: cleanCategory,
+      social_link: bookingLink,
+    }));
 
     alert("Profile updated ✨");
   };
@@ -229,7 +237,7 @@ export default function DashboardProfilePage() {
           Lumina
         </Link>
 
-        <div className="w-[80px]" />
+        <AccountMenu />
       </header>
 
       <section className="px-5 py-10 md:px-10">
@@ -243,42 +251,6 @@ export default function DashboardProfilePage() {
         <p className="mt-4 max-w-[680px] text-[16px] leading-[1.6] text-neutral-600">
           Keep your profile clear, accurate, and easy for clients to understand.
         </p>
-
-        <div className="mt-8 max-w-[780px] rounded-[24px] border border-neutral-200 bg-[#fbf7f6] p-5 md:p-6">
-          <p className={sectionTitleClass}>Public visibility</p>
-
-          <div className="mt-4 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-            <div>
-              <p className="text-[18px] font-medium">
-                {isActive ? "Your profile is visible" : "Your profile is hidden"}
-              </p>
-
-              <p className="mt-2 text-[14px] leading-[1.6] text-neutral-600">
-                {isActive
-                  ? "Clients can currently find your profile on Lumina."
-                  : "Clients cannot find your profile in browse, search, or map while hidden."}
-              </p>
-            </div>
-
-            {isActive ? (
-              <button
-                onClick={() => updateVisibility(false)}
-                disabled={visibilityLoading}
-                className="rounded-full border border-black px-5 py-3 text-[14px] transition hover:bg-black hover:text-white disabled:opacity-50"
-              >
-                {visibilityLoading ? "Updating..." : "Hide Profile"}
-              </button>
-            ) : (
-              <button
-                onClick={() => updateVisibility(true)}
-                disabled={visibilityLoading}
-                className="rounded-full bg-black px-5 py-3 text-[14px] text-white transition hover:opacity-90 disabled:opacity-50"
-              >
-                {visibilityLoading ? "Updating..." : "Make Profile Visible"}
-              </button>
-            )}
-          </div>
-        </div>
 
         <div className="mt-10 max-w-[780px] rounded-[28px] border border-neutral-200 bg-white p-6 md:p-8">
           <div className="space-y-9">
@@ -420,11 +392,23 @@ export default function DashboardProfilePage() {
 
                         if (!file) return;
 
+                        if (!file.type.startsWith("image/")) {
+                          alert("Please choose an image file.");
+                          return;
+                        }
+
+                        if (file.size > 5 * 1024 * 1024) {
+                          alert("Please choose an image smaller than 5 MB.");
+                          return;
+                        }
+
                         const {
                           data: { user },
                         } = await supabase.auth.getUser();
 
                         if (!user) return;
+
+                        setUploadingImage(true);
 
                         const fileExt = file.name.split(".").pop();
                         const fileName = `${user.id}-${Date.now()}.${fileExt}`;
@@ -434,6 +418,7 @@ export default function DashboardProfilePage() {
                           .upload(fileName, file);
 
                         if (uploadError) {
+                          setUploadingImage(false);
                           alert(uploadError.message);
                           return;
                         }
@@ -446,6 +431,7 @@ export default function DashboardProfilePage() {
                           ...form,
                           profile_image_url: data.publicUrl,
                         });
+                        setUploadingImage(false);
                       }}
                     />
                   </label>
@@ -460,26 +446,43 @@ export default function DashboardProfilePage() {
                   className="h-[130px] w-full resize-none rounded-[14px] border border-neutral-200 px-4 py-3 text-[15px] outline-none transition focus:border-black"
                 />
 
-                <textarea
-                  placeholder="Availability, example: Monday–Friday, 9 AM–5 PM"
-                  value={form.availability}
-                  onChange={(e) =>
-                    setForm({
-                      ...form,
-                      availability: e.target.value,
-                    })
-                  }
-                  className="h-[100px] w-full resize-none rounded-[14px] border border-neutral-200 px-4 py-3 text-[15px] outline-none transition focus:border-black"
-                />
+                <div id="availability" className="scroll-mt-28">
+                  <label
+                    htmlFor="artist-availability"
+                    className="text-[14px] font-medium text-neutral-900"
+                  >
+                    Availability
+                  </label>
+                  <p className="mt-1 text-[13px] leading-[1.5] text-neutral-500">
+                    Share your usual working days and hours. Mention if you also
+                    accept flexible requests.
+                  </p>
+                  <textarea
+                    id="artist-availability"
+                    placeholder="Example: Monday–Friday, 9 AM–5 PM. Flexible times available by request."
+                    value={form.availability}
+                    onChange={(e) =>
+                      setForm({
+                        ...form,
+                        availability: e.target.value,
+                      })
+                    }
+                    className="mt-3 h-[110px] w-full resize-none rounded-[14px] border border-neutral-200 px-4 py-3 text-[15px] outline-none transition focus:border-black"
+                  />
+                </div>
               </div>
             </section>
 
             <button
               onClick={saveProfile}
-              disabled={loading}
+              disabled={loading || uploadingImage}
               className="w-full rounded-full bg-black px-6 py-3 text-[15px] text-white transition hover:opacity-90 disabled:opacity-50"
             >
-              {loading ? "Saving changes..." : "Save changes"}
+              {uploadingImage
+                ? "Uploading photo..."
+                : loading
+                ? "Saving changes..."
+                : "Save changes"}
             </button>
           </div>
         </div>

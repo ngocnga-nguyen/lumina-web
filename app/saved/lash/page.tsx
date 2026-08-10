@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import ArtistCard from "@/components/ArtistCard";
+import AccountMenu from "@/components/AccountMenu";
 
 export default function LashPage() {
   const [compareMode, setCompareMode] = useState(false);
@@ -54,15 +55,17 @@ export default function LashPage() {
           ← Back
         </Link>
 
-        <div className="font-medium">Lumina</div>
+        <Link href="/" className="font-medium transition hover:opacity-70">
+          Lumina
+        </Link>
 
-        <div className="w-[60px]" />
+        <AccountMenu />
       </header>
 
       <section className="px-4 py-8 md:px-10 md:py-10">
         <div className="mb-10 flex flex-col gap-4 md:mb-12 md:flex-row md:items-start md:justify-between">
           <div className="flex items-center gap-3">
-            <span className="text-[22px] text-[#e9a8a8]">♡</span>
+            <span className="text-[22px] text-[#9a7f86]">♡</span>
             <div>
               <h1 className="text-[22px] font-medium md:text-[24px]">Lash</h1>
               <p className="text-sm text-neutral-500">2 saved</p>

@@ -182,7 +182,7 @@ export default function SavedPage() {
         <div className="mb-8 flex flex-col gap-4 md:mb-12 md:flex-row md:items-end md:justify-between">
           <div>
             <div className="flex items-center gap-3">
-              <span className="text-[22px] text-[#e9a8a8]">♡</span>
+              <span className="text-[22px] text-[#9a7f86]">♡</span>
 
               <span className="text-[18px] font-medium md:text-[20px]">
                 Saved Artists
@@ -339,7 +339,7 @@ export default function SavedPage() {
               </section>
             )}
 
-            <div className="grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-4 lg:gap-12">
+            <div className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-3 lg:gap-8">
               {savedArtists.map((artist) => {
                 const isSelected =
                   selectedCompareIds.includes(artist.id);

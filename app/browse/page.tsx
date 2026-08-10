@@ -7,6 +7,7 @@ import { useSearchParams } from "next/navigation";
 import AccountMenu from "@/components/AccountMenu";
 import SaveArtistButton from "@/components/SaveArtistButton";
 import ArtistCard from "@/components/ArtistCard";
+import SearchBar from "@/components/SearchBar";
 
 
 type Artist = {
@@ -51,7 +52,9 @@ function BrowseContent() {
   const [openFilter, setOpenFilter] = useState(false);
   const [sortBy, setSortBy] = useState("newest");
   const [artists, setArtists] = useState<Artist[]>([]);
-  const [searchQuery, setSearchQuery] = useState("");
+  const [searchQuery, setSearchQuery] = useState(
+  searchParams.get("search") ?? ""
+);
   const [userLocation, setUserLocation] = useState<UserLocation | null>(null);
   const [locationStatus, setLocationStatus] = useState("");
   const [user, setUser] = useState<any>(null);
@@ -244,17 +247,14 @@ if (categories) {
      <header className="grid grid-cols-3 items-center bg-[#faf6f5] px-4 py-5 md:px-10">
 
   <div className="justify-self-start">
-    <Link
-      href="/"
-      className="font-medium transition hover:opacity-70"
-    >
-      Lumina
+    <Link href="/" className="text-sm transition hover:opacity-70">
+      ← Home
     </Link>
   </div>
 
-  <div className="hidden justify-self-center md:block">
-    Browse Artists
-  </div>
+  <Link href="/" className="justify-self-center font-medium transition hover:opacity-70">
+    Lumina
+  </Link>
   <div className="justify-self-end">
 
   <AccountMenu />
@@ -264,7 +264,7 @@ if (categories) {
 </header>
 
       <section className="px-4 pt-8 pb-16 md:px-10 md:pt-10 md:pb-20">
-        <div className="grid gap-8 md:grid-cols-[1fr_520px] md:items-start">
+        <div className="grid gap-8 md:grid-cols-[minmax(0,1fr)_560px] md:items-start">
           <div>
             <div className="mb-5 inline-flex items-center rounded-full border border-neutral-200 p-1 text-sm">
   <span className="rounded-full bg-black px-4 py-1.5 text-white">
@@ -305,19 +305,13 @@ if (categories) {
 
           </div>
 
-          <div className="w-full">
-            <div className="flex items-center rounded-full bg-[#efedeb] px-4 py-3 md:px-5">
-              <span className="mr-3 text-lg text-neutral-500">⌕</span>
-
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="search by city, artist, or service"
-                className="w-full bg-transparent text-sm outline-none placeholder:text-neutral-400"
-              />
-
-            </div>
+          <div className="w-full min-w-0">
+            <SearchBar
+  value={searchQuery}
+  onChange={setSearchQuery}
+  placeholder="Search by city, artist, or service"
+  showButton={false}
+/>
 
             {searchQuery && (
               <button

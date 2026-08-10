@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
+import AccountMenu from "@/components/AccountMenu";
 
 type Service = {
   id: string;
@@ -16,6 +17,7 @@ export default function DashboardServicesPage() {
   const [artistId, setArtistId] = useState<string | null>(null);
   const [services, setServices] = useState<Service[]>([]);
   const [loading, setLoading] = useState(false);
+  const [editingServiceId, setEditingServiceId] = useState<string | null>(null);
 
   const [form, setForm] = useState({
     service_name: "",
@@ -62,32 +64,56 @@ export default function DashboardServicesPage() {
     fetchArtistAndServices();
   }, []);
 
-  const addService = async () => {
+  const resetForm = () => {
+    setForm({
+      service_name: "",
+      price: "",
+      duration: "",
+      description: "",
+    });
+    setEditingServiceId(null);
+  };
+
+  const saveService = async () => {
     if (!artistId) {
       alert("Artist profile not found.");
       return;
     }
 
-    if (!form.service_name || !form.price) {
+    const cleanName = form.service_name.trim();
+    const price = Number(form.price);
+
+    if (!cleanName || !form.price) {
       alert("Please add a service name and price.");
+      return;
+    }
+
+    if (!Number.isFinite(price) || price < 0) {
+      alert("Please enter a valid service price.");
       return;
     }
 
     setLoading(true);
 
-    const { data, error } = await supabase
-      .from("services")
-      .insert([
-        {
-          artist_id: artistId,
-          service_name: form.service_name,
-          price: Number(form.price),
-          duration: form.duration,
-          description: form.description,
-        },
-      ])
-      .select()
-      .single();
+    const serviceValues = {
+      service_name: cleanName,
+      price,
+      duration: form.duration.trim() || null,
+      description: form.description.trim() || null,
+    };
+    const query = editingServiceId
+      ? supabase
+          .from("services")
+          .update(serviceValues)
+          .eq("id", editingServiceId)
+          .eq("artist_id", artistId)
+      : supabase.from("services").insert([
+          {
+            artist_id: artistId,
+            ...serviceValues,
+          },
+        ]);
+    const { data, error } = await query.select().single();
 
     setLoading(false);
 
@@ -96,17 +122,29 @@ export default function DashboardServicesPage() {
       return;
     }
 
-    setServices([data, ...services]);
+    setServices((currentServices) =>
+      editingServiceId
+        ? currentServices.map((service) =>
+            service.id === editingServiceId ? data : service
+          )
+        : [data, ...currentServices]
+    );
+    resetForm();
+  };
 
+  const editService = (service: Service) => {
+    setEditingServiceId(service.id);
     setForm({
-      service_name: "",
-      price: "",
-      duration: "",
-      description: "",
+      service_name: service.service_name,
+      price: service.price?.toString() || "",
+      duration: service.duration || "",
+      description: service.description || "",
     });
+    window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
   const deleteService = async (id: string) => {
+    if (!window.confirm("Delete this service?")) return;
     const { error } = await supabase.from("services").delete().eq("id", id);
 
     if (error) {
@@ -126,7 +164,7 @@ export default function DashboardServicesPage() {
           Lumina
         </Link>
 
-        <div className="w-[90px]" />
+        <AccountMenu />
       </header>
 
       <section className="px-5 py-10 md:px-10">
@@ -134,7 +172,7 @@ export default function DashboardServicesPage() {
           className="text-[44px] leading-[1.02] font-semibold md:text-[64px]"
           style={{ fontFamily: "Georgia, Times New Roman, serif" }}
         >
-          Add services
+          Manage services
         </h1>
 
         <p className="mt-4 max-w-[680px] text-[16px] leading-[1.6] text-neutral-600">
@@ -147,7 +185,7 @@ export default function DashboardServicesPage() {
               className="text-[30px] font-semibold"
               style={{ fontFamily: "Georgia, Times New Roman, serif" }}
             >
-              New service
+              {editingServiceId ? "Edit service" : "New service"}
             </h2>
 
             <div className="mt-6 space-y-4">
@@ -190,12 +228,26 @@ export default function DashboardServicesPage() {
             </div>
 
             <button
-              onClick={addService}
+              onClick={() => void saveService()}
               disabled={loading}
               className="mt-6 w-full rounded-full bg-black px-6 py-3 text-white disabled:opacity-50"
             >
-              {loading ? "Saving..." : "Save Service"}
+              {loading
+                ? "Saving..."
+                : editingServiceId
+                ? "Update Service"
+                : "Save Service"}
             </button>
+
+            {editingServiceId && (
+              <button
+                onClick={resetForm}
+                disabled={loading}
+                className="mt-3 w-full rounded-full border border-neutral-200 px-6 py-3 text-[13px] text-neutral-600 disabled:opacity-50"
+              >
+                Cancel editing
+              </button>
+            )}
           </div>
 
           <div>
@@ -233,12 +285,20 @@ export default function DashboardServicesPage() {
                         {service.service_name}
                       </h3>
 
-                      <button
-                        onClick={() => deleteService(service.id)}
-                        className="text-[13px] text-neutral-400 hover:text-black"
-                      >
-                        Delete
-                      </button>
+                      <div className="flex items-center gap-3">
+                        <button
+                          onClick={() => editService(service)}
+                          className="text-[13px] text-neutral-500 hover:text-black"
+                        >
+                          Edit
+                        </button>
+                        <button
+                          onClick={() => void deleteService(service.id)}
+                          className="text-[13px] text-neutral-400 hover:text-black"
+                        >
+                          Delete
+                        </button>
+                      </div>
                     </div>
 
                     <p className="mt-2 text-[18px]">${service.price}</p>
