@@ -91,12 +91,13 @@ const [accountArtistProfile, setAccountArtistProfile] = useState<any>(null);
 const [accountMenuOpen, setAccountMenuOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<
     "service" | "portfolio" | "reviews"
-  >(() =>
-    typeof window !== "undefined" &&
-    new URLSearchParams(window.location.search).get("tab") === "reviews"
-      ? "reviews"
-      : "service"
-  );
+  >("service");
+
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).get("tab") === "reviews") {
+      setActiveTab("reviews");
+    }
+  }, []);
 
   const [openRequest, setOpenRequest] = useState(false);
   const [requestLoading, setRequestLoading] = useState(false);
@@ -263,7 +264,7 @@ setAverageRating(nextAverageRating);
     if (
       activeTab === "reviews" &&
       eligibleRequest &&
-      window.location.hash === "#leave-review"
+      new URLSearchParams(window.location.search).get("tab") === "reviews"
     ) {
       requestAnimationFrame(() => {
         document.getElementById("leave-review")?.scrollIntoView({

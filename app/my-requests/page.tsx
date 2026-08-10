@@ -519,7 +519,9 @@ setTimeout(() => {
     }
 
     if (artistId) {
-      window.location.assign(`/artist/${artistId}?tab=reviews#leave-review`);
+      window.location.assign(
+        `/artist/${artistId}?tab=reviews&request=${notification.request_id}`
+      );
     }
   }
 };
@@ -850,7 +852,7 @@ requests.map((request) => {
   <div className="flex items-center gap-3">
   {request.booking_status === "completed" && (
     <Link
-      href={`/artist/${request.artist_id}?tab=reviews#leave-review`}
+      href={`/artist/${request.artist_id}?tab=reviews&request=${request.id}`}
       onClick={(e) => e.stopPropagation()}
       className="flex h-10 w-10 items-center justify-center rounded-full bg-[#fff0f5] text-[#d86f91] shadow-sm transition hover:-translate-y-0.5 hover:bg-[#ffe4ee] hover:shadow-md"
       aria-label="Leave a review"
@@ -1006,7 +1008,7 @@ Continue to Booking <span className="ml-1 inline-block transition-transform dura
     </div>
 
     <Link
-      href={`/artist/${request.artist_id}?tab=reviews#leave-review`}
+      href={`/artist/${request.artist_id}?tab=reviews&request=${request.id}`}
       className="group flex items-center gap-2 rounded-full bg-black px-6 py-2.5 text-[13px] font-medium text-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
     >
       <Star size={16} fill="currentColor" strokeWidth={1.5} />
