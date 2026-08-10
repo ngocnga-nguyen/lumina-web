@@ -151,7 +151,7 @@ setArtistProfile(artist);
           Lumina
         </Link>
 
-        <nav className="relative flex items-center gap-5 text-sm md:text-[15px]">
+        <nav className="relative flex items-center gap-3 whitespace-nowrap text-[12px] sm:gap-5 sm:text-sm md:text-[15px]">
   <Link href="/browse" className="transition hover:opacity-70">
     Browse Artists
   </Link>
@@ -319,7 +319,7 @@ setArtistProfile(artist);
       </div>
     </div>
 
-    <div className="mt-6 flex flex-col gap-2 sm:flex-row md:mt-8">
+    <div className="mt-7 flex flex-col gap-2.5 sm:flex-row md:mt-8">
       <Link
         href="/browse"
         className="rounded-full bg-black px-6 py-2.5 text-[14px] font-medium text-white transition hover:opacity-90"

@@ -23,11 +23,11 @@ export default function SearchBar({
     event.preventDefault();
     onSearch?.();
   }}
-  className="flex w-full items-center rounded-full border border-[#e7e3df] bg-white p-2 pl-6 shadow-sm transition focus-within:border-neutral-400 focus-within:shadow-md"
+  className="flex w-full items-center rounded-full border border-[#e7e3df] bg-white p-1.5 pl-4 shadow-sm transition focus-within:border-neutral-400 focus-within:shadow-md sm:p-2 sm:pl-6"
 >
   <Search
-    size={20}
-    className="mr-4 text-neutral-400"
+    size={18}
+    className="mr-2.5 shrink-0 text-neutral-400 sm:mr-4"
   />
 
   <input
@@ -35,13 +35,13 @@ export default function SearchBar({
     value={value}
     onChange={(e) => onChange(e.target.value)}
     placeholder={placeholder}
-    className="w-full bg-transparent text-[16px] outline-none placeholder:text-neutral-400"
+    className="min-w-0 w-full bg-transparent text-[14px] outline-none placeholder:text-neutral-400 sm:text-[16px]"
   />
 
   {showButton && (
   <button
   type="submit"
-    className="shrink-0 rounded-full bg-black px-6 py-3 text-[14px] font-medium text-white transition hover:opacity-85"
+    className="shrink-0 rounded-full bg-black px-4 py-2.5 text-[13px] font-medium text-white transition hover:opacity-85 sm:px-6 sm:py-3 sm:text-[14px]"
   >
     Search
   </button>
