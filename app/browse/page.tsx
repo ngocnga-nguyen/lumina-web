@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Suspense, useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { useSearchParams } from "next/navigation";
 import AccountMenu from "@/components/AccountMenu";
@@ -50,6 +50,7 @@ function BrowseContent() {
   const searchParams = useSearchParams();
   const [openSort, setOpenSort] = useState(false);
   const [openFilter, setOpenFilter] = useState(false);
+  const browseControlsRef = useRef<HTMLDivElement>(null);
   const [sortBy, setSortBy] = useState("newest");
   const [artists, setArtists] = useState<Artist[]>([]);
   const [searchQuery, setSearchQuery] = useState(
@@ -60,6 +61,33 @@ function BrowseContent() {
   const [user, setUser] = useState<any>(null);
 const [isArtist, setIsArtist] = useState(false);
 const [accountMenuOpen, setAccountMenuOpen] = useState(false);
+
+  useEffect(() => {
+    const closeMenus = (event: PointerEvent) => {
+      if (
+        browseControlsRef.current &&
+        !browseControlsRef.current.contains(event.target as Node)
+      ) {
+        setOpenFilter(false);
+        setOpenSort(false);
+      }
+    };
+
+    const closeMenusWithEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setOpenFilter(false);
+        setOpenSort(false);
+      }
+    };
+
+    document.addEventListener("pointerdown", closeMenus);
+    document.addEventListener("keydown", closeMenusWithEscape);
+
+    return () => {
+      document.removeEventListener("pointerdown", closeMenus);
+      document.removeEventListener("keydown", closeMenusWithEscape);
+    };
+  }, []);
 
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [minPrice, setMinPrice] = useState("");
@@ -322,10 +350,13 @@ if (categories) {
               </button>
             )}
           
-<div className="mt-4 flex items-center gap-8 text-sm text-neutral-700 md:justify-end md:text-[15px]">
+<div ref={browseControlsRef} className="mt-4 flex items-center gap-8 text-sm text-neutral-700 md:justify-end md:text-[15px]">
           <div className="relative">
             <button
-              onClick={() => setOpenFilter(!openFilter)}
+              onClick={() => {
+                setOpenFilter((current) => !current);
+                setOpenSort(false);
+              }}
               className="transition hover:text-black"
             >
               ☷ Filter {activeFilterCount > 0 && `(${activeFilterCount})`}
@@ -396,7 +427,10 @@ if (categories) {
 
           <div className="relative">
             <button
-              onClick={() => setOpenSort(!openSort)}
+              onClick={() => {
+                setOpenSort((current) => !current);
+                setOpenFilter(false);
+              }}
               className="transition hover:text-black"
             >
               ☰ Sort

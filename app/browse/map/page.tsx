@@ -63,6 +63,7 @@ function BrowseMapContent() {
   const [searchQuery, setSearchQuery] = useState("");
   const [openSort, setOpenSort] = useState(false);
 const [openFilter, setOpenFilter] = useState(false);
+const browseControlsRef = useRef<HTMLDivElement>(null);
 const searchParams = useSearchParams();
 
 const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
@@ -87,7 +88,32 @@ const buildViewLink = (path: string) => {
 
   const [locationStatus, setLocationStatus] = useState("");
 
-  
+  useEffect(() => {
+    const closeMenus = (event: PointerEvent) => {
+      if (
+        browseControlsRef.current &&
+        !browseControlsRef.current.contains(event.target as Node)
+      ) {
+        setOpenFilter(false);
+        setOpenSort(false);
+      }
+    };
+
+    const closeMenusWithEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setOpenFilter(false);
+        setOpenSort(false);
+      }
+    };
+
+    document.addEventListener("pointerdown", closeMenus);
+    document.addEventListener("keydown", closeMenusWithEscape);
+
+    return () => {
+      document.removeEventListener("pointerdown", closeMenus);
+      document.removeEventListener("keydown", closeMenusWithEscape);
+    };
+  }, []);
 
 
 
@@ -485,10 +511,13 @@ markerEl.addEventListener("mouseleave", () => {
   />
 </div>
 
-  <div className="mt-4 flex items-center justify-end gap-8 text-sm text-neutral-700 md:text-[15px]">
+  <div ref={browseControlsRef} className="mt-4 flex items-center justify-end gap-8 text-sm text-neutral-700 md:text-[15px]">
     <div className="relative">
       <button
-        onClick={() => setOpenFilter(!openFilter)}
+        onClick={() => {
+          setOpenFilter((current) => !current);
+          setOpenSort(false);
+        }}
         className="transition hover:text-black"
       >
         ☷ Filter {activeFilterCount > 0 && `(${activeFilterCount})`}
@@ -535,7 +564,10 @@ markerEl.addEventListener("mouseleave", () => {
 
     <div className="relative">
       <button
-        onClick={() => setOpenSort(!openSort)}
+        onClick={() => {
+          setOpenSort((current) => !current);
+          setOpenFilter(false);
+        }}
         className="transition hover:text-black"
       >
         ☰ Sort
