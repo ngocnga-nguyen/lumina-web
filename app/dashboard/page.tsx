@@ -381,7 +381,7 @@ const professionalHighlights = [
 
             <Link
               href="/dashboard/services"
-              className="inline-flex w-fit items-center rounded-full border border-neutral-200 bg-neutral-100 px-4 py-2.5 text-[13px] font-medium text-neutral-600 transition hover:bg-neutral-200 hover:text-black active:bg-neutral-300 sm:py-2"
+              className="inline-flex w-fit items-center rounded-full border border-neutral-200 bg-neutral-50 px-3 py-1.5 text-[12px] font-medium text-neutral-500 transition hover:bg-neutral-100 hover:text-black active:bg-neutral-200"
             >
               Manage Services
             </Link>
