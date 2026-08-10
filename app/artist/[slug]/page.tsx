@@ -110,6 +110,8 @@ const accountImage =
   clientProfile?.profile_image_url ||
   user?.user_metadata?.avatar_url ||
   null;
+  const viewerIsArtist = Boolean(accountArtistProfile);
+  const isOwnProfile = viewerIsArtist && user?.id === artistId;
   const [requestForm, setRequestForm] = useState({
     client_contact: "",
     service_requested: "",
@@ -269,6 +271,11 @@ setAverageRating(nextAverageRating);
   }, [activeTab, eligibleRequest]);
 
   const handleRequestSubmit = async () => {
+    if (accountArtistProfile) {
+      alert("Professional accounts cannot send client requests.");
+      return;
+    }
+
     if (!artist) return;
 
     if (!requestForm.client_contact) {
@@ -744,12 +751,21 @@ setAverageRating(updatedAverage);
                 {artist.availability || "Availability coming soon."}
               </p>
 
-              <button
-                onClick={() => setOpenRequest(true)}
-                className="mt-5 rounded-full border border-black bg-transparent px-5 py-3 text-[13px] text-black transition hover:bg-black hover:text-white"
-              >
-                Send Request
-              </button>
+              {isOwnProfile ? (
+                <Link
+                  href="/dashboard/profile"
+                  className="mt-5 inline-block rounded-full border border-black bg-transparent px-5 py-3 text-[13px] text-black transition hover:bg-black hover:text-white"
+                >
+                  Edit profile
+                </Link>
+              ) : !viewerIsArtist ? (
+                <button
+                  onClick={() => setOpenRequest(true)}
+                  className="mt-5 rounded-full border border-black bg-transparent px-5 py-3 text-[13px] text-black transition hover:bg-black hover:text-white"
+                >
+                  Send Request
+                </button>
+              ) : null}
             </div>
           </div>
 
@@ -763,10 +779,17 @@ setAverageRating(updatedAverage);
     </h1>
 
     <SaveArtistButton
-  artistId={artist.id}
-  artistName={artist.name}
-/>
+      artistId={artist.id}
+      artistName={artist.name}
+      viewerIsArtist={viewerIsArtist}
+    />
 </div>
+
+            {isOwnProfile && (
+              <p className="mt-3 inline-flex rounded-full bg-neutral-100 px-3 py-1.5 text-[12px] font-medium text-neutral-600">
+                This is your public profile
+              </p>
+            )}
               
             <p
               className="mt-2 text-[24px]"

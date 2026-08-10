@@ -461,6 +461,8 @@ if (categories) {
       key={artist.id}
       artist={artist}
       distance={distance}
+      viewerIsArtist={isArtist}
+      isOwnProfile={isArtist && user?.id === artist.id}
     />
   );
 })}

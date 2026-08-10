@@ -9,6 +9,7 @@ type SaveArtistButtonProps = {
   artistName?: string;
   className?: string;
   onChange?: (saved: boolean) => void;
+  viewerIsArtist?: boolean;
 };
 
 export default function SaveArtistButton({
@@ -16,12 +17,18 @@ export default function SaveArtistButton({
   artistName = "artist",
   className = "",
   onChange,
+  viewerIsArtist = false,
 }: SaveArtistButtonProps) {
   const [isSaved, setIsSaved] = useState(false);
   const [loading, setLoading] = useState(true);
   const [toast, setToast] = useState("");
 
   useEffect(() => {
+    if (viewerIsArtist) {
+      setLoading(false);
+      return;
+    }
+
     const checkSaved = async () => {
       const {
         data: { user },
@@ -48,7 +55,7 @@ export default function SaveArtistButton({
     };
 
     checkSaved();
-  }, [artistId]);
+  }, [artistId, viewerIsArtist]);
 
   const toggleSave = async () => {
     if (loading) return;
@@ -103,6 +110,8 @@ export default function SaveArtistButton({
 
     setTimeout(() => setToast(""), 2200);
   };
+
+  if (viewerIsArtist) return null;
 
   return (
     <>

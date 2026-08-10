@@ -1,13 +1,34 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import ArtistCard from "@/components/ArtistCard";
 import AccountMenu from "@/components/AccountMenu";
+import { supabase } from "@/lib/supabase";
 
 export default function LashPage() {
+  const router = useRouter();
   const [compareMode, setCompareMode] = useState(false);
   const [selected, setSelected] = useState<string[]>([]);
+
+  useEffect(() => {
+    const redirectProfessionalAccount = async () => {
+      const { data: authData } = await supabase.auth.getUser();
+      const userId = authData.user?.id;
+      if (!userId) return;
+
+      const { data: artistProfile } = await supabase
+        .from("artist_profiles")
+        .select("id")
+        .eq("id", userId)
+        .maybeSingle();
+
+      if (artistProfile) router.replace("/dashboard");
+    };
+
+    redirectProfessionalAccount();
+  }, [router]);
 
   const artists = [
     {

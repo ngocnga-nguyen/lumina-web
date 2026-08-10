@@ -18,6 +18,8 @@ type ArtistCardProps = {
   isSelected?: boolean;
   onCompare?: () => void;
   onRemoved?: () => void;
+  viewerIsArtist?: boolean;
+  isOwnProfile?: boolean;
 };
 
 export default function ArtistCard({
@@ -28,6 +30,8 @@ export default function ArtistCard({
   isSelected = false,
   onCompare,
   onRemoved,
+  viewerIsArtist = false,
+  isOwnProfile = false,
 }: ArtistCardProps) {
   return (
     <Link
@@ -50,20 +54,28 @@ export default function ArtistCard({
           </div>
         )}
 
-        <div
-          className="absolute right-3 top-3"
-          onClick={(event) => event.preventDefault()}
-        >
-          <SaveArtistButton
-  artistId={artist.id}
-  artistName={artist.name}
-  onChange={(saved) => {
-    if (!saved) {
-      onRemoved?.();
-    }
-  }}
-/>
-        </div>
+        {!viewerIsArtist && (
+          <div
+            className="absolute right-3 top-3"
+            onClick={(event) => event.preventDefault()}
+          >
+            <SaveArtistButton
+              artistId={artist.id}
+              artistName={artist.name}
+              onChange={(saved) => {
+                if (!saved) {
+                  onRemoved?.();
+                }
+              }}
+            />
+          </div>
+        )}
+
+        {isOwnProfile && (
+          <span className="absolute left-3 top-3 rounded-full bg-black px-3 py-1.5 text-[12px] font-medium text-white shadow-sm">
+            Your profile
+          </span>
+        )}
       </div>
 
       <div className="pt-4">
@@ -98,7 +110,7 @@ export default function ArtistCard({
           </div>
 
           <span className="text-neutral-500 transition group-hover:translate-x-1 group-hover:text-black">
-            View →
+            {isOwnProfile ? "View your profile →" : "View →"}
           </span>
           {showCompare && (
   <button

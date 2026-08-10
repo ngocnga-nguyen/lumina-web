@@ -55,6 +55,8 @@ function BrowseMapContent() {
 
   const [artists, setArtists] = useState<Artist[]>([]);
   const [selectedArtist, setSelectedArtist] = useState<Artist | null>(null);
+  const [viewerUserId, setViewerUserId] = useState<string | null>(null);
+  const [viewerIsArtist, setViewerIsArtist] = useState(false);
   const isPinnedRef = useRef(false);
   const cardHoverRef = useRef(false);
 
@@ -102,6 +104,22 @@ const buildViewLink = (path: string) => {
       }
 
       setArtists(data || []);
+
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      setViewerUserId(user?.id || null);
+
+      if (user) {
+        const { data: artistAccount } = await supabase
+          .from("artists")
+          .select("id")
+          .eq("id", user.id)
+          .maybeSingle();
+
+        setViewerIsArtist(Boolean(artistAccount));
+      }
 
     };
 
@@ -604,7 +622,9 @@ onMouseLeave={() => {
           <div className="flex items-start justify-between gap-4">
             <div>
               <p className="text-[11px] uppercase tracking-[0.16em] text-neutral-500">
-                Selected artist
+                {viewerIsArtist && viewerUserId === selectedArtist.id
+                  ? "Your profile"
+                  : "Selected artist"}
               </p>
 
               <h3
@@ -622,6 +642,7 @@ onMouseLeave={() => {
             <SaveArtistButton
               artistId={selectedArtist.id}
               artistName={selectedArtist.name}
+              viewerIsArtist={viewerIsArtist}
             />
           </div>
 
@@ -643,7 +664,9 @@ onMouseLeave={() => {
             href={`/artist/${selectedArtist.id}`}
             className="mt-5 inline-flex w-full items-center justify-between rounded-full bg-black px-5 py-3 text-[14px] text-white transition hover:opacity-85"
           >
-            View Profile
+            {viewerIsArtist && viewerUserId === selectedArtist.id
+              ? "View your public profile"
+              : "View Profile"}
             <span>→</span>
           </Link>
         </>

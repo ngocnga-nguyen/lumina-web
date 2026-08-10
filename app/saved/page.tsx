@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import AccountMenu from "@/components/AccountMenu";
 import ArtistCard from "@/components/ArtistCard";
+import { useRouter } from "next/navigation";
 
 type Artist = {
   id: string;
@@ -19,6 +20,7 @@ type Artist = {
 };
 
 export default function SavedPage() {
+  const router = useRouter();
   const [savedArtists, setSavedArtists] = useState<Artist[]>([]);
   const [selectedCompareIds, setSelectedCompareIds] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
@@ -36,6 +38,17 @@ export default function SavedPage() {
       if (!user) {
         setSavedArtists([]);
         setLoading(false);
+        return;
+      }
+
+      const { data: artistAccount } = await supabase
+        .from("artists")
+        .select("id")
+        .eq("id", user.id)
+        .maybeSingle();
+
+      if (artistAccount) {
+        router.replace("/dashboard");
         return;
       }
       
@@ -75,7 +88,7 @@ export default function SavedPage() {
     };
 
     loadSavedArtists();
-  }, []);
+  }, [router]);
   useEffect(() => {
   if (!navigator.geolocation) return;
 
