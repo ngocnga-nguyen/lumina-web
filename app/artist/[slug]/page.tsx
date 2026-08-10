@@ -22,6 +22,8 @@ type Artist = {
   years_experience?: number | null;
   experience_unit?: "new" | "months" | "years" | null;
   experience_amount?: number | null;
+  location_type?: "salon" | "home_studio" | "mobile_salon" | "travels" | null;
+  mobile_location_details?: string | null;
   verified_results_count?: number | null;
   repeat_client_rate?: number | null;
   verified_reviews?: boolean | null;
@@ -812,6 +814,15 @@ setAverageRating(updatedAverage);
                 <span>{artist.location}</span>
               <span>Starting at ${artist.price_start}</span>
             </div>
+            {artist.location_type === "mobile_salon" && (
+              <div className="mt-3 max-w-[680px] rounded-[16px] bg-neutral-50 px-4 py-3 text-[13px] leading-[1.5] text-neutral-600">
+                <p>Mobile salon — exact appointment location is shared after confirmation.</p>
+                {artist.mobile_location_details && <p className="mt-1">{artist.mobile_location_details}</p>}
+              </div>
+            )}
+            {artist.location_type === "travels" && (
+              <p className="mt-3 text-[13px] text-neutral-500">Exact service details are shared after booking confirmation.</p>
+            )}
 
           <div className="mt-8 max-w-[760px] border-t border-[#eadfdb] pt-6">
 

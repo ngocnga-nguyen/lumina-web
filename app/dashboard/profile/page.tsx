@@ -17,6 +17,8 @@ type ProfileForm = {
   travels_to_clients: boolean;
   service_area: string;
   hide_street_address: boolean;
+  location_type: "salon" | "home_studio" | "mobile_salon" | "travels";
+  mobile_location_details: string;
   latitude: string;
   longitude: string;
   price_start: string;
@@ -47,6 +49,8 @@ export default function DashboardProfilePage() {
     travels_to_clients: false,
     service_area: "",
     hide_street_address: false,
+    location_type: "salon",
+    mobile_location_details: "",
     latitude: "",
     longitude: "",
     price_start: "",
@@ -99,6 +103,10 @@ export default function DashboardProfilePage() {
           travels_to_clients: Boolean(data.travels_to_clients),
           service_area: data.service_area || "",
           hide_street_address: Boolean(data.hide_street_address),
+          location_type:
+            data.location_type ||
+            (data.travels_to_clients ? "travels" : "salon"),
+          mobile_location_details: data.mobile_location_details || "",
           latitude: data.latitude?.toString() || "",
           longitude: data.longitude?.toString() || "",
           price_start: data.price_start?.toString() || "",
@@ -181,11 +189,15 @@ export default function DashboardProfilePage() {
     const cityAndState = [form.city.trim(), form.region.trim()]
       .filter(Boolean)
       .join(", ");
-    const publicLocation = form.travels_to_clients
-      ? form.service_area.trim() || cityAndState || "Travels to clients"
-      : form.hide_street_address
-        ? cityAndState
-        : fullAddress;
+    const servesArea = form.service_area.trim() || cityAndState;
+    const publicLocation =
+      form.location_type === "mobile_salon"
+        ? `Mobile salon${servesArea ? ` serving ${servesArea}` : ""}`
+        : form.location_type === "travels"
+          ? `Travels to clients${servesArea ? ` in ${servesArea}` : ""}`
+          : form.location_type === "home_studio" || form.hide_street_address
+            ? cityAndState
+            : fullAddress;
     let bookingLink = form.social_link.trim();
 
     if (!cleanName || !cleanCategory || !form.price_start) {
@@ -268,9 +280,11 @@ export default function DashboardProfilePage() {
         city: form.city.trim(),
         region: form.region.trim(),
         postal_code: form.postal_code.trim(),
-        travels_to_clients: form.travels_to_clients,
+        travels_to_clients: form.location_type === "travels",
         service_area: form.service_area.trim(),
         hide_street_address: form.hide_street_address,
+        location_type: form.location_type,
+        mobile_location_details: form.mobile_location_details.trim(),
         latitude: finalLatitude,
         longitude: finalLongitude,
         price_start: startingPrice,
@@ -342,6 +356,27 @@ export default function DashboardProfilePage() {
               <p className={sectionTitleClass}>Basic info</p>
 
               <div className="mt-4 space-y-4">
+                <div>
+                  <p className="mb-2 text-[13px] font-medium text-neutral-700">Location type</p>
+                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                    {([
+                      ["salon", "Salon or studio"],
+                      ["home_studio", "Home-based studio"],
+                      ["mobile_salon", "Mobile salon"],
+                      ["travels", "I travel to clients"],
+                    ] as const).map(([value, label]) => (
+                      <button
+                        key={value}
+                        type="button"
+                        onClick={() => setForm({ ...form, location_type: value, travels_to_clients: value === "travels", hide_street_address: value === "home_studio" ? true : form.hide_street_address })}
+                        className={`rounded-[14px] px-4 py-3 text-left text-[14px] transition ${form.location_type === value ? "bg-black text-white" : "border border-neutral-200 bg-white text-neutral-600 hover:border-neutral-400"}`}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
                 <label className="block">
                   <span className="mb-2 block text-[13px] font-medium text-neutral-700">Your name</span>
                   <input type="text" placeholder="Example: Maya Nguyen" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className={inputClass} />
@@ -428,20 +463,25 @@ export default function DashboardProfilePage() {
                 </label>
 
                 <div className="space-y-3 rounded-[18px] bg-neutral-50 p-4">
-                  <label className="flex cursor-pointer items-start gap-3 text-[14px] text-neutral-700">
-                    <input type="checkbox" checked={form.travels_to_clients} onChange={(e) => setForm({ ...form, travels_to_clients: e.target.checked })} className="mt-0.5 h-4 w-4 accent-black" />
-                    <span>I travel to clients</span>
-                  </label>
-                  {form.travels_to_clients && (
+                  {(form.location_type === "travels" || form.location_type === "mobile_salon") && (
                     <label className="block">
                       <span className="mb-2 block text-[13px] font-medium text-neutral-700">Service area</span>
                       <input type="text" placeholder="Example: Tulsa and surrounding areas" value={form.service_area} onChange={(e) => setForm({ ...form, service_area: e.target.value })} className={inputClass} />
                     </label>
                   )}
+                  {form.location_type === "mobile_salon" && (
+                    <label className="block">
+                      <span className="mb-2 block text-[13px] font-medium text-neutral-700">Usual locations or schedule <span className="font-normal text-neutral-400">(optional)</span></span>
+                      <textarea placeholder="Example: Downtown Tulsa on weekdays; Broken Arrow on Saturdays" value={form.mobile_location_details} onChange={(e) => setForm({ ...form, mobile_location_details: e.target.value })} className="h-[90px] w-full resize-none rounded-[14px] border border-neutral-200 bg-white px-4 py-3 text-[15px] outline-none transition focus:border-black" />
+                    </label>
+                  )}
                   <label className="flex cursor-pointer items-start gap-3 text-[14px] text-neutral-700">
                     <input type="checkbox" checked={form.hide_street_address} onChange={(e) => setForm({ ...form, hide_street_address: e.target.checked })} className="mt-0.5 h-4 w-4 accent-black" />
-                    <span>Hide my exact street address from clients</span>
+                    <span>{form.location_type === "mobile_salon" || form.location_type === "travels" ? "Keep my base address private" : "Hide my exact street address from clients"}</span>
                   </label>
+                  {(form.location_type === "mobile_salon" || form.location_type === "travels") && (
+                    <p className="text-[12px] leading-[1.5] text-neutral-500">Exact appointment details can be shared after the booking is confirmed.</p>
+                  )}
                 </div>
 
                 <p className="text-[13px] leading-[1.5] text-neutral-500">
