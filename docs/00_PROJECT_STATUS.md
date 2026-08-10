@@ -128,6 +128,30 @@ Client Request
 5. Validate client-to-professional demand.
 6. Begin testing monetization assumptions.
 
+## Known Issues / Beta Feedback
+
+Record observations here before changing the product. Repeated independent feedback should carry more weight than a single preference.
+
+### Critical
+
+None currently.
+
+### Bugs
+
+-
+
+### UX Friction
+
+-
+
+### Feature Requests
+
+-
+
+### Founder Observations
+
+-
+
 ## Do Not Prioritize Yet
 
 - Large feature expansion
