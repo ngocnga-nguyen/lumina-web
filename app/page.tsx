@@ -249,9 +249,9 @@ setArtistProfile(artist);
 </nav>
       </header>
 <section className="bg-white px-6 pb-6 pt-10 md:px-14 md:pb-8 md:pt-14">
-  <div className="max-w-[760px]">
+  <div className="max-w-[760px] md:mx-auto md:text-center">
     <h1
-      className="max-w-[700px] text-[38px] font-semibold leading-[0.95] tracking-[-0.03em] md:text-[60px] lg:text-[72px]"
+      className="max-w-[700px] text-[38px] font-semibold leading-[0.95] tracking-[-0.03em] md:mx-auto md:text-[60px] lg:text-[72px]"
       style={{ fontFamily: "Georgia, Times New Roman, serif" }}
     >
       Find beauty
@@ -262,7 +262,7 @@ setArtistProfile(artist);
     </h1>
 
     <p
-      className="mt-8 max-w-[760px] text-[20px] leading-[1.35] text-neutral-700 md:text-[26px] lg:text-[28px]"
+      className="mt-8 max-w-[760px] text-[20px] leading-[1.35] text-neutral-700 md:mx-auto md:text-[26px] lg:text-[28px]"
       style={{ fontFamily: "Georgia, Times New Roman, serif" }}
     >
       Compare portfolios, pricing, reviews, and verified results before you
@@ -270,7 +270,7 @@ setArtistProfile(artist);
     </p>
 
     <div className="mt-6">
-      <div className="relative w-full max-w-[720px]">
+      <div className="relative w-full max-w-[720px] md:mx-auto">
 
     <SearchBar
 
@@ -319,7 +319,7 @@ setArtistProfile(artist);
       </div>
     </div>
 
-    <div className="mt-7 flex flex-col gap-2.5 sm:flex-row md:mt-8">
+    <div className="mt-7 flex flex-col gap-2.5 sm:flex-row md:mt-8 md:justify-center">
       <Link
         href="/browse"
         className="rounded-full bg-black px-6 py-2.5 text-center text-[14px] font-medium text-white transition hover:opacity-90"
@@ -347,7 +347,7 @@ setArtistProfile(artist);
     </div>
 
     {!user && (
-      <p className="mt-4 text-center text-[13px] text-neutral-500 sm:text-left">
+      <p className="mt-4 text-center text-[13px] text-neutral-500 sm:text-left md:text-center">
         Beauty professional?{" "}
         <Link href="/join-as-artist" className="text-black underline">
           Create a professional account
