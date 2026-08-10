@@ -482,7 +482,7 @@ setArtistProfile(artist);
         </div>
       </section>
 
-      <section className="px-4 pb-16 md:px-14 md:pb-24 lg:pb-28">
+      <section className="px-4 pb-16 pt-14 md:px-14 md:pb-24 md:pt-20 lg:pb-28 lg:pt-24">
         <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
   <div>
     <p className="text-[12px] font-semibold uppercase tracking-[0.18em] text-neutral-500">
