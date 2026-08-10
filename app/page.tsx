@@ -269,11 +269,11 @@ setArtistProfile(artist);
   )}
 </nav>
       </header>
-<section className="bg-white px-6 pb-6 pt-10 md:px-14 md:pb-12 md:pt-14">
-  <div className="mx-auto grid max-w-[1400px] grid-cols-1 items-center gap-12 md:grid-cols-[minmax(0,1.05fr)_minmax(360px,0.95fr)] lg:gap-16">
-  <div className="max-w-[760px]">
+<section className="bg-white px-6 pb-6 pt-10 md:px-10 md:pb-8 md:pt-16 lg:px-14 lg:pt-20">
+  <div className="mx-auto grid w-full max-w-[1580px] grid-cols-1 items-center gap-12 md:grid-cols-[minmax(0,1.18fr)_minmax(0,0.82fr)] md:gap-10 lg:gap-16 xl:grid-cols-[minmax(620px,1.16fr)_minmax(440px,0.84fr)] xl:gap-20 2xl:gap-24">
+  <div className="w-full max-w-[680px] md:mx-0 md:pr-1 md:text-left xl:pr-2">
     <h1
-      className="max-w-[700px] text-[38px] font-semibold leading-[0.95] tracking-[-0.03em] md:text-[60px] lg:text-[72px]"
+      className="max-w-[680px] text-[38px] font-semibold leading-[0.95] tracking-[-0.03em] md:mx-0 md:text-[48px] lg:text-[60px] xl:text-[70px] 2xl:text-[74px]"
       style={{ fontFamily: "Georgia, Times New Roman, serif" }}
     >
       Find beauty
@@ -284,7 +284,7 @@ setArtistProfile(artist);
     </h1>
 
     <p
-      className="mt-8 max-w-[760px] text-[20px] leading-[1.35] text-neutral-700 md:text-[26px] lg:text-[28px]"
+      className="mt-8 max-w-[680px] text-[20px] leading-[1.35] text-neutral-700 md:mx-0 md:mt-7 md:text-[20px] lg:text-[23px] xl:text-[27px]"
       style={{ fontFamily: "Georgia, Times New Roman, serif" }}
     >
       Compare portfolios, pricing, reviews, and verified results before you
@@ -292,7 +292,7 @@ setArtistProfile(artist);
     </p>
 
     <div className="mt-6">
-      <div className="relative w-full max-w-[720px]">
+      <div className="relative w-full max-w-[610px] md:mx-0">
 
     <SearchBar
 
@@ -300,7 +300,7 @@ setArtistProfile(artist);
 
       onChange={setSearchQuery}
 
-      placeholder="Search by city, artist, or service"
+      placeholder="City, artist, or service"
 
       showButton={true}
 
@@ -341,7 +341,7 @@ setArtistProfile(artist);
       </div>
     </div>
 
-    <div className="mt-7 flex flex-col gap-2.5 sm:flex-row md:mt-8">
+    <div className="mt-7 flex flex-col gap-2.5 sm:flex-row sm:justify-center md:mt-6 md:justify-start md:gap-2">
       <Link
         href="/browse"
         className="rounded-full bg-black px-6 py-2.5 text-center text-[14px] font-medium text-white transition hover:opacity-90"
@@ -369,7 +369,7 @@ setArtistProfile(artist);
     </div>
 
     {!user && (
-      <p className="mt-4 text-center text-[13px] text-neutral-500 sm:text-left">
+      <p className="mt-4 text-center text-[13px] text-neutral-500 md:text-left">
         Beauty professional?{" "}
         <Link href="/join-as-artist" className="text-black underline">
           Create a professional account
@@ -377,10 +377,10 @@ setArtistProfile(artist);
       </p>
     )}
   </div>
-  <div className="hidden md:block">
-    <div className="overflow-hidden rounded-[30px] bg-[#faf6f5] shadow-sm">
+  <div className="hidden md:block md:pl-1 xl:pl-2">
+    <div className="relative ml-auto w-full max-w-[520px] overflow-hidden rounded-[26px] bg-[#f5f1ef] shadow-[0_16px_48px_rgba(45,35,30,0.08)] lg:rounded-[30px]">
       <Link
-        href={`/browse?category=${encodeURIComponent(heroServices[heroServiceIndex][0])}`}
+        href={`/browse?categories=${encodeURIComponent(heroServices[heroServiceIndex][0])}`}
         className="group block"
       >
         <div className="relative aspect-[4/3] overflow-hidden bg-neutral-100">
@@ -388,17 +388,22 @@ setArtistProfile(artist);
             key={heroServices[heroServiceIndex][1]}
             src={heroServices[heroServiceIndex][1]}
             alt={heroServices[heroServiceIndex][0]}
-            className="h-full w-full object-cover transition duration-700 group-hover:scale-[1.02]"
+            className="h-full w-full object-cover transition duration-1000 group-hover:scale-[1.035]"
           />
-          <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/55 to-transparent px-7 pb-6 pt-20 text-white">
-            <p className="text-[12px] font-medium uppercase tracking-[0.16em] text-white/75">Explore by service</p>
-            <p className="mt-2 text-[30px]" style={{ fontFamily: "Georgia, Times New Roman, serif" }}>{heroServices[heroServiceIndex][0]}</p>
-            <p className="mt-2 text-[13px] text-white/85">Discover professionals →</p>
+          <div className="absolute inset-0 bg-gradient-to-tr from-black/60 via-black/5 to-white/10" />
+          <div className="absolute left-5 top-5 rounded-full border border-white/35 bg-white/15 px-3 py-1.5 text-[9px] font-medium uppercase tracking-[0.16em] text-white backdrop-blur-md lg:left-7 lg:top-7 lg:px-4 lg:py-2 lg:text-[11px]">
+            Featured service
+          </div>
+          <div className="absolute inset-x-0 bottom-0 px-5 pb-5 pt-20 text-white lg:px-8 lg:pb-8 xl:px-10 xl:pb-10">
+            <p className="text-[9px] font-medium uppercase tracking-[0.18em] text-white/70 lg:text-[11px] xl:text-[12px]">This moment in beauty</p>
+            <p className="mt-2 text-[25px] leading-none lg:mt-3 lg:text-[32px] xl:text-[40px]" style={{ fontFamily: "Georgia, Times New Roman, serif" }}>{heroServices[heroServiceIndex][0]}</p>
+            <div className="mt-3 inline-flex items-center gap-2 text-[11px] font-medium text-white/90 lg:mt-5 lg:text-[13px]">
+              View matching professionals <span className="transition group-hover:translate-x-1">→</span>
+            </div>
           </div>
         </div>
       </Link>
-      <div className="flex items-center justify-between px-6 py-4">
-        <p className="text-[12px] text-neutral-500">Services rotate every few seconds</p>
+      <div className="flex items-center justify-center px-7 py-3.5">
         <div className="flex gap-2" aria-label="Choose a service">
           {heroServices.map(([service], index) => (
             <button
@@ -416,7 +421,8 @@ setArtistProfile(artist);
   </div>
   </div>
 </section>
-      <section className="px-6 pt-4 pb-10 md:px-14 md:pt-6 md:pb-16 lg:pb-20">
+      <section className="px-6 pt-4 pb-10 md:px-14 md:pt-5 md:pb-16 lg:pt-6 lg:pb-20">
+        <div className="mx-auto w-full max-w-[1580px]">
         <div className="max-w-[760px]">
   <p className="text-[12px] font-semibold uppercase tracking-[0.18em] text-neutral-500">
     Browse by category
@@ -438,7 +444,7 @@ setArtistProfile(artist);
             </p>
           </div>
         ) : (
-          <div className="mt-8 grid max-w-[1280px] grid-cols-2 gap-5 md:mt-10 md:grid-cols-3 lg:grid-cols-5 lg:gap-8">
+          <div className="mt-8 grid grid-cols-2 gap-5 md:mt-10 md:grid-cols-3 lg:grid-cols-5 lg:gap-8">
             {categories.map((category) => {
               const count = artists.filter(
                 (artist) => artist.category === category
@@ -447,7 +453,7 @@ setArtistProfile(artist);
               return (
   <Link
     key={category}
-    href={`/browse?category=${encodeURIComponent(category)}`}
+    href={`/browse?categories=${encodeURIComponent(category)}`}
     className="group overflow-hidden rounded-[22px] border border-[#eee6e2] bg-white transition duration-300 hover:-translate-y-1 hover:shadow-lg"
   >
     <div className="aspect-[4/3] overflow-hidden bg-[#f8f5f3]">
@@ -479,6 +485,7 @@ setArtistProfile(artist);
             })}
           </div>
         )}
+        </div>
       </section>
 
       <section className="bg-[#faf6f5] px-4 py-14 md:px-14 md:py-20 lg:py-24">
