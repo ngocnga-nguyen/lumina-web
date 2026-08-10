@@ -44,6 +44,9 @@ export default function Home() {
   const [heroServiceIndex, setHeroServiceIndex] = useState(0);
   const heroPointerStartX = useRef<number | null>(null);
   const heroDidSwipe = useRef(false);
+  const heroWheelDistance = useRef(0);
+  const heroWheelResetTimer = useRef<number | null>(null);
+  const heroWheelLocked = useRef(false);
   const accountName =
   artistProfile?.name ||
   user?.user_metadata?.full_name ||
@@ -90,6 +93,39 @@ const accountImage = artistProfile?.profile_image_url || null;
 
   const cancelHeroPointer = () => {
     heroPointerStartX.current = null;
+  };
+
+  const handleHeroWheel = (event: React.WheelEvent<HTMLAnchorElement>) => {
+    if (Math.abs(event.deltaX) <= Math.abs(event.deltaY)) return;
+
+    event.preventDefault();
+    if (heroWheelLocked.current) return;
+
+    heroWheelDistance.current += event.deltaX;
+
+    if (heroWheelResetTimer.current) {
+      window.clearTimeout(heroWheelResetTimer.current);
+    }
+
+    heroWheelResetTimer.current = window.setTimeout(() => {
+      heroWheelDistance.current = 0;
+    }, 180);
+
+    if (Math.abs(heroWheelDistance.current) < 45) return;
+
+    heroWheelLocked.current = true;
+    heroDidSwipe.current = true;
+
+    if (heroWheelDistance.current > 0) {
+      showNextHeroService();
+    } else {
+      showPreviousHeroService();
+    }
+
+    heroWheelDistance.current = 0;
+    window.setTimeout(() => {
+      heroWheelLocked.current = false;
+    }, 450);
   };
 
   useEffect(() => {
@@ -425,13 +461,14 @@ setArtistProfile(artist);
         onPointerDown={handleHeroPointerDown}
         onPointerUp={handleHeroPointerUp}
         onPointerCancel={cancelHeroPointer}
+        onWheel={handleHeroWheel}
         onClick={(event) => {
           if (heroDidSwipe.current) {
             event.preventDefault();
             heroDidSwipe.current = false;
           }
         }}
-        aria-label={`Featured service: ${heroServices[heroServiceIndex][0]}. Swipe to explore other services.`}
+        aria-label={`Featured service: ${heroServices[heroServiceIndex][0]}. Swipe or drag to explore other services.`}
       >
         <div className="relative aspect-[4/3] overflow-hidden bg-neutral-100">
           <img
