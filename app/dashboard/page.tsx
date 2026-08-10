@@ -38,7 +38,7 @@ const accountImage = artist?.profile_image_url || null;
   const [uploadingImage, setUploadingImage] = useState(false);
 
   const handleSignOut = async () => {
-    await supabase.auth.signOut();
+    await supabase.auth.signOut({ scope: "local" });
     window.location.href = "/login";
   };
 

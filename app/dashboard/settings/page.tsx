@@ -16,6 +16,7 @@ export default function ArtistSettingsPage() {
   const [isVisible, setIsVisible] = useState(true);
   const [visibilityLoading, setVisibilityLoading] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [signingOutOthers, setSigningOutOthers] = useState(false);
 
   useEffect(() => {
     const loadSettings = async () => {
@@ -119,8 +120,20 @@ export default function ArtistSettingsPage() {
   };
 
   const signOut = async () => {
-    await supabase.auth.signOut();
+    await supabase.auth.signOut({ scope: "local" });
     router.push("/login");
+  };
+
+  const signOutOtherDevices = async () => {
+    if (!window.confirm("Sign out of Lumina on all other devices? You will stay signed in here.")) return;
+    setSigningOutOthers(true);
+    const { error } = await supabase.auth.signOut({ scope: "others" });
+    setSigningOutOthers(false);
+    if (error) {
+      alert(error.message);
+      return;
+    }
+    alert("Other devices have been signed out. You are still signed in on this device.");
   };
 
   return (
@@ -219,6 +232,18 @@ export default function ArtistSettingsPage() {
                   className="mt-3 rounded-full border border-neutral-200 px-4 py-2 text-[12px] text-neutral-600 disabled:opacity-50"
                 >
                   {sendingPasswordReset ? "Sending…" : "Change password"}
+                </button>
+              </div>
+
+              <div className="mt-6 border-t border-neutral-100 pt-5">
+                <p className="text-[13px] font-medium">Other devices</p>
+                <p className="mt-1 text-[12px] leading-[1.5] text-neutral-500">End every other Lumina session while keeping this device signed in.</p>
+                <button
+                  onClick={() => void signOutOtherDevices()}
+                  disabled={signingOutOthers}
+                  className="mt-3 rounded-full border border-neutral-200 px-4 py-2 text-[12px] text-neutral-600 disabled:opacity-50"
+                >
+                  {signingOutOthers ? "Signing out…" : "Sign out of other devices"}
                 </button>
               </div>
             </section>

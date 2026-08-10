@@ -21,6 +21,7 @@ export default function AccountPage() {
   const [newEmail, setNewEmail] = useState("");
   const [changingEmail, setChangingEmail] = useState(false);
   const [sendingPasswordReset, setSendingPasswordReset] = useState(false);
+  const [signingOutOthers, setSigningOutOthers] = useState(false);
 
   useEffect(() => {
     const loadUser = async () => {
@@ -54,8 +55,20 @@ export default function AccountPage() {
   }, [router]);
 
   const signOut = async () => {
-    await supabase.auth.signOut();
+    await supabase.auth.signOut({ scope: "local" });
     router.push("/");
+  };
+
+  const signOutOtherDevices = async () => {
+    if (!window.confirm("Sign out of Lumina on all other devices? You will stay signed in here.")) return;
+    setSigningOutOthers(true);
+    const { error } = await supabase.auth.signOut({ scope: "others" });
+    setSigningOutOthers(false);
+    if (error) {
+      alert(error.message);
+      return;
+    }
+    alert("Other devices have been signed out. You are still signed in on this device.");
   };
 
   const uploadProfileImage = async (file: File) => {
@@ -415,6 +428,15 @@ export default function AccountPage() {
           >
             My Requests
           </Link>
+
+          <button
+            onClick={() => void signOutOtherDevices()}
+            disabled={signingOutOthers}
+            className="rounded-[18px] border border-neutral-200 px-5 py-4 text-left text-sm text-neutral-600 transition hover:bg-[#faf6f5] hover:text-black disabled:opacity-50"
+          >
+            <span className="block">Sign out of other devices</span>
+            <span className="mt-1 block text-[11px] text-neutral-400">Keep this device signed in</span>
+          </button>
 
           <button
             onClick={signOut}
