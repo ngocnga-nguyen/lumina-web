@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import ArtistCard from "@/components/ArtistCard";
 import SearchBar from "@/components/SearchBar";
@@ -42,6 +42,8 @@ export default function Home() {
   const [artistProfile, setArtistProfile] = useState<any>(null);
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
   const [heroServiceIndex, setHeroServiceIndex] = useState(0);
+  const heroTouchStartX = useRef<number | null>(null);
+  const heroDidSwipe = useRef(false);
   const accountName =
   artistProfile?.name ||
   user?.user_metadata?.full_name ||
@@ -51,6 +53,38 @@ export default function Home() {
 const accountInitial = accountName.charAt(0).toUpperCase();
 
 const accountImage = artistProfile?.profile_image_url || null;
+
+  const showNextHeroService = () => {
+    setHeroServiceIndex((current) => (current + 1) % heroServices.length);
+  };
+
+  const showPreviousHeroService = () => {
+    setHeroServiceIndex(
+      (current) => (current - 1 + heroServices.length) % heroServices.length
+    );
+  };
+
+  const handleHeroTouchStart = (event: React.TouchEvent) => {
+    heroTouchStartX.current = event.touches[0]?.clientX ?? null;
+    heroDidSwipe.current = false;
+  };
+
+  const handleHeroTouchEnd = (event: React.TouchEvent) => {
+    if (heroTouchStartX.current === null) return;
+
+    const endX = event.changedTouches[0]?.clientX ?? heroTouchStartX.current;
+    const distance = endX - heroTouchStartX.current;
+    heroTouchStartX.current = null;
+
+    if (Math.abs(distance) < 40) return;
+
+    heroDidSwipe.current = true;
+    if (distance < 0) {
+      showNextHeroService();
+    } else {
+      showPreviousHeroService();
+    }
+  };
 
   useEffect(() => {
     const recoveryLinkLandedOnHome =
@@ -381,7 +415,16 @@ setArtistProfile(artist);
     <div className="relative ml-auto w-full max-w-[520px] overflow-hidden rounded-[26px] bg-[#f5f1ef] shadow-[0_16px_48px_rgba(45,35,30,0.08)] lg:rounded-[30px]">
       <Link
         href={`/browse?categories=${encodeURIComponent(heroServices[heroServiceIndex][0])}`}
-        className="group block"
+        className="group block touch-pan-y"
+        onTouchStart={handleHeroTouchStart}
+        onTouchEnd={handleHeroTouchEnd}
+        onClick={(event) => {
+          if (heroDidSwipe.current) {
+            event.preventDefault();
+            heroDidSwipe.current = false;
+          }
+        }}
+        aria-label={`Featured service: ${heroServices[heroServiceIndex][0]}. Swipe to explore other services.`}
       >
         <div className="relative aspect-[4/3] overflow-hidden bg-neutral-100">
           <img
