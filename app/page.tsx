@@ -25,6 +25,14 @@ const categoryImages: Record<string, string> = {
   "Makeup Artist": "/categories/makeup.jpg",
   "Brow Artist": "/categories/brow.jpg",
 };
+const heroServices = [
+  ["Nail Technician", "/categories/nail.jpg"],
+  ["Hair Stylist", "/categories/hair.jpg"],
+  ["Makeup Artist", "/categories/makeup.jpg"],
+  ["Lash Artist", "/categories/lash.jpg"],
+  ["Brow Artist", "/categories/brow.jpg"],
+  ["Facial Esthetician", "/categories/facial.jpg"],
+] as const;
 export default function Home() {
   const router = useRouter();
   const [artists, setArtists] = useState<Artist[]>([]);
@@ -33,6 +41,7 @@ export default function Home() {
   const [artistId, setArtistId] = useState<string | null>(null);
   const [artistProfile, setArtistProfile] = useState<any>(null);
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
+  const [heroServiceIndex, setHeroServiceIndex] = useState(0);
   const accountName =
   artistProfile?.name ||
   user?.user_metadata?.full_name ||
@@ -83,6 +92,18 @@ const accountImage = artistProfile?.profile_image_url || null;
     };
 
     fetchArtists();
+  }, []);
+
+  useEffect(() => {
+    const desktop = window.matchMedia("(min-width: 768px)");
+    const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
+    if (!desktop.matches || reducedMotion.matches) return;
+
+    const timer = window.setInterval(() => {
+      setHeroServiceIndex((current) => (current + 1) % heroServices.length);
+    }, 5000);
+
+    return () => window.clearInterval(timer);
   }, []);
 
   useEffect(() => {
@@ -248,10 +269,11 @@ setArtistProfile(artist);
   )}
 </nav>
       </header>
-<section className="bg-white px-6 pb-6 pt-10 md:px-14 md:pb-8 md:pt-14">
-  <div className="max-w-[760px] md:mx-auto md:text-center">
+<section className="bg-white px-6 pb-6 pt-10 md:px-14 md:pb-12 md:pt-14">
+  <div className="mx-auto grid max-w-[1400px] grid-cols-1 items-center gap-12 md:grid-cols-[minmax(0,1.05fr)_minmax(360px,0.95fr)] lg:gap-16">
+  <div className="max-w-[760px]">
     <h1
-      className="max-w-[700px] text-[38px] font-semibold leading-[0.95] tracking-[-0.03em] md:mx-auto md:text-[60px] lg:text-[72px]"
+      className="max-w-[700px] text-[38px] font-semibold leading-[0.95] tracking-[-0.03em] md:text-[60px] lg:text-[72px]"
       style={{ fontFamily: "Georgia, Times New Roman, serif" }}
     >
       Find beauty
@@ -262,7 +284,7 @@ setArtistProfile(artist);
     </h1>
 
     <p
-      className="mt-8 max-w-[760px] text-[20px] leading-[1.35] text-neutral-700 md:mx-auto md:text-[26px] lg:text-[28px]"
+      className="mt-8 max-w-[760px] text-[20px] leading-[1.35] text-neutral-700 md:text-[26px] lg:text-[28px]"
       style={{ fontFamily: "Georgia, Times New Roman, serif" }}
     >
       Compare portfolios, pricing, reviews, and verified results before you
@@ -270,7 +292,7 @@ setArtistProfile(artist);
     </p>
 
     <div className="mt-6">
-      <div className="relative w-full max-w-[720px] md:mx-auto">
+      <div className="relative w-full max-w-[720px]">
 
     <SearchBar
 
@@ -319,7 +341,7 @@ setArtistProfile(artist);
       </div>
     </div>
 
-    <div className="mt-7 flex flex-col gap-2.5 sm:flex-row md:mt-8 md:justify-center">
+    <div className="mt-7 flex flex-col gap-2.5 sm:flex-row md:mt-8">
       <Link
         href="/browse"
         className="rounded-full bg-black px-6 py-2.5 text-center text-[14px] font-medium text-white transition hover:opacity-90"
@@ -347,13 +369,51 @@ setArtistProfile(artist);
     </div>
 
     {!user && (
-      <p className="mt-4 text-center text-[13px] text-neutral-500 sm:text-left md:text-center">
+      <p className="mt-4 text-center text-[13px] text-neutral-500 sm:text-left">
         Beauty professional?{" "}
         <Link href="/join-as-artist" className="text-black underline">
           Create a professional account
         </Link>
       </p>
     )}
+  </div>
+  <div className="hidden md:block">
+    <div className="overflow-hidden rounded-[30px] bg-[#faf6f5] shadow-sm">
+      <Link
+        href={`/browse?category=${encodeURIComponent(heroServices[heroServiceIndex][0])}`}
+        className="group block"
+      >
+        <div className="relative aspect-[4/3] overflow-hidden bg-neutral-100">
+          <img
+            key={heroServices[heroServiceIndex][1]}
+            src={heroServices[heroServiceIndex][1]}
+            alt={heroServices[heroServiceIndex][0]}
+            className="h-full w-full object-cover transition duration-700 group-hover:scale-[1.02]"
+          />
+          <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/55 to-transparent px-7 pb-6 pt-20 text-white">
+            <p className="text-[12px] font-medium uppercase tracking-[0.16em] text-white/75">Explore by service</p>
+            <p className="mt-2 text-[30px]" style={{ fontFamily: "Georgia, Times New Roman, serif" }}>{heroServices[heroServiceIndex][0]}</p>
+            <p className="mt-2 text-[13px] text-white/85">Discover professionals →</p>
+          </div>
+        </div>
+      </Link>
+      <div className="flex items-center justify-between px-6 py-4">
+        <p className="text-[12px] text-neutral-500">Services rotate every few seconds</p>
+        <div className="flex gap-2" aria-label="Choose a service">
+          {heroServices.map(([service], index) => (
+            <button
+              key={service}
+              type="button"
+              onClick={() => setHeroServiceIndex(index)}
+              aria-label={`Show ${service}`}
+              aria-pressed={heroServiceIndex === index}
+              className={`h-2 rounded-full transition ${heroServiceIndex === index ? "w-6 bg-black" : "w-2 bg-neutral-300 hover:bg-neutral-500"}`}
+            />
+          ))}
+        </div>
+      </div>
+    </div>
+  </div>
   </div>
 </section>
       <section className="px-6 pt-4 pb-10 md:px-14 md:pt-6 md:pb-16 lg:pb-20">
