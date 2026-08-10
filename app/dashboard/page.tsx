@@ -360,7 +360,7 @@ const professionalHighlights = [
               aria-label="Dashboard sections"
               className="grid grid-cols-3 gap-2 text-center text-[14px] sm:flex sm:items-center sm:gap-3 sm:text-[15px]"
             >
-              <span className="rounded-full bg-black px-3 py-2.5 leading-none text-white sm:px-4 sm:py-2">
+              <span className="cursor-default rounded-full px-3 py-2.5 leading-none text-neutral-600 transition hover:bg-black hover:text-white active:bg-black active:text-white sm:px-4 sm:py-2">
                 Services
               </span>
 
