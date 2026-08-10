@@ -355,30 +355,33 @@ const professionalHighlights = [
         </div>
 
         <section className="mt-12 md:mt-16">
-          <div className="flex items-center justify-between gap-4">
-            <div className="flex items-center gap-6 text-[15px]">
-              <span className="rounded-full bg-black px-4 py-2 leading-none text-white">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <nav
+              aria-label="Dashboard sections"
+              className="grid grid-cols-3 gap-2 text-center text-[14px] sm:flex sm:items-center sm:gap-3 sm:text-[15px]"
+            >
+              <span className="rounded-full bg-black px-3 py-2.5 leading-none text-white sm:px-4 sm:py-2">
                 Services
               </span>
 
               <Link
                 href="/dashboard/portfolio"
-                className="rounded-full px-4 py-2 leading-none text-neutral-600 transition hover:bg-black hover:text-white"
+                className="rounded-full px-3 py-2.5 leading-none text-neutral-600 transition hover:bg-black hover:text-white focus-visible:bg-black focus-visible:text-white active:bg-black active:text-white sm:px-4 sm:py-2"
               >
                 Portfolio
               </Link>
 
               <Link
                 href="/dashboard/requests"
-                className="rounded-full px-4 py-2 leading-none text-neutral-600 transition hover:bg-black hover:text-white"
+                className="rounded-full px-3 py-2.5 leading-none text-neutral-600 transition hover:bg-black hover:text-white focus-visible:bg-black focus-visible:text-white active:bg-black active:text-white sm:px-4 sm:py-2"
               >
                 Requests
               </Link>
-            </div>
+            </nav>
 
             <Link
               href="/dashboard/services"
-              className="text-[13px] transition hover:opacity-60"
+              className="inline-flex w-fit items-center rounded-full border border-neutral-200 bg-neutral-100 px-4 py-2.5 text-[13px] font-medium text-neutral-600 transition hover:bg-neutral-200 hover:text-black active:bg-neutral-300 sm:py-2"
             >
               Manage Services
             </Link>
