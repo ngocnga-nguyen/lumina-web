@@ -7,6 +7,7 @@ import AccountMenu from "@/components/AccountMenu";
 
 type ProfileForm = {
   name: string;
+  business_name: string;
   category: string;
   address: string;
   latitude: string;
@@ -27,6 +28,7 @@ export default function DashboardProfilePage() {
 
   const [form, setForm] = useState<ProfileForm>({
     name: "",
+    business_name: "",
     category: "",
     address: "",
     latitude: "",
@@ -60,8 +62,12 @@ export default function DashboardProfilePage() {
       }
 
       if (data) {
+        const savedName = data.name || "";
+        const businessMatch = savedName.match(/^(.*?)\s*\((.+)\)\s*$/);
+
         setForm({
-          name: data.name || "",
+          name: businessMatch?.[1]?.trim() || savedName,
+          business_name: businessMatch?.[2]?.trim() || "",
           category: data.category || "",
           address: data.address || data.location || "",
           latitude: data.latitude?.toString() || "",
@@ -113,6 +119,10 @@ export default function DashboardProfilePage() {
 
   const saveProfile = async () => {
     const cleanName = form.name.trim();
+    const cleanBusinessName = form.business_name.trim();
+    const publicName = cleanBusinessName
+      ? `${cleanName} (${cleanBusinessName})`
+      : cleanName;
     const cleanCategory = form.category.trim();
     const startingPrice = Number(form.price_start);
     const yearsExperience = form.years_experience
@@ -121,7 +131,7 @@ export default function DashboardProfilePage() {
     let bookingLink = form.social_link.trim();
 
     if (!cleanName || !cleanCategory || !form.price_start) {
-      alert("Please add your professional name, category, and starting price.");
+      alert("Please add your name, service category, and starting price.");
       return;
     }
 
@@ -187,7 +197,7 @@ export default function DashboardProfilePage() {
     const { error } = await supabase
       .from("artists")
       .update({
-        name: cleanName,
+        name: publicName,
         category: cleanCategory,
         location: form.address,
         address: form.address,
@@ -213,6 +223,7 @@ export default function DashboardProfilePage() {
     setForm((current) => ({
       ...current,
       name: cleanName,
+      business_name: cleanBusinessName,
       category: cleanCategory,
       social_link: bookingLink,
     }));
@@ -258,45 +269,34 @@ export default function DashboardProfilePage() {
               <p className={sectionTitleClass}>Basic info</p>
 
               <div className="mt-4 space-y-4">
-                <input
-                  type="text"
-                  placeholder="Artist or business name"
-                  value={form.name}
-                  onChange={(e) =>
-                    setForm({ ...form, name: e.target.value })
-                  }
-                  className={inputClass}
-                />
+                <label className="block">
+                  <span className="mb-2 block text-[13px] font-medium text-neutral-700">Your name</span>
+                  <input type="text" placeholder="Example: Maya Nguyen" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className={inputClass} />
+                </label>
 
-                <input
-                  type="text"
-                  placeholder="Service category, example: Nail Technician"
-                  value={form.category}
-                  onChange={(e) =>
-                    setForm({ ...form, category: e.target.value })
-                  }
-                  className={inputClass}
-                />
+                <label className="block">
+                  <span className="mb-2 block text-[13px] font-medium text-neutral-700">
+                    Business or salon name <span className="font-normal text-neutral-400">(optional)</span>
+                  </span>
+                  <input type="text" placeholder="Example: Rose Beauty Studio" value={form.business_name} onChange={(e) => setForm({ ...form, business_name: e.target.value })} className={inputClass} />
+                </label>
 
-                <input
-                  type="number"
-                  placeholder="Starting price"
-                  value={form.price_start}
-                  onChange={(e) =>
-                    setForm({ ...form, price_start: e.target.value })
-                  }
-                  className={inputClass}
-                />
+                <label className="block">
+                  <span className="mb-2 block text-[13px] font-medium text-neutral-700">Service category</span>
+                  <input type="text" placeholder="Example: Nail Technician" value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} className={inputClass} />
+                </label>
 
-                <input
-  type="number"
-  placeholder="Years of experience, example: 5"
-  value={form.years_experience}
-  onChange={(e) =>
-    setForm({ ...form, years_experience: e.target.value })
-  }
-  className={inputClass}
-/>
+                <label className="block">
+                  <span className="mb-2 block text-[13px] font-medium text-neutral-700">Starting price</span>
+                  <input type="number" placeholder="Example: 35" value={form.price_start} onChange={(e) => setForm({ ...form, price_start: e.target.value })} className={inputClass} />
+                </label>
+
+                <label className="block">
+                  <span className="mb-2 block text-[13px] font-medium text-neutral-700">
+                    Years of experience <span className="font-normal text-neutral-400">(optional)</span>
+                  </span>
+                  <input type="number" placeholder="Example: 5" value={form.years_experience} onChange={(e) => setForm({ ...form, years_experience: e.target.value })} className={inputClass} />
+                </label>
 
               </div>
             </section>
@@ -305,16 +305,19 @@ export default function DashboardProfilePage() {
               <p className={sectionTitleClass}>Location</p>
 
               <div className="mt-4 space-y-4">
-                <input
-                  type="text"
-                  placeholder="Salon address, example: 5315 S Mill St, Pryor, OK"
-                  value={form.address}
-                  onChange={(e) => {
-                    setLocationSaved(false);
-                    setForm({ ...form, address: e.target.value });
-                  }}
-                  className={inputClass}
-                />
+                <label className="block">
+                  <span className="mb-2 block text-[13px] font-medium text-neutral-700">Work or salon address</span>
+                  <input
+                    type="text"
+                    placeholder="Example: 123 Beauty Ave, Tulsa, OK 74103"
+                    value={form.address}
+                    onChange={(e) => {
+                      setLocationSaved(false);
+                      setForm({ ...form, address: e.target.value });
+                    }}
+                    className={inputClass}
+                  />
+                </label>
 
                 <p className="text-[13px] leading-[1.5] text-neutral-500">
                   Your map pin will be created automatically from this address
