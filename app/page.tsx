@@ -498,7 +498,8 @@ setArtistProfile(artist);
   </div>
 
   <p className="text-[13px] text-neutral-500">
-    Scroll to explore →
+    <span className="md:hidden">Swipe to explore →</span>
+    <span className="hidden md:inline">Scroll to explore →</span>
   </p>
 </div>
 
@@ -510,18 +511,18 @@ setArtistProfile(artist);
             </p>
           </div>
         ) : (
-          <div className="-mx-4 mt-10 flex snap-x snap-mandatory gap-5 overflow-x-auto px-4 pb-5 md:-mx-14 md:mt-14 md:gap-7 md:px-14">
+          <div className="-mx-4 mt-8 flex snap-x snap-mandatory gap-4 overflow-x-auto px-4 pb-5 md:-mx-14 md:mt-14 md:gap-7 md:px-14">
             {filteredArtists.map((artist) => (
     <ArtistCard
       key={artist.id}
       artist={artist}
-      className="w-[82vw] shrink-0 snap-start sm:w-[360px] md:w-[390px] lg:w-[410px]"
+      className="w-[72vw] max-w-[300px] shrink-0 snap-start sm:w-[340px] sm:max-w-none md:w-[390px] lg:w-[410px]"
     />
   ))}
           </div>
         )}
 
-        <div className="mt-10 text-center">
+        <div className="mt-7 text-center md:mt-10">
           <Link
             href="/browse"
             className="rounded-full border border-black px-7 py-3 text-[14px] transition hover:bg-black hover:text-white"
