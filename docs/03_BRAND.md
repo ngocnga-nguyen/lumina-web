@@ -71,11 +71,13 @@ To become the world's most trusted beauty marketplace.
 
 # Core Values
 
-- Trust
 - Simplicity
-- Transparency
-- Quality
+- Honesty
+- Confidence
+- Premium Experience
 - Community
+
+Trust is the outcome these values should create.
 
 ---
 
@@ -87,7 +89,6 @@ Lumina should always feel:
 - Feminine
 - Calm
 - Modern
-- Luxurious
 - Friendly
 - Trustworthy
 - Premium
@@ -161,6 +162,8 @@ Lumina is not another booking app.
 Lumina is a trust platform for beauty.
 
 Everything we build should increase trust between clients and beauty professionals.
+
+Premium is not a price point. It is the feeling created by thoughtful design, consistency, simplicity, attention to detail, trust, and customer care.
 
 ---
 
