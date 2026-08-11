@@ -67,6 +67,28 @@ The review system is protected at the database level:
 - Anonymous fake-review insertion is blocked.
 - Professionals can respond, but cannot create client reviews for themselves.
 
+## Lumina’s Economic Role: Intermediation
+
+Lumina sits between two sides of a potential service relationship:
+
+**Client → Lumina → Beauty Professional**
+
+Its economic value does not come from performing the beauty service. It comes from reducing the client’s search cost, uncertainty, and decision difficulty while helping professionals receive more qualified customer interest.
+
+This is stronger than a basic directory model. A directory may show a name, specialty, phone number, and social-media link before the customer leaves. Lumina helps facilitate more of the relationship through discovery, filtering, structured profiles, pricing, portfolios, trust information, requests, proposals, communication, confirmation, completion, and verified reviews.
+
+Intermediation becomes especially useful when customers face many possible choices, which is a defining feature of beauty-service discovery.
+
+### Potential revenue logic to validate
+
+Lumina may eventually create two monetizable forms of value:
+
+**Intermediation value:** Lumina brings a professional a qualified client and helps the relationship progress. This could support a transaction- or booking-related fee.
+
+**Software and business-tool value:** Lumina provides professionals with profiles, organization, analytics, visibility, and growth tools. This could support a subscription.
+
+A hybrid model may eventually combine both. This remains a hypothesis—not a decided business model—and should be tested for customer willingness to pay, professional fairness, demand, retention, and sustainable unit economics.
+
 ## Current Product
 
 Lumina currently includes:

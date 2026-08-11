@@ -67,6 +67,28 @@ Hệ thống đánh giá được bảo vệ ở cấp cơ sở dữ liệu:
 - Hệ thống chặn việc tạo đánh giá giả ẩn danh.
 - Chuyên gia có thể phản hồi nhưng không thể tự tạo đánh giá của khách hàng cho chính mình.
 
+## Vai Trò Kinh Tế Của Lumina: Trung Gian Kết Nối
+
+Lumina đứng giữa hai phía của một mối quan hệ dịch vụ tiềm năng:
+
+**Khách hàng → Lumina → Chuyên gia làm đẹp**
+
+Giá trị kinh tế của Lumina không đến từ việc trực tiếp thực hiện dịch vụ làm đẹp. Giá trị đến từ việc giảm chi phí tìm kiếm, sự không chắc chắn và khó khăn khi ra quyết định cho khách hàng, đồng thời giúp chuyên gia tiếp cận những khách hàng có nhu cầu rõ ràng hơn.
+
+Vai trò này sâu hơn một danh bạ thông thường. Một danh bạ có thể chỉ hiển thị tên, chuyên môn, số điện thoại và đường dẫn mạng xã hội trước khi khách hàng rời khỏi nền tảng. Lumina hỗ trợ nhiều bước hơn trong mối quan hệ, gồm khám phá, lọc, hồ sơ có cấu trúc, giá cả, hình ảnh tác phẩm, thông tin tạo niềm tin, yêu cầu, đề xuất, trao đổi, xác nhận, hoàn thành và đánh giá đã xác minh.
+
+Vai trò trung gian đặc biệt hữu ích khi khách hàng phải lựa chọn giữa rất nhiều phương án. Đây chính là một đặc điểm quan trọng của việc tìm kiếm dịch vụ làm đẹp.
+
+### Giả thuyết doanh thu cần kiểm chứng
+
+Trong tương lai, Lumina có thể tạo ra hai loại giá trị có khả năng tạo doanh thu:
+
+**Giá trị trung gian kết nối:** Lumina mang đến cho chuyên gia một khách hàng có nhu cầu phù hợp và giúp mối quan hệ tiến triển. Giá trị này có thể hỗ trợ mô hình phí giao dịch hoặc phí liên quan đến đặt lịch.
+
+**Giá trị phần mềm và công cụ kinh doanh:** Lumina cung cấp hồ sơ, công cụ tổ chức, dữ liệu phân tích, khả năng được tìm thấy và hỗ trợ tăng trưởng cho chuyên gia. Giá trị này có thể hỗ trợ mô hình đăng ký trả phí.
+
+Một mô hình kết hợp có thể sử dụng cả hai nguồn giá trị. Tuy nhiên, đây vẫn là giả thuyết chứ chưa phải quyết định cuối cùng. Lumina cần kiểm chứng mức sẵn lòng chi trả, sự công bằng đối với chuyên gia, nhu cầu, khả năng giữ chân người dùng và hiệu quả kinh tế bền vững.
+
 ## Sản Phẩm Hiện Tại
 
 Lumina hiện có:

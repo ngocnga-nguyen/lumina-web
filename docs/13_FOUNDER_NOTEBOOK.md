@@ -91,6 +91,50 @@ Premium does not necessarily mean high prices.
 - StockX → Trust friction
 - Lumina → Beauty discovery and trust friction
 
+### Mental Model #6: Intermediation creates value by making exchange easier.
+
+Intermediation means adding a useful party between a buyer and seller to help one side complete a transaction or receive more value from it.
+
+**Lumina’s relationship**
+
+**Client → Lumina → Beauty Professional**
+
+Without Lumina, a client may need to search Instagram or TikTok, open many profiles, request prices through direct messages, determine whether professionals are legitimate, find examples of their work, understand availability, compare options, and decide whom to trust.
+
+Lumina inserts itself between the two parties to make the decision and connection easier.
+
+Intermediaries become especially valuable when customers face many choices. Beauty-service discovery is exactly this kind of problem.
+
+#### Lumina is more than a directory
+
+A weak intermediary might display only:
+
+**Name → Specialty → Phone number → Instagram**
+
+The client finds a professional and immediately leaves. Little of the decision or relationship is facilitated by the platform.
+
+Lumina supports a deeper lifecycle:
+
+**Discovery → Filtering → Professional Profile → Services and Pricing → Portfolio → Trust Information → Request → Proposal → Communication → Confirmation → Completion → Verified Review**
+
+Lumina therefore reduces the client’s search cost, uncertainty, and decision difficulty while helping the professional receive qualified interest.
+
+#### Economic value and revenue
+
+If Lumina connects a client with a professional who completes a $120 service, Lumina did not perform the service. Lumina still created economic value by bringing both sides together and reducing the friction required to complete the relationship.
+
+This suggests two different forms of potential value:
+
+**Intermediation value**
+
+Lumina brings professionals qualified customers and helps facilitate the relationship. This could eventually support transaction- or booking-related revenue.
+
+**Software and business-tool value**
+
+Lumina may provide professionals with enhanced profiles, tools, analytics, organization, or growth support. This could eventually support subscription revenue.
+
+A hybrid model may be worth testing because it could monetize both forms of value. It is not yet a final decision; real demand, willingness to pay, fairness, and unit economics must be validated first.
+
 ---
 
 ## ❤️ Lumina Philosophy

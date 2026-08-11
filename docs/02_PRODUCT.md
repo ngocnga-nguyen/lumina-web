@@ -8,6 +8,16 @@ The goal is not to replace the tools artists already use, such as Instagram, Squ
 
 Lumina helps artists get discovered for the quality of their work, not just their price.
 
+## Lumina’s Role as an Intermediary
+
+Lumina creates value between clients and beauty professionals:
+
+**Client → Lumina → Beauty Professional**
+
+It is not intended to be a passive directory that only lists names and contact information. Lumina reduces search cost, uncertainty, and decision difficulty by supporting discovery, comparison, trust evaluation, requests, communication, confirmation, completion, and verified reviews.
+
+This intermediation role is particularly useful in beauty discovery because clients face many fragmented choices and incomplete trust signals.
+
 ## Core Customer Insight
 
 Beauty professionals are facing more competition from salons, booth renters, independent artists, and at-home providers. Many feel pressure to discount because clients often compare by price before understanding the difference in quality.
