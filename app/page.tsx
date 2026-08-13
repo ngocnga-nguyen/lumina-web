@@ -5,6 +5,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import ArtistCard from "@/components/ArtistCard";
 import SearchBar from "@/components/SearchBar";
+import LuminaBrand from "@/components/LuminaBrand";
 import { useRouter } from "next/navigation";
 
 type Artist = {
@@ -244,8 +245,15 @@ setArtistProfile(artist);
   return (
     <main className="min-h-screen bg-white text-black">
       <header className="flex items-center justify-between bg-[#faf6f5] px-4 py-5 text-[15px] md:px-10 md:py-6">
-        <Link href="/" className="font-medium transition hover:opacity-70">
-          Lumina
+        <Link
+          href="/"
+          aria-label="Lumina home"
+          className="transition hover:opacity-70"
+        >
+          <LuminaBrand
+            priority
+            className="h-auto w-[88px] sm:w-[104px]"
+          />
         </Link>
 
         <nav className="relative flex items-center gap-3 whitespace-nowrap text-[12px] sm:gap-5 sm:text-sm md:text-[15px]">
@@ -815,10 +823,13 @@ setArtistProfile(artist);
           <div>
             <Link
               href="/"
-              className="text-[22px] font-semibold transition hover:opacity-70"
-              style={{ fontFamily: "Georgia, Times New Roman, serif" }}
+              aria-label="Lumina home"
+              className="inline-block rounded-[28px] bg-[radial-gradient(circle_at_50%_42%,#fffdfc_0%,#faf6f5_52%,#f7d9e0_100%)] p-4 shadow-[0_14px_36px_rgba(70,50,50,0.07)] transition hover:opacity-80"
             >
-              Lumina
+              <LuminaBrand
+                variant="primary"
+                className="h-auto w-[170px] sm:w-[190px]"
+              />
             </Link>
 
             <p className="mt-8 max-w-[280px] text-[16px] leading-[1.35] text-neutral-800">

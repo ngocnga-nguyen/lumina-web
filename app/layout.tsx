@@ -16,6 +16,10 @@ export const metadata = {
   title: "Lumina | Discover beauty professionals",
   description:
     "Lumina helps clients discover trusted beauty professionals through portfolios, services, reviews, and booking.",
+  icons: {
+    icon: "/icon.png",
+    apple: "/apple-icon.png",
+  },
 };
 
 export default function RootLayout({
