@@ -615,23 +615,6 @@ setAverageRating(updatedAverage);
           ? `${artist.years_experience} Years Experience`
           : null;
 
-  const professionalHighlights = [
-  artist.is_verified && "✓ Verified Professional",
-
-
-
-  experienceLabel,
-
-  artist.verified_results_count &&
-    `${artist.verified_results_count} Portfolio Results`,
-
-  artist.verified_reviews &&
-    "Verified Reviews",
-
-  artist.repeat_client_rate &&
-    `${artist.repeat_client_rate}% Repeat Client Rate`,
-].filter(Boolean);
-
   return (
     <main className="min-h-screen bg-white text-black">
       <header className="flex items-center justify-between bg-[#faf6f5] px-4 py-5 text-[15px] md:px-10 md:py-6">
@@ -772,12 +755,18 @@ setAverageRating(updatedAverage);
                   Edit profile
                 </Link>
               ) : !viewerIsArtist ? (
-                <button
-                  onClick={() => setOpenRequest(true)}
-                  className="mt-5 rounded-full border border-black bg-transparent px-5 py-3 text-[13px] text-black transition hover:bg-black hover:text-white"
-                >
-                  Send Request
-                </button>
+                <>
+                  <button
+                    onClick={() => setOpenRequest(true)}
+                    className="mt-5 rounded-full border border-black bg-transparent px-5 py-3 text-[13px] text-black transition hover:bg-black hover:text-white"
+                  >
+                    Send Request
+                  </button>
+                  <p className="mt-3 text-[12px] leading-[1.5] text-neutral-500">
+                    Discuss service details and availability. This does not book
+                    or charge you.
+                  </p>
+                </>
               ) : null}
             </div>
           </div>
@@ -831,26 +820,10 @@ setAverageRating(updatedAverage);
   className="text-[30px] font-semibold"
   style={{ fontFamily: "Georgia, Times New Roman, serif" }}
 >
-  Profile Highlights
+  Profile Details
 </h2>
 
 <div className="mt-6 grid grid-cols-2 gap-4 md:grid-cols-3">
-  {artist.is_verified && (
-    <div className="rounded-[18px] border border-neutral-200 p-5">
-      <div className="flex h-8 w-8 items-center justify-center rounded-full bg-black text-[14px] text-white">
-        ✓
-      </div>
-
-      <p className="mt-3 text-[16px] font-medium">
-        Verified Professional
-      </p>
-
-      <p className="mt-1 text-[12px] leading-[1.4] text-neutral-500">
-        Identity and professional profile reviewed by Lumina
-      </p>
-    </div>
-  )}
-
   {experienceLabel && (
     <div className="rounded-[18px] border border-neutral-200 p-5">
       <p className="text-[24px] font-semibold">{artist.experience_unit === "new" ? "New" : artist.experience_amount || artist.years_experience}</p>
@@ -858,34 +831,12 @@ setAverageRating(updatedAverage);
       <p className="mt-2 text-[15px] text-neutral-600">
         {artist.experience_unit === "new" ? "Artist" : artist.experience_unit === "months" ? "Months Experience" : "Years Experience"}
       </p>
+
+      <p className="mt-2 text-[11px] text-neutral-400">
+        Provided by the professional
+      </p>
     </div>
   )}
-
-  {artist.verified_results_count != null &&
-    artist.verified_results_count > 0 && (
-      <div className="rounded-[18px] border border-neutral-200 p-5">
-        <p className="text-[28px] font-semibold">
-          {artist.verified_results_count}
-        </p>
-
-        <p className="mt-2 text-[15px] text-neutral-600">
-          Verified Portfolio Results
-        </p>
-      </div>
-    )}
-
-  {artist.repeat_client_rate != null &&
-    artist.repeat_client_rate > 0 && (
-      <div className="rounded-[18px] border border-neutral-200 p-5">
-        <p className="text-[28px] font-semibold">
-          {artist.repeat_client_rate}%
-        </p>
-
-        <p className="mt-2 text-[15px] text-neutral-600">
-          Repeat Client Rate
-        </p>
-      </div>
-    )}
 
   {services.length > 0 && (
     <div className="rounded-[18px] border border-neutral-200 p-5">
@@ -906,7 +857,23 @@ setAverageRating(updatedAverage);
       </p>
 
       <p className="mt-2 text-[15px] text-neutral-600">
-        Portfolio Results
+        {portfolioImages.length === 1 ? "Portfolio Photo" : "Portfolio Photos"}
+      </p>
+    </div>
+  )}
+
+  {reviews.length > 0 && (
+    <div className="rounded-[18px] border border-neutral-200 p-5">
+      <p className="text-[28px] font-semibold">
+        {averageRating.toFixed(1)} ★
+      </p>
+
+      <p className="mt-2 text-[15px] text-neutral-600">
+        {reviews.length} Verified {reviews.length === 1 ? "Review" : "Reviews"}
+      </p>
+
+      <p className="mt-2 text-[11px] text-neutral-400">
+        Linked to completed Lumina appointments
       </p>
     </div>
   )}
@@ -1360,8 +1327,9 @@ setAverageRating(updatedAverage);
               </button>
             </div>
 
-            <p className="mt-2 text-[14px] text-neutral-600">
-              Your request will be sent to {artist.name}.
+            <p className="mt-2 text-[14px] leading-[1.5] text-neutral-600">
+              Discuss service details and availability with {artist.name}.
+              Sending this request does not book an appointment or charge you.
             </p>
 
             <div className="mt-5 space-y-4">

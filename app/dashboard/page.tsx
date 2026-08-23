@@ -35,6 +35,7 @@ export default function DashboardPage() {
 const accountInitial = accountName.charAt(0).toUpperCase();
 const accountImage = artist?.profile_image_url || null;
   const [services, setServices] = useState<Service[]>([]);
+  const [portfolioCount, setPortfolioCount] = useState(0);
   const [uploadingImage, setUploadingImage] = useState(false);
 
   const handleSignOut = async () => {
@@ -127,6 +128,18 @@ const accountImage = artist?.profile_image_url || null;
       }
 
       setServices(serviceData || []);
+
+      const { count: portfolioImageCount, error: portfolioError } =
+        await supabase
+          .from("portfolio_images")
+          .select("id", { count: "exact", head: true })
+          .eq("artist_id", artistData.id);
+
+      if (portfolioError) {
+        console.log(portfolioError);
+      } else {
+        setPortfolioCount(portfolioImageCount || 0);
+      }
     };
 
     fetchDashboardData();
@@ -142,16 +155,34 @@ const experienceLabel =
         : null;
 
 const professionalHighlights = [
-  artist?.is_verified && "Verified Professional",
-
   experienceLabel,
 
   services.length > 0 &&
     `${services.length} Service${services.length > 1 ? "s" : ""} Listed`,
 
-  artist?.profile_image_url && "Professional Portfolio",
+  portfolioCount > 0 &&
+    `${portfolioCount} Portfolio Photo${portfolioCount > 1 ? "s" : ""}`,
 
 ].filter(Boolean);
+
+const profileChecklist = [
+  { complete: Boolean(artist?.profile_image_url), label: "profile photo" },
+  { complete: Boolean(artist?.bio?.trim()), label: "about section" },
+  { complete: Boolean(artist?.availability?.trim()), label: "availability" },
+  { complete: Boolean(artist?.location?.trim()), label: "location" },
+  { complete: services.length > 0, label: "service" },
+  { complete: portfolioCount > 0, label: "portfolio photo" },
+];
+
+const completedProfileItems = profileChecklist.filter(
+  (item) => item.complete
+).length;
+const profileCompletion = artist
+  ? Math.round((completedProfileItems / profileChecklist.length) * 100)
+  : 0;
+const missingProfileItems = profileChecklist
+  .filter((item) => !item.complete)
+  .map((item) => item.label);
 
   return (
     <main className="min-h-screen bg-white text-black">
@@ -258,6 +289,53 @@ const professionalHighlights = [
       </header>
 
       <section className="px-4 py-6 md:px-10 md:py-10">
+        {artist && (
+          <div className="mb-8 max-w-[1140px] rounded-[22px] border border-neutral-200 bg-[#faf9f7] p-5 md:p-6">
+            <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
+              <div className="max-w-[700px]">
+                <div className="flex items-center justify-between gap-4">
+                  <div>
+                    <p className="text-[12px] font-semibold uppercase tracking-[0.18em] text-neutral-400">
+                      Your Lumina profile
+                    </p>
+                    <h2 className="mt-2 text-[22px] font-medium">
+                      {profileCompletion}% complete
+                    </h2>
+                  </div>
+                </div>
+
+                <div className="mt-4 h-2 overflow-hidden rounded-full bg-neutral-200">
+                  <div
+                    className="h-full rounded-full bg-black transition-all"
+                    style={{ width: `${profileCompletion}%` }}
+                  />
+                </div>
+
+                <p className="mt-3 text-[13px] leading-[1.6] text-neutral-600">
+                  {missingProfileItems.length > 0
+                    ? `Add your ${missingProfileItems.join(", ")} to help clients understand your work.`
+                    : "Your core profile details are complete and ready for clients to view."}
+                </p>
+              </div>
+
+              <div className="flex flex-wrap gap-3">
+                <Link
+                  href={`/artist/${artist.id}`}
+                  className="rounded-full border border-neutral-300 bg-white px-5 py-2.5 text-[13px] transition hover:border-black"
+                >
+                  View public profile
+                </Link>
+                <Link
+                  href="/dashboard/profile"
+                  className="rounded-full bg-black px-5 py-2.5 text-[13px] text-white transition hover:opacity-80"
+                >
+                  Complete profile
+                </Link>
+              </div>
+            </div>
+          </div>
+        )}
+
         <div className="grid grid-cols-1 gap-8 lg:grid-cols-[320px_minmax(0,820px)] lg:gap-9">
           <div>
             <label className="relative block h-[320px] cursor-pointer overflow-hidden rounded-[22px] bg-[#d9d9d9] transition hover:opacity-90 sm:h-[380px] lg:h-[420px]">
@@ -329,9 +407,7 @@ const professionalHighlights = [
             </p>
 
             <div className="mt-6 flex flex-wrap items-center gap-x-8 gap-y-2 text-[16px] text-neutral-700">
-              <span>
-  {artist?.is_verified ? "Verified Professional" : "Professional Profile"}
-</span>
+              <span>Professional Profile</span>
               <span>From ${artist?.price_start || 0}</span>
               <span>{artist?.location || "Location"}</span>
             </div>
@@ -346,7 +422,7 @@ const professionalHighlights = [
 
             <div className="mt-10">
   <p className="mb-3 text-[11px] font-semibold tracking-[0.22em] text-neutral-400 uppercase">
-    Professional Highlights
+    Profile details
   </p>
 
   <div className="mt-3 flex flex-wrap items-center text-[14px] text-neutral-600">
