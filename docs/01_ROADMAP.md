@@ -1,6 +1,6 @@
 # Lumina Product Roadmap
 
-**Last updated:** August 17, 2026
+**Last updated:** August 29, 2026
 
 ## Current Stage
 
@@ -229,11 +229,25 @@ These are not current commitments:
 - Cancellation and no-show protection
 - Waitlists
 - Multi-category review ratings
-- Verified before-and-after uploads
+- Professional-submitted before-and-after results
+- Completed-service-linked and client-confirmed results when the supporting
+  workflow and consent exist
 - Advanced professional analytics
 - Team profiles and client management
 - Marketing automation
 - Personalized recommendations
+
+### Staged long-term direction
+
+- **Next:** Improve profile completeness, result management, data-backed
+  reputation, reporting, and the booking handoff.
+- **Later:** Add structured consultations, service records, agreed expectations,
+  before-and-after documentation, and aftercare when beta evidence supports them.
+- **Much later:** Explore client beauty history, structured service recovery,
+  deeper professional tools, and intelligent assistance based on real service
+  and preference data.
+
+See `14_LONG_TERM_VISION.md` for the strategic hypothesis and boundaries.
 
 ---
 

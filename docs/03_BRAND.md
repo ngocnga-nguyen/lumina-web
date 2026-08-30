@@ -1,102 +1,97 @@
 # Lumina Brand Guide
 
-## Brand Name
+**Last updated:** August 29, 2026
 
-Lumina
-
----
-
-## Meaning
-
-Lumina comes from the idea of light.
-
-Light represents confidence, beauty, trust, discovery, and helping people feel like the best version of themselves.
-
-Lumina exists to help people discover beauty professionals they can trust.
-
----
-# Brand Promise
-
-Lumina helps people discover beauty professionals they can trust.
-
-We believe choosing a beauty professional should feel exciting—not stressful.
-
-Instead of endless scrolling through Instagram or guessing based on price, clients should be able to compare artists, understand their style, see real work, and book with confidence.
-
-At the same time, talented beauty professionals deserve to be discovered because of the quality of their work—not because they spend the most on advertising or offer the biggest discounts.
-
-Lumina exists to build trust between clients and artists.
-
-# Brand Personality
-
-Lumina should always feel:
-
-- Elegant
-- Calm
-- Modern
-- Trustworthy
-- Premium
-- Feminine
-- Clean
-- Human
-- Community-driven
-
-Every page, button, and interaction should reinforce these feelings.
-
-# Design Principles
-
-When building new features, ask:
-
-1. Does this make choosing an artist easier?
-
-2. Does this increase trust?
-
-3. Does this reduce confusion?
-
-4. Does this make the platform feel more premium?
-
-If the answer is no, reconsider whether the feature belongs in Lumina.
-
-# Mission
-
-To make discovering and booking beauty professionals simple, trustworthy, and beautiful.
+This guide is the source of truth for how Lumina should sound, look, and feel.
 
 ---
 
-# Vision
+## Brand Name and Meaning
+
+**Lumina** comes from the idea of light.
+
+Light represents clarity, confidence, beauty, trust, and discovery. Lumina exists to help people confidently discover beauty professionals they can trust.
+
+---
+
+## Official Tagline
+
+**Clarity before you commit.**
+
+The tagline expresses Lumina's role in the beauty journey: helping clients understand their options and feel confident before choosing a professional or booking a service.
+
+---
+
+## Brand Promise
+
+Lumina helps people confidently discover and choose beauty professionals they can trust.
+
+Choosing a beauty professional should feel exciting, not stressful. Instead of endlessly scrolling through social media, guessing from incomplete information, or choosing only by price, clients should be able to compare professionals, understand their services and style, see portfolios, and evaluate credible trust signals.
+
+Talented beauty professionals deserve to be discovered for the quality and professionalism of their work—not only because they spend the most on advertising or offer the largest discount.
+
+Lumina builds clarity and trust between clients and beauty professionals before the appointment.
+
+---
+
+## Mission
+
+To make discovering, comparing, and connecting with beauty professionals simple, trustworthy, and beautiful.
+
+## Vision
 
 To become the world's most trusted beauty marketplace.
 
 ---
 
-# Core Values
+## Core Values
 
-- Simplicity
-- Honesty
-- Confidence
-- Premium Experience
-- Community
+- **Simplicity** — Remove confusion and make the next step obvious.
+- **Honesty** — Communicate clearly and never exaggerate what Lumina verifies.
+- **Confidence** — Help clients and professionals make informed decisions and feel proud of the outcome.
+- **Premium Experience** — Create a thoughtful, consistent, and caring experience without using exclusivity or high price as the signal.
+- **Community** — Support lasting, respectful relationships between clients and beauty professionals.
 
-Trust is the outcome these values should create.
+**Trust is the outcome these values should create.**
 
 ---
 
-# Brand Personality
+## Brand Personality
 
-Lumina should always feel:
+Lumina should feel:
 
 - Elegant
-- Feminine
 - Calm
 - Modern
-- Friendly
 - Trustworthy
 - Premium
-- Minimal
+- Warm
+- Feminine but inclusive
+- Clean
+- Human
+- Community-minded
+
+Lumina should never feel:
+
+- Loud or cluttered
+- Cold or overly corporate
+- Exclusive for the sake of appearing luxurious
+- Pushy, manipulative, or sales-heavy
+- Confusing or difficult to navigate
 
 ---
 
-# Design Philosophy
+## Product and Design Principles
+
+When creating a new feature or screen, ask:
+
+1. Does this make choosing a professional easier?
+2. Does this strengthen trust?
+3. Does this reduce confusion or effort?
+4. Is the next step obvious?
+5. Does the experience feel thoughtful and consistent?
+
+If the answer is no, reconsider whether the feature or design belongs in Lumina.
 
 Every screen should feel:
 
@@ -106,69 +101,126 @@ Every screen should feel:
 - Easy to understand
 - Never overwhelming
 
-Less is more.
+Less is more, but clarity comes before decoration.
 
 ---
 
-# Color Direction
+## Color System
 
-Primary
+The visual identity should feel soft and recognizable without becoming overly
+pink or gender-exclusive. Neutral space, pearl gray, warm taupe, and dark type
+should balance the blush accents.
 
-- Soft blush pink
+### Core palette
 
-Secondary
+- **Soft Baby Pink:** `#FCF6F7`
+- **Blush Pink:** `#F9D8DF`
+- **Pearl / Silver Gray:** `#C8C1BF`
+- **Warm Taupe:** `#6B645F`
+- **Ivory:** `#F6F2EF`
+- **Charcoal:** `#3A2F2F`
 
-- Warm white
-- Light cream
-- Charcoal text
+### Usage
 
-Accent
+- Use **Ivory**, warm white, and **Soft Baby Pink** for primary backgrounds and
+  quiet brand surfaces.
+- Use **Blush Pink** for selective emphasis, review invitations, hearts, and
+  warm brand moments—not every panel or button.
+- Use **Charcoal** for primary text, important controls, and high-contrast actions.
+- Use **Warm Taupe** for secondary text and warmer neutral details.
+- Use **Pearl / Silver Gray** for borders, inactive states, dividers, and subtle
+  metallic-feeling accents.
+- Maintain accessible contrast; softness should never make text or actions difficult to see.
 
-- Soft gold
-- Neutral gray
-
----
-
-# Typography
-
-Headings
-
-Elegant serif
-
-Body
-
-Clean sans-serif
-
----
-
-# User Experience Principles
-
-Users should always feel:
-
-"I know exactly what to do."
-
-Nothing should feel confusing.
-
-Every interaction should build confidence.
+Subtle blush-to-ivory ombré treatments may be used for brand moments such as the logo, icon backgrounds, or featured areas. They should remain restrained and readable.
 
 ---
 
-# What Lumina Is
+## Typography
+
+### Display headings
+
+- Elegant serif
+- Current web direction: Georgia, with Times New Roman as a fallback
+- Use for major headlines, editorial moments, and selected section titles
+
+### Body and interface
+
+- Clean sans-serif
+- Preferred web direction: Geist Sans, with Arial and Helvetica as fallbacks
+- Use for navigation, forms, buttons, supporting text, and operational interfaces
+
+Typography should feel refined and readable. Avoid using oversized type when it weakens balance, hierarchy, or mobile usability.
+
+---
+
+## Logo System
+
+- Use the **primary logo** for intentional brand moments, presentations, and larger footer applications.
+- Use the **wordmark** in headers and horizontal spaces where clarity matters most.
+- Use the **Lumina mark** for browser icons, app icons, compact avatars, and small square applications.
+- Preserve clear space around every logo variation.
+- Do not stretch, recolor, crowd, or place the logo over visually busy imagery.
+- The soft blush-and-ivory ombré may support the mark when sufficient contrast is preserved.
+
+---
+
+## Voice and Tone
+
+Lumina communicates with clarity, warmth, and credibility.
+
+### Voice characteristics
+
+- Clear, not technical
+- Warm, not overly casual
+- Confident, not exaggerated
+- Helpful, not controlling
+- Premium, not pretentious
+- Human, not robotic
+
+### Writing guidance
+
+- Explain the next step in plain language.
+- Use status language that accurately reflects what happened.
+- Prefer “beauty professional” as the inclusive default term.
+- Use “artist” when it is familiar within a specific service category or existing interface label.
+- Never claim that a profile, portfolio, identity, appointment, or review is verified unless Lumina actually performs that verification.
+- Describe current capabilities accurately; do not imply that Lumina processes a booking when it currently facilitates discovery, requests, communication, and connection to existing booking tools.
+
+---
+
+## User Experience Promise
+
+Users should feel:
+
+> I understand my options, I know what to do next, and I feel more confident in my decision.
+
+Nothing should feel unnecessarily confusing. Every meaningful interaction should build confidence.
+
+---
+
+## What Lumina Is
+
+Lumina is a beauty discovery and trust platform.
+
+It helps clients discover, compare, request, communicate with, and build confidence in beauty professionals. It helps professionals present credible information, receive qualified interest, and build reputation through completed-service reviews.
+
+Lumina works alongside the professional tools and booking systems people already use.
+
+## What Lumina Is Not
 
 Lumina is not social media.
 
-Lumina is not another booking app.
+Lumina is not currently a full salon-management or native booking system.
 
-Lumina is a trust platform for beauty.
+Lumina is not a luxury product defined by high prices or exclusivity.
 
-Everything we build should increase trust between clients and beauty professionals.
-
-Premium is not a price point. It is the feeling created by thoughtful design, consistency, simplicity, attention to detail, trust, and customer care.
+Premium is not a price point. It is the feeling created by thoughtful design, consistency, simplicity, attention to detail, trustworthy behavior, and customer care.
 
 ---
 
-# Future
+## The Continuing Brand Question
 
-Every feature should answer one question:
+Every major feature, message, and visual decision should answer:
 
-Does this make it easier for people to trust the right beauty professional?
+**Does this make it easier for someone to trust the right beauty professional?**

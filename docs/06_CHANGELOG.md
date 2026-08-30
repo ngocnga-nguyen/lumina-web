@@ -4,7 +4,7 @@ This file records meaningful shipped product and documentation changes. It is no
 
 ---
 
-## Unreleased — August 17, 2026
+## Unreleased — August 29, 2026
 
 ### Documentation
 
@@ -12,6 +12,14 @@ This file records meaningful shipped product and documentation changes. It is no
 - Added a current competitive analysis and clarified Lumina's position as a beauty trust and discovery platform
 - Rebuilt the roadmap around private-beta validation rather than speculative version releases
 - Replaced the outdated bug list with a production-focused tracker and regression watchlist
+- Aligned the brand and UI palette with the August 2026 founder handbook
+- Clarified professional-submitted portfolio and result language so it is not
+  confused with Lumina-verified activity
+- Added a staged long-term product vision centered on clarity, service records,
+  and evidence-led trust infrastructure
+- Reorganized the idea vault into current experiments, data-backed reputation
+  signals, and future hypotheses
+- Added a unified UI system for journey, action, status, trust, and responsive patterns
 
 ---
 

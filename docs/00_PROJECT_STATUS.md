@@ -1,6 +1,6 @@
 # Lumina — Project Status
 
-**Last Updated:** August 11, 2026
+**Last Updated:** August 29, 2026
 
 ## Current Stage
 
@@ -23,7 +23,7 @@ Lumina is a beauty marketplace that helps clients discover, compare, message, an
 
 ## Production Status
 
-- 28 production routes verified
+- 30 production routes verified
 - GitHub deployment working
 - Production domain live
 - Responsive desktop and mobile experience
@@ -159,3 +159,12 @@ None currently.
 - Scaling infrastructure without demand
 - Large team hiring
 - Premature monetization
+
+## Documentation Map
+
+- `00_PROJECT_STATUS.md` — what is shipped and being tested now
+- `01_ROADMAP.md` — current validation priorities and phased delivery
+- `08_IDEAS.md` — uncommitted experiments and possibilities
+- `14_LONG_TERM_VISION.md` — staged strategic direction, not shipped features
+
+Future ideas should never be presented as current product capabilities.

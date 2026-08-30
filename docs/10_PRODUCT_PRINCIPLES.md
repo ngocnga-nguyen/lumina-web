@@ -1,6 +1,6 @@
 # Lumina Product Principles
 
-**Last Updated:** August 12, 2026
+**Last Updated:** August 29, 2026
 
 These principles guide product decisions. They are not a list of features.
 
@@ -95,6 +95,17 @@ Prioritize evidence such as:
 - Completed services
 - Verified reviews
 - Repeat client-professional relationships
+
+## 11. Create Clarity Before Conflict
+
+Beauty-service friction often begins when expectations, instructions, photos,
+policies, or service history are scattered or remembered differently. Lumina
+should gradually make those moments clearer and better organized without making
+the product feel bureaucratic.
+
+This principle does not require building a large record system now. It means
+that future consultations, results, service records, consent, and aftercare
+should be designed to prevent confusion and preserve an understandable history.
 
 ## Product Decision Questions
 

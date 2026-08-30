@@ -1,5 +1,7 @@
 # Lumina Product
 
+**Last updated:** August 29, 2026
+
 ## Product Positioning
 
 Lumina is a beauty discovery and trust marketplace.
@@ -55,9 +57,9 @@ Artists can continue using their own booking platforms while Lumina focuses on d
 
 ## Elevator Pitch
 
-Lumina is a beauty marketplace that helps clients discover trustworthy beauty professionals through verified portfolios, transparent information, and modern communication.
+Lumina is a beauty marketplace that helps clients discover trustworthy beauty professionals through credible portfolios, transparent information, completion-linked reviews, and modern communication.
 
-Instead of scrolling through Instagram, Facebook, or TikTok hoping to find the right artist, clients can confidently discover, compare, message, and eventually book—all in one place.
+Instead of scrolling through Instagram, Facebook, or TikTok hoping to find the right professional, clients can confidently discover, compare, message, and request services in one organized place, then continue to the professional's existing booking flow when needed.
 
 ---
 
@@ -68,7 +70,7 @@ Clients struggle to:
 - Find trustworthy beauty professionals
 - Compare artists fairly
 - Know real pricing
-- See verified work
+- See professional portfolios and completed-service reviews
 - Contact artists easily
 - Keep conversations organized
 
@@ -97,9 +99,14 @@ Clients can:
 Professionals can:
 
 - Build a professional profile
-- Showcase verified work
+- Showcase professional-submitted portfolio photos and service results
 - Respond to clients
 - Grow their business
+
+Only activity that Lumina can support with its own records should be described as
+verified. Today that includes completion-linked client reviews. A portfolio upload
+or before-and-after pair is professional-submitted unless a later workflow links
+it to a completed Lumina service and obtains any required client confirmation.
 
 ---
 
@@ -127,4 +134,24 @@ Independent beauty professionals who want more exposure and a better way to mana
 
 # Long-Term Vision
 
-Become the most trusted beauty marketplace in the industry.
+Become the most trusted beauty marketplace in the industry by creating clarity
+throughout the beauty-service relationship—not only during discovery.
+
+Lumina's staged direction is:
+
+- **Now:** Discovery, comparison, professional profiles, requests,
+  communication, completion, and verified client reviews.
+- **Next:** Clearer professional onboarding, easier portfolio and result
+  management, stronger data-backed reputation, and a more reliable request and
+  booking handoff.
+- **Later:** Structured consultations, service records, before-and-after
+  documentation, agreed expectations and policies, and aftercare.
+- **Much later:** Client beauty history, deeper professional tools, structured
+  service recovery, and intelligent assistance based on real user behavior.
+
+The principle behind this direction is:
+
+**Create clarity before conflict.**
+
+This is a strategic hypothesis, not a promise that every future feature will be
+built. Private-beta evidence should determine which stage earns investment.
