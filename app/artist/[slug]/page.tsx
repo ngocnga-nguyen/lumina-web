@@ -1020,11 +1020,11 @@ setAverageRating(updatedAverage);
         </div>
       )}
 
-      <section className="px-4 py-8 md:px-10">
+      <section className="px-4 py-5 sm:py-6 md:px-10 md:py-8">
         <div className="mx-auto w-full max-w-[1520px]">
-        <div className="grid grid-cols-1 gap-10 md:grid-cols-[320px_1fr] md:gap-14 lg:grid-cols-[360px_1fr]">
+        <div className="grid grid-cols-1 gap-6 md:grid-cols-[320px_1fr] md:gap-8 lg:grid-cols-[360px_1fr] lg:gap-14">
           <div>
-            <div className="relative h-[360px] w-full overflow-hidden bg-lumina-pearl md:h-[430px]">
+            <div className="relative h-[clamp(260px,72vw,300px)] w-full overflow-hidden bg-lumina-pearl md:h-[430px]">
               {artist.profile_image_url ? (
                 <img
                   src={artist.profile_image_url}
@@ -1043,17 +1043,17 @@ setAverageRating(updatedAverage);
               
             </div>
 
-            <div className="mt-3 rounded-[14px] border border-lumina-border bg-lumina-surface/80 px-3.5 py-2.5 backdrop-blur-[8px]">
+            <div className="mt-2 rounded-[14px] border border-lumina-border bg-lumina-surface/80 px-3 py-2 backdrop-blur-[8px] md:mt-3 md:px-3.5 md:py-2.5">
               <button
                 type="button"
                 onClick={() => setAvailabilityExpanded((expanded) => !expanded)}
                 aria-expanded={availabilityExpanded}
                 aria-controls="profile-availability-details"
-                className="flex min-h-10 w-full items-center justify-between gap-3 rounded-[7px] text-left text-lumina-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lumina-attention/40 focus-visible:ring-offset-2"
+                className="flex min-h-9 w-full items-center justify-between gap-3 rounded-[7px] text-left text-lumina-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lumina-attention/40 focus-visible:ring-offset-2 md:min-h-10"
               >
                 <div className="min-w-0 flex-1">
                   <h2
-                    className="text-[17px]"
+                    className="text-[16px] md:text-[17px]"
                     style={{ fontFamily: "Georgia, Times New Roman, serif" }}
                   >
                     Availability
@@ -1099,7 +1099,7 @@ setAverageRating(updatedAverage);
           <div>
   <div className="flex items-start justify-between gap-4">
     <h1
-      className="text-[34px] leading-[1.0] font-semibold md:text-[42px]"
+      className="text-[30px] leading-[1.03] font-semibold md:text-[36px] md:leading-[1.02] lg:text-[42px] lg:leading-[1.0]"
       style={{ fontFamily: "'Playfair Display', serif" }}
     >
       {artist.name}
@@ -1113,7 +1113,7 @@ setAverageRating(updatedAverage);
 </div>
 
             {isOwnProfile && (
-              <p className="mt-3 inline-flex rounded-full border border-lumina-border bg-lumina-surface-soft px-3 py-1.5 text-[12px] font-medium text-lumina-text-muted">
+              <p className="mt-2 inline-flex rounded-full border border-lumina-border bg-lumina-surface-soft px-3 py-1.5 text-[11px] font-medium text-lumina-text-muted md:mt-3 md:text-[12px]">
                 {privatePreview
                   ? "Private preview · Not currently active"
                   : "This is your public profile"}
@@ -1121,18 +1121,18 @@ setAverageRating(updatedAverage);
             )}
               
             <p
-              className="mt-2 text-[24px]"
+              className="mt-1.5 text-[19px] md:mt-2 md:text-[24px]"
               style={{ fontFamily: "Georgia, Times New Roman, serif" }}
             >
               {artist.category}
             </p>
 
-<div className="mt-6 flex flex-wrap gap-x-8 gap-y-2 text-[15px] text-lumina-text-muted">
+<div className="mt-3 flex flex-wrap gap-x-5 gap-y-1 text-[13px] text-lumina-text-muted md:mt-6 md:gap-x-8 md:gap-y-2 md:text-[15px]">
                 <span>{artist.location}</span>
               <span>Starting at ${artist.price_start}</span>
             </div>
             {artist.location_type === "mobile_salon" && (
-              <div className="mt-3 max-w-[680px] rounded-[16px] border border-lumina-border bg-lumina-surface-soft px-4 py-3 text-[13px] leading-[1.5] text-lumina-text-muted">
+              <div className="mt-2.5 max-w-[680px] rounded-[16px] border border-lumina-border bg-lumina-surface-soft px-3 py-2.5 text-[12px] leading-[1.5] text-lumina-text-muted md:mt-3 md:px-4 md:py-3 md:text-[13px]">
                 <p>Mobile salon — exact appointment location is shared after confirmation.</p>
                 {artist.mobile_location_details && <p className="mt-1">{artist.mobile_location_details}</p>}
               </div>
@@ -1141,11 +1141,11 @@ setAverageRating(updatedAverage);
               <p className="mt-3 text-[13px] text-lumina-text-muted">Exact service details are shared after booking confirmation.</p>
             )}
 
-          <div className="mt-8 max-w-[760px] border-t border-lumina-border pt-6 2xl:max-w-[1040px]">
+          <div className="mt-5 max-w-[760px] border-t border-lumina-border pt-4 md:mt-8 md:pt-6 2xl:max-w-[1040px]">
 
 <div className="flex items-center justify-between gap-4">
   <h2
-    className="text-[30px] font-semibold"
+    className="text-[23px] font-semibold md:text-[26px] lg:text-[30px]"
     style={{ fontFamily: "Georgia, Times New Roman, serif" }}
   >
     Profile Details
@@ -1172,10 +1172,10 @@ setAverageRating(updatedAverage);
 <div
   id="profile-supporting-details"
   hidden={verifiedLicenseArtistId !== artistId && !profileDetailsExpanded}
-  className="mt-6 grid grid-cols-2 gap-4 md:grid-cols-3"
+  className="mt-4 grid grid-cols-2 gap-3 md:mt-6 md:gap-4 lg:grid-cols-3"
 >
   {verifiedLicenseArtistId === artistId && (
-    <div className="rounded-[18px] border border-lumina-border bg-lumina-surface p-5">
+    <div className="rounded-[16px] border border-lumina-border bg-lumina-surface p-3.5 md:rounded-[18px] md:p-5">
       <ShieldCheck size={25} strokeWidth={1.5} aria-hidden="true" />
       <p className="mt-3 text-[15px] font-medium text-lumina-text">
         License verified
@@ -1187,7 +1187,7 @@ setAverageRating(updatedAverage);
   )}
 
   {profileDetailsExpanded && experienceLabel && (
-    <div className="rounded-[18px] border border-lumina-border bg-lumina-surface p-5">
+    <div className="rounded-[16px] border border-lumina-border bg-lumina-surface p-3.5 md:rounded-[18px] md:p-5">
       <p className="text-[24px] font-semibold">{artist.experience_unit === "new" ? "New" : artist.experience_amount || artist.years_experience}</p>
 
       <p className="mt-2 text-[15px] text-lumina-text-muted">
@@ -1201,7 +1201,7 @@ setAverageRating(updatedAverage);
   )}
 
   {profileDetailsExpanded && services.length > 0 && (
-    <div className="rounded-[18px] border border-lumina-border bg-lumina-surface p-5">
+    <div className="rounded-[16px] border border-lumina-border bg-lumina-surface p-3.5 md:rounded-[18px] md:p-5">
       <p className="text-[28px] font-semibold">
         {services.length}
       </p>
@@ -1213,7 +1213,7 @@ setAverageRating(updatedAverage);
   )}
 
   {profileDetailsExpanded && portfolioPhotos.length > 0 && (
-    <div className="rounded-[18px] border border-lumina-border bg-lumina-surface p-5">
+    <div className="rounded-[16px] border border-lumina-border bg-lumina-surface p-3.5 md:rounded-[18px] md:p-5">
       <p className="text-[28px] font-semibold">
         {portfolioPhotos.length}
       </p>
@@ -1225,7 +1225,7 @@ setAverageRating(updatedAverage);
   )}
 
   {profileDetailsExpanded && results.length > 0 && (
-    <div className="rounded-[18px] border border-lumina-border bg-lumina-surface p-5">
+    <div className="rounded-[16px] border border-lumina-border bg-lumina-surface p-3.5 md:rounded-[18px] md:p-5">
       <p className="text-[28px] font-semibold">
         {results.length}
       </p>
@@ -1241,7 +1241,7 @@ setAverageRating(updatedAverage);
   )}
 
   {profileDetailsExpanded && reviews.length > 0 && (
-    <div className="rounded-[18px] border border-lumina-border bg-lumina-surface p-5">
+    <div className="rounded-[16px] border border-lumina-border bg-lumina-surface p-3.5 md:rounded-[18px] md:p-5">
       <p className="text-[28px] font-semibold">
         {averageRating.toFixed(1)} ★
       </p>
@@ -1257,16 +1257,16 @@ setAverageRating(updatedAverage);
   )}
 </div>
 
-<div className="mt-10">
+<div className="mt-6 md:mt-10">
   <h3
-    className="text-[28px] font-semibold"
+    className="text-[23px] font-semibold md:text-[28px]"
     style={{ fontFamily: "Georgia, Times New Roman, serif" }}
   >
     About
   </h3>
 
   <p
-    className="mt-4 text-[18px] leading-[1.7] text-lumina-text"
+    className="mt-3 text-[15px] leading-[1.6] text-lumina-text md:mt-4 md:text-[18px] md:leading-[1.7]"
     style={{ fontFamily: "Georgia, Times New Roman, serif" }}
   >
     {artist.bio ||
@@ -1278,8 +1278,8 @@ setAverageRating(updatedAverage);
           </div>
       </div>
 
-        <section className="mt-6 pb-16">
-          <div className="flex flex-wrap justify-center gap-3 text-[16px] sm:gap-6">
+        <section className="mt-5 pb-12 md:mt-6 md:pb-16">
+          <div className="grid grid-cols-4 gap-1 text-[13px] sm:flex sm:flex-wrap sm:justify-center sm:gap-6 sm:text-[16px]">
             {[
               { key: "service", label: "Services" },
               { key: "portfolio", label: "Portfolio" },
@@ -1291,7 +1291,7 @@ setAverageRating(updatedAverage);
                 onClick={() =>
                   setActiveTab(key as "service" | "portfolio" | "results" | "reviews")
                 }
-                className={`border-b px-1 pb-2 pt-1 transition focus-visible:rounded-[6px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lumina-attention/40 ${
+                className={`min-h-10 whitespace-nowrap border-b px-1 pb-2 pt-1 transition focus-visible:rounded-[6px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lumina-attention/40 ${
                   activeTab === key
                     ? "border-lumina-text bg-transparent text-lumina-text"
                     : "border-transparent text-lumina-text-muted hover:border-lumina-border hover:bg-lumina-blush/50 hover:text-lumina-text"
@@ -1303,7 +1303,7 @@ setAverageRating(updatedAverage);
           </div>
 
           {activeTab === "service" && (
-            <div id="profile-services" className="mt-10 scroll-mt-6">
+            <div id="profile-services" className="mt-6 scroll-mt-6 md:mt-10">
               {services.length > 0 &&
                 clientOnboarding.ready &&
                 clientOnboarding.isClient &&
@@ -1320,7 +1320,7 @@ setAverageRating(updatedAverage);
                     </ClientGuidanceTip>
                   </div>
                 )}
-              <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-6">
                 {services.length > 0 ? (
                   services.map((service) => {
                     const selected = selectedServiceIds.includes(service.id);
@@ -1339,30 +1339,30 @@ setAverageRating(updatedAverage);
                               : `Add ${service.service_name} to request`
                         }
                         onClick={() => toggleRequestedService(service.id)}
-                        className={`group flex h-full w-full flex-col rounded-[18px] border p-5 text-left transition-[background-color,border-color,box-shadow] duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lumina-attention/40 focus-visible:ring-offset-2 ${
+                        className={`group flex h-full w-full flex-col rounded-[18px] border p-4 text-left transition-[background-color,border-color,box-shadow] duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lumina-attention/40 focus-visible:ring-offset-2 md:p-5 ${
                           selected
                             ? "border-lumina-attention/35 bg-lumina-glass ring-1 ring-inset ring-lumina-blush backdrop-blur-[10px] enabled:cursor-pointer enabled:hover:border-lumina-attention/45 enabled:hover:bg-lumina-blush/60"
                             : "border-lumina-border bg-transparent enabled:cursor-pointer enabled:hover:border-lumina-text-muted/35 enabled:hover:bg-lumina-surface-soft"
                         }`}
                       >
                         <h3
-                          className="text-[22px] font-semibold text-lumina-text"
+                          className="text-[20px] font-semibold text-lumina-text md:text-[22px]"
                           style={{ fontFamily: "Georgia, Times New Roman, serif" }}
                         >
                           {service.service_name}
                         </h3>
 
-                        <p className="mt-2 text-[18px] text-lumina-text">
+                        <p className="mt-1.5 text-[16px] text-lumina-text md:mt-2 md:text-[18px]">
                           {typeof service.price === "number"
                             ? `Starting at $${service.price}`
                             : "Price available by proposal"}
                         </p>
 
-                        <p className="mt-4 whitespace-pre-line text-[14px] leading-[1.6] text-lumina-text-muted">
+                        <p className="mt-2 whitespace-pre-line text-[13px] leading-[1.5] text-lumina-text-muted md:mt-4 md:text-[14px] md:leading-[1.6]">
                           {service.description || "No description added."}
                         </p>
 
-                        <div className="mt-auto flex items-center justify-between gap-4 pt-8">
+                        <div className="mt-auto flex items-center justify-between gap-3 pt-5 md:gap-4 md:pt-8">
                           {!viewerIsArtist ? (
                             <span
                               className={`inline-flex items-center gap-1.5 rounded-full border px-4 py-2 text-[12px] font-medium transition-colors ${
@@ -1400,9 +1400,9 @@ setAverageRating(updatedAverage);
               {!viewerIsArtist && selectedServices.length > 0 && (
                 <div
                   aria-live="polite"
-                  className="sticky bottom-4 z-20 mx-auto mt-6 max-w-[760px] rounded-[20px] border border-lumina-glass-border bg-lumina-surface/95 p-4 shadow-[0_10px_30px_rgba(39,36,40,0.08)] backdrop-blur-[14px] sm:p-5"
+                  className="sticky bottom-2 z-20 mx-auto mt-4 max-w-[760px] rounded-[18px] border border-lumina-glass-border bg-lumina-surface/95 p-3 shadow-[0_10px_30px_rgba(39,36,40,0.08)] backdrop-blur-[14px] sm:bottom-4 sm:mt-6 sm:rounded-[20px] sm:p-5"
                 >
-                  <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between sm:gap-4">
                     <div className="min-w-0">
                       <p className="text-[12px] font-semibold uppercase tracking-[0.12em] text-lumina-text-muted">
                         Your request
@@ -1414,7 +1414,7 @@ setAverageRating(updatedAverage);
                             type="button"
                             onClick={() => toggleRequestedService(service.id)}
                             aria-label={`Remove ${service.service_name}`}
-                            className="rounded-full border border-lumina-border bg-lumina-surface px-3 py-1.5 text-left text-[12px] text-lumina-text transition hover:border-lumina-text-muted"
+                            className="rounded-full border border-lumina-border bg-lumina-surface px-2.5 py-1 text-left text-[11px] text-lumina-text transition hover:border-lumina-text-muted sm:px-3 sm:py-1.5 sm:text-[12px]"
                           >
                             {service.service_name}
                             {typeof service.price === "number"
@@ -1425,7 +1425,7 @@ setAverageRating(updatedAverage);
                         ))}
                       </div>
                       {pricedSelectedServices.length > 0 && (
-                        <p className="mt-3 text-[14px] text-lumina-text">
+                        <p className="mt-2 text-[13px] text-lumina-text sm:mt-3 sm:text-[14px]">
                           {pricedSelectedServices.length === selectedServices.length
                             ? "Estimated total"
                             : "Estimated total for priced services"}
@@ -1440,7 +1440,7 @@ setAverageRating(updatedAverage);
                     <button
                       type="button"
                       onClick={() => setOpenRequest(true)}
-                      className="shrink-0 rounded-full bg-lumina-black px-5 py-3 text-[13px] text-white transition hover:opacity-85"
+                      className="w-full shrink-0 rounded-full bg-lumina-black px-5 py-2.5 text-[13px] text-white transition hover:opacity-85 sm:w-auto sm:py-3"
                     >
                       Continue to request
                     </button>
