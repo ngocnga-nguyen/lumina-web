@@ -441,7 +441,7 @@ markerEl.addEventListener("mouseleave", () => {
 
   return (
     <main data-lumina-public-page className="min-h-screen bg-lumina-surface text-lumina-text">
-      <PublicPageHeader backHref="/" surface="white" />
+      <PublicPageHeader backHref="/" />
 
       <section className="px-4 pb-14 pt-6 md:px-10 md:pb-20 md:pt-10">
         <div className="flex flex-col gap-5 md:gap-6 lg:flex-row lg:items-start lg:justify-between">

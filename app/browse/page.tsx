@@ -305,7 +305,7 @@ if (sort) {
 
   return (
     <main data-lumina-public-page className="min-h-screen overflow-x-clip bg-lumina-surface text-lumina-text">
-      <PublicPageHeader backHref="/" surface="white" />
+      <PublicPageHeader backHref="/" />
 
       <section className="mx-auto max-w-[1600px] px-4 pb-14 pt-6 md:px-10 md:pb-20 md:pt-12 lg:px-12 xl:px-16">
         <div className="mx-auto w-full max-w-[1100px]">
@@ -328,10 +328,11 @@ if (sort) {
             </p>
 
             <h1
-              className="max-w-[900px] text-[34px] font-normal leading-[1.02] md:text-[58px] lg:mx-auto"
+              className="max-w-[900px] text-[32px] font-normal leading-none md:text-[58px] md:leading-[1.02] lg:mx-auto"
               style={{ fontFamily: "Georgia, Times New Roman, serif" }}
             >
-              Browse beauty professionals
+              <span className="block md:inline">Browse beauty</span>{" "}
+              <span className="block md:inline">professionals</span>
             </h1>
 
             <p className="mt-2 text-sm leading-6 text-lumina-text-muted md:mt-3 md:text-[18px] md:leading-7">
