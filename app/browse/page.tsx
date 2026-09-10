@@ -518,6 +518,7 @@ if (sort) {
                 className="w-full max-w-[400px]"
                 viewerIsArtist={isArtist}
                 isOwnProfile={isArtist && user?.id === filteredAndSortedArtists[0].id}
+                compactMobile
               />
             </div>
           </div>
@@ -533,6 +534,7 @@ if (sort) {
                   distance={distance}
                   viewerIsArtist={isArtist}
                   isOwnProfile={isArtist && user?.id === artist.id}
+                  compactMobile
                 />
               );
             })}
