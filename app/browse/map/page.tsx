@@ -443,11 +443,11 @@ markerEl.addEventListener("mouseleave", () => {
     <main data-lumina-public-page className="min-h-screen bg-lumina-surface text-lumina-text">
       <PublicPageHeader backHref="/" surface="white" />
 
-      <section className="px-4 pt-8 pb-16 md:px-10 md:pt-10 md:pb-20">
-        <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
+      <section className="px-4 pb-14 pt-6 md:px-10 md:pb-20 md:pt-10">
+        <div className="flex flex-col gap-5 md:gap-6 lg:flex-row lg:items-start lg:justify-between">
           <div>
             
-<div className="mb-5 flex w-fit items-center rounded-full border border-lumina-border bg-lumina-surface p-1 text-sm">
+<div className="mb-4 flex w-fit items-center rounded-full border border-lumina-border bg-lumina-surface p-1 text-[13px] md:mb-5 md:text-sm">
   <Link
       href={buildViewLink("/browse")}
     className="rounded-full px-4 py-1.5 text-lumina-text-muted transition hover:text-lumina-black"
@@ -460,7 +460,7 @@ markerEl.addEventListener("mouseleave", () => {
   </span>
             </div>
             <h1
-              className="mt-5 text-[38px] font-normal leading-[1.02] md:mt-8 md:text-[58px]"
+              className="mt-0 text-[34px] font-normal leading-[1.02] md:mt-8 md:text-[58px]"
               style={{
                 fontFamily:
                   "Georgia, Times New Roman, serif",
@@ -469,14 +469,14 @@ markerEl.addEventListener("mouseleave", () => {
               Explore on map
             </h1>
 
-            <p className="mt-3 text-[15px] leading-7 text-lumina-text-muted md:text-[18px]">
+            <p className="mt-2 text-[14px] leading-6 text-lumina-text-muted md:mt-3 md:text-[18px] md:leading-7">
               Discover {filteredArtists.length} beauty
               professionals
             </p>
 
             <button
               onClick={useMyLocation}
-              className="mt-4 rounded-full border border-lumina-black bg-lumina-surface px-5 py-2 text-[14px] transition hover:bg-lumina-black hover:text-white"
+              className="mt-4 min-h-10 rounded-full border border-lumina-black bg-lumina-surface px-4 py-2 text-[13px] transition hover:bg-lumina-black hover:text-white md:px-5 md:text-[14px]"
             >
               Use my location
             </button>
@@ -498,14 +498,14 @@ markerEl.addEventListener("mouseleave", () => {
   />
 </div>
 
-  <div ref={browseControlsRef} className="mt-4 flex items-center justify-end gap-8 text-sm text-lumina-text md:text-[15px]">
+  <div ref={browseControlsRef} className="mt-3 flex items-center justify-end gap-2 text-[13px] text-lumina-text md:mt-4 md:gap-8 md:text-[15px]">
     <div className="relative">
       <button
         onClick={() => {
           setOpenFilter((current) => !current);
           setOpenSort(false);
         }}
-        className="transition hover:text-lumina-black"
+        className="min-h-10 rounded-full border border-lumina-border bg-lumina-surface px-3.5 py-2 transition hover:border-lumina-glass-border hover:bg-lumina-surface-soft md:min-h-0 md:rounded-none md:border-0 md:bg-transparent md:px-0 md:py-0"
       >
         ☷ Filter {activeFilterCount > 0 && `(${activeFilterCount})`}
       </button>
@@ -555,7 +555,7 @@ markerEl.addEventListener("mouseleave", () => {
           setOpenSort((current) => !current);
           setOpenFilter(false);
         }}
-        className="transition hover:text-lumina-black"
+        className="min-h-10 rounded-full border border-lumina-border bg-lumina-surface px-3.5 py-2 transition hover:border-lumina-glass-border hover:bg-lumina-surface-soft md:min-h-0 md:rounded-none md:border-0 md:bg-transparent md:px-0 md:py-0"
       >
         ☰ Sort
       </button>
@@ -609,14 +609,14 @@ markerEl.addEventListener("mouseleave", () => {
 </div>
 
 
-        <div className="relative mt-10">
+        <div className="relative mt-7 md:mt-10">
           <div className="relative">
   <div
     ref={mapContainer}
     className="h-[430px] w-full overflow-hidden rounded-[28px] bg-lumina-pearl md:h-[620px]"
   />
 
-  <div className="absolute bottom-5 right-5 z-20 w-[calc(100%-40px)] max-w-[380px]"
+  <div className="absolute bottom-3 right-3 z-20 w-[calc(100%-24px)] max-w-[380px] sm:bottom-5 sm:right-5 sm:w-[calc(100%-40px)]"
     onMouseEnter={() => {
     cardHoverRef.current = true;
   }}
@@ -630,7 +630,7 @@ onMouseLeave={() => {
 
   }}
 >
-    <div className="relative overflow-hidden rounded-[26px] border border-lumina-glass-border bg-lumina-glass p-6 text-lumina-text shadow-[0_20px_60px_rgba(39,36,40,0.10),inset_0_1px_0_rgba(255,255,255,0.45)] backdrop-blur-[14px]">
+    <div className="relative overflow-hidden rounded-[22px] border border-lumina-glass-border bg-lumina-glass p-4 text-lumina-text shadow-[0_20px_60px_rgba(39,36,40,0.10),inset_0_1px_0_rgba(255,255,255,0.45)] backdrop-blur-[14px] sm:rounded-[26px] sm:p-6">
     <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-lumina-surface/35 via-lumina-surface/10 to-transparent" />
 
 <div className="relative z-10">

@@ -307,10 +307,10 @@ if (sort) {
     <main data-lumina-public-page className="min-h-screen overflow-x-clip bg-lumina-surface text-lumina-text">
       <PublicPageHeader backHref="/" surface="white" />
 
-      <section className="mx-auto max-w-[1600px] px-4 pb-16 pt-8 md:px-10 md:pb-20 md:pt-12 lg:px-12 xl:px-16">
+      <section className="mx-auto max-w-[1600px] px-4 pb-14 pt-6 md:px-10 md:pb-20 md:pt-12 lg:px-12 xl:px-16">
         <div className="mx-auto w-full max-w-[1100px]">
           <div className="w-full max-w-[900px] lg:mx-auto lg:text-center">
-            <div className="mb-6 inline-flex items-center rounded-full border border-lumina-border bg-lumina-surface p-1 text-sm shadow-[0_4px_14px_rgba(39,36,40,0.04)]">
+            <div className="mb-4 inline-flex items-center rounded-full border border-lumina-border bg-lumina-surface p-1 text-[13px] shadow-[0_4px_14px_rgba(39,36,40,0.04)] md:mb-6 md:text-sm">
               <span className="rounded-full bg-lumina-black px-4 py-1.5 text-white">
                 List
               </span>
@@ -323,25 +323,25 @@ if (sort) {
               </Link>
             </div>
 
-            <p className="mb-3 text-[11px] uppercase tracking-[0.24em] text-lumina-attention">
+            <p className="mb-2 text-[11px] uppercase tracking-[0.24em] text-lumina-attention md:mb-3">
               Explore Lumina
             </p>
 
             <h1
-              className="max-w-[900px] text-[38px] font-normal leading-[1.02] md:text-[58px] lg:mx-auto"
+              className="max-w-[900px] text-[34px] font-normal leading-[1.02] md:text-[58px] lg:mx-auto"
               style={{ fontFamily: "Georgia, Times New Roman, serif" }}
             >
               Browse beauty professionals
             </h1>
 
-            <p className="mt-3 text-sm leading-7 text-lumina-text-muted md:text-[18px]">
+            <p className="mt-2 text-sm leading-6 text-lumina-text-muted md:mt-3 md:text-[18px] md:leading-7">
               Explore {filteredAndSortedArtists.length} beauty professional
               {filteredAndSortedArtists.length !== 1 ? "s" : ""} on Lumina.
             </p>
 
             <button
               onClick={useMyLocation}
-              className="mt-5 rounded-full border border-lumina-black bg-lumina-surface px-5 py-2 text-[14px] transition hover:bg-lumina-black hover:text-white"
+              className="mt-4 min-h-10 rounded-full border border-lumina-black bg-lumina-surface px-4 py-2 text-[13px] transition hover:bg-lumina-black hover:text-white md:mt-5 md:px-5 md:text-[14px]"
             >
               Use my location
             </button>
@@ -353,7 +353,7 @@ if (sort) {
             )}
           </div>
 
-          <div className="mt-10 w-full min-w-0 max-w-[1000px] lg:mx-auto">
+          <div className="mt-7 w-full min-w-0 max-w-[1000px] md:mt-10 lg:mx-auto">
             <SearchBar
               value={searchQuery}
               onChange={setSearchQuery}
@@ -372,7 +372,7 @@ if (sort) {
 
             <div
               ref={browseControlsRef}
-              className="mt-4 flex flex-wrap items-center justify-start gap-3 text-sm lg:justify-center"
+              className="mt-3 flex flex-wrap items-center justify-start gap-2 text-[13px] md:mt-4 md:gap-3 md:text-sm lg:justify-center"
             >
               <div className="relative">
                 <button
@@ -380,7 +380,7 @@ if (sort) {
                     setOpenFilter((current) => !current);
                     setOpenSort(false);
                   }}
-                  className="rounded-full border border-lumina-border bg-lumina-surface px-4 py-2 text-lumina-text transition hover:border-lumina-glass-border hover:bg-lumina-surface-soft"
+                  className="min-h-10 rounded-full border border-lumina-border bg-lumina-surface px-3.5 py-2 text-lumina-text transition hover:border-lumina-glass-border hover:bg-lumina-surface-soft md:px-4"
                 >
                   ☷ Filter {activeFilterCount > 0 && `(${activeFilterCount})`}
                 </button>
@@ -464,7 +464,7 @@ if (sort) {
                     setOpenSort((current) => !current);
                     setOpenFilter(false);
                   }}
-                  className="rounded-full border border-lumina-border bg-lumina-surface px-4 py-2 text-lumina-text transition hover:border-lumina-glass-border hover:bg-lumina-surface-soft"
+                  className="min-h-10 rounded-full border border-lumina-border bg-lumina-surface px-3.5 py-2 text-lumina-text transition hover:border-lumina-glass-border hover:bg-lumina-surface-soft md:px-4"
                 >
                   ☰ Sort
                 </button>
@@ -507,11 +507,11 @@ if (sort) {
         </div>
 
         {filteredAndSortedArtists.length === 1 ? (
-          <div className="mt-10 md:mt-16">
+          <div className="mt-8 md:mt-16">
             <p className="max-w-[720px] text-[14px] leading-6 text-lumina-text-muted">
               More professionals are joining Lumina. Explore by category, try Map view, or check back as more profiles go live.
             </p>
-            <div className="mt-7 grid grid-cols-1">
+            <div className="mt-5 grid grid-cols-1 md:mt-7">
               <ArtistCard
                 artist={filteredAndSortedArtists[0]}
                 distance={getArtistDistance(filteredAndSortedArtists[0])}
@@ -522,7 +522,7 @@ if (sort) {
             </div>
           </div>
         ) : filteredAndSortedArtists.length > 1 ? (
-          <div className="mt-10 grid grid-cols-1 gap-8 md:mt-16 md:grid-cols-2 lg:grid-cols-4 lg:gap-12">
+          <div className="mt-8 grid grid-cols-1 gap-7 md:mt-16 md:grid-cols-2 md:gap-8 lg:grid-cols-4 lg:gap-12">
             {filteredAndSortedArtists.map((artist) => {
               const distance = getArtistDistance(artist);
 

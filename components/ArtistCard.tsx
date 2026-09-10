@@ -38,7 +38,7 @@ export default function ArtistCard({
       href={`/artist/${artist.id}`}
       className={`group block ${className}`}
     >
-      <div className="relative aspect-[4/3] w-full overflow-hidden rounded-[18px] bg-lumina-pearl">
+      <div className="relative aspect-[16/10] w-full overflow-hidden rounded-[18px] bg-lumina-pearl sm:aspect-[4/3]">
         {artist.profile_image_url ? (
           <img
             src={artist.profile_image_url}
@@ -78,13 +78,13 @@ export default function ArtistCard({
         )}
       </div>
 
-      <div className="pt-4">
+      <div className="pt-3 sm:pt-4">
         <p className="text-[13px] text-lumina-text-muted">
           <span className="text-lumina-black">★</span> New profile
         </p>
 
         <h3
-          className="mt-3 text-[21px] leading-[1.15]"
+          className="mt-2 text-[20px] leading-[1.15] sm:mt-3 sm:text-[21px]"
           style={{ fontFamily: "Georgia, Times New Roman, serif" }}
         >
           {artist.name}
@@ -94,7 +94,7 @@ export default function ArtistCard({
           {artist.category}
         </p>
 
-        <div className="mt-4 flex items-start justify-between gap-4 border-t border-lumina-border pt-4 text-[14px]">
+        <div className="mt-3 flex items-start justify-between gap-4 border-t border-lumina-border pt-3 text-[14px] sm:mt-4 sm:pt-4">
           <div>
             <p className="text-lumina-text-muted">{artist.location}</p>
 

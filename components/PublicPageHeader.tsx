@@ -21,8 +21,8 @@ export default function PublicPageHeader({
         surface === "white" ? "bg-lumina-surface" : "bg-lumina-bg-soft"
       }`}
     >
-      <div className="grid h-[80px] w-full grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center px-3 sm:px-4 lg:px-5 xl:px-6">
-        <div className="min-w-0 justify-self-start">
+      <div className="grid h-[70px] w-full grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center px-3 sm:h-[80px] sm:px-4 lg:px-5 xl:px-6">
+        <div className="col-start-1 row-start-1 min-w-0 justify-self-start">
           <Link
             href={backHref}
             className="inline-flex min-h-11 items-center whitespace-nowrap text-[14px] text-lumina-text-muted transition hover:text-lumina-black focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-lumina-text"
@@ -35,13 +35,13 @@ export default function PublicPageHeader({
         <Link
           href="/"
           aria-label="Lumina home"
-          className="justify-self-center text-[12px] font-medium uppercase tracking-[0.3em] text-lumina-text transition hover:opacity-65 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-lumina-text"
+          className="col-start-2 row-start-1 justify-self-center text-[12px] font-medium uppercase tracking-[0.3em] text-lumina-text transition hover:opacity-65 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-lumina-text"
         >
           Lumina
         </Link>
 
-        <div className="min-w-0 justify-self-end">
-          {accountControl ?? <AccountMenu />}
+        <div className="col-start-3 row-start-1 min-w-0 justify-self-end">
+          {accountControl ?? <AccountMenu compactPublicHeader />}
         </div>
       </div>
     </header>

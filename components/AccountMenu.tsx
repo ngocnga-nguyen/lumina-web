@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { ShieldCheck } from "lucide-react";
+import { Menu, ShieldCheck } from "lucide-react";
 import type { User } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
 import { useLuminaAdminAccess } from "@/lib/use-lumina-admin-access";
@@ -10,6 +10,7 @@ import { useLuminaAdminAccess } from "@/lib/use-lumina-admin-access";
 type AccountMenuProps = {
   showNotifications?: boolean;
   workspace?: "professional";
+  compactPublicHeader?: boolean;
 };
 
 type AccountRole = "professional" | "client";
@@ -28,6 +29,7 @@ type ArtistAccountProfile = {
 export default function AccountMenu({
   showNotifications = false,
   workspace,
+  compactPublicHeader = false,
 }: AccountMenuProps) {
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<AccountProfile | null>(null);
@@ -107,6 +109,52 @@ export default function AccountMenu({
   };
 
   if (!user) {
+    if (compactPublicHeader) {
+      return (
+        <div className="relative">
+          <div className="hidden items-center gap-5 sm:flex">
+            <Link href="/login" className="text-sm transition hover:opacity-70">
+              Login
+            </Link>
+
+            <Link
+              href="/join-as-artist"
+              className="text-sm transition hover:opacity-70"
+            >
+              Join as Artist
+            </Link>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => setMenuOpen((current) => !current)}
+            aria-expanded={menuOpen}
+            aria-label="Open account options"
+            className="flex h-11 w-11 items-center justify-center rounded-full border border-lumina-border bg-lumina-surface text-lumina-text transition hover:border-lumina-text-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lumina-black focus-visible:ring-offset-2 sm:hidden"
+          >
+            <Menu size={18} strokeWidth={1.7} aria-hidden="true" />
+          </button>
+
+          {menuOpen && (
+            <div className="absolute right-0 top-12 z-50 w-[190px] rounded-[18px] border border-lumina-glass-border bg-lumina-surface/95 p-2 text-lumina-text shadow-[0_12px_32px_rgba(39,36,40,0.10)] backdrop-blur-[14px] sm:hidden">
+              <Link
+                href="/login"
+                className="block rounded-[12px] px-4 py-3 text-sm font-medium hover:bg-lumina-blush/70"
+              >
+                Log in
+              </Link>
+              <Link
+                href="/join-as-artist"
+                className="block rounded-[12px] px-4 py-3 text-sm hover:bg-lumina-blush/70"
+              >
+                Join as Artist
+              </Link>
+            </div>
+          )}
+        </div>
+      );
+    }
+
     return (
       <div className="flex items-center gap-5">
         <Link href="/login" className="text-sm transition hover:opacity-70">
