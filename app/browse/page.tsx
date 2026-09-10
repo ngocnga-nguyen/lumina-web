@@ -328,11 +328,11 @@ if (sort) {
             </p>
 
             <h1
-              className="w-fit max-w-[230px] text-[28px] font-normal leading-[0.94] tracking-[-0.025em] md:w-auto md:max-w-[900px] md:text-[58px] md:leading-[1.02] md:tracking-normal lg:mx-auto"
+              className="w-full whitespace-nowrap text-[clamp(24px,6.4vw,27px)] font-normal leading-none tracking-[-0.03em] md:max-w-[900px] md:whitespace-normal md:text-[58px] md:leading-[1.02] md:tracking-normal lg:mx-auto"
               style={{ fontFamily: "Georgia, Times New Roman, serif" }}
             >
-              <span className="block md:inline">Browse beauty</span>{" "}
-              <span className="block md:inline">professionals</span>
+              <span className="md:hidden">Browse beauty professional</span>
+              <span className="hidden md:inline">Browse beauty professionals</span>
             </h1>
 
             <p className="mt-2 text-sm leading-6 text-lumina-text-muted md:mt-3 md:text-[18px] md:leading-7">
@@ -342,19 +342,19 @@ if (sort) {
 
             <button
               onClick={useMyLocation}
-              className="mt-4 min-h-10 rounded-full border border-lumina-black bg-lumina-surface px-4 py-2 text-[13px] transition hover:bg-lumina-black hover:text-white md:mt-5 md:px-5 md:text-[14px]"
+              className="mt-5 hidden min-h-10 items-center rounded-full border border-lumina-black bg-lumina-surface px-5 py-2 text-[14px] transition hover:bg-lumina-black hover:text-white md:inline-flex"
             >
               Use my location
             </button>
 
             {locationStatus && (
-              <p className="mt-2 text-[13px] text-lumina-text-muted">
+              <p className="mt-2 hidden text-[13px] text-lumina-text-muted md:block">
                 {locationStatus}
               </p>
             )}
           </div>
 
-          <div className="mt-7 w-full min-w-0 max-w-[1000px] md:mt-10 lg:mx-auto">
+          <div className="mt-5 w-full min-w-0 max-w-[1000px] md:mt-10 lg:mx-auto">
             <SearchBar
               value={searchQuery}
               onChange={setSearchQuery}
@@ -373,21 +373,29 @@ if (sort) {
 
             <div
               ref={browseControlsRef}
-              className="mt-3 flex flex-wrap items-center justify-start gap-2 text-[13px] md:mt-4 md:gap-3 md:text-sm lg:justify-center"
+              className="mt-2 flex flex-nowrap items-center gap-2 text-[12px] md:mt-4 md:flex-wrap md:justify-start md:gap-3 md:text-sm lg:justify-center"
             >
-              <div className="relative">
-                <button
-                  onClick={() => {
-                    setOpenFilter((current) => !current);
-                    setOpenSort(false);
-                  }}
-                  className="min-h-10 rounded-full border border-lumina-border bg-lumina-surface px-3.5 py-2 text-lumina-text transition hover:border-lumina-glass-border hover:bg-lumina-surface-soft md:px-4"
-                >
-                  ☷ Filter {activeFilterCount > 0 && `(${activeFilterCount})`}
-                </button>
+              <button
+                onClick={useMyLocation}
+                className="mr-auto inline-flex min-h-10 shrink-0 items-center rounded-full border border-lumina-black bg-lumina-surface px-3 py-2 text-lumina-text transition hover:bg-lumina-black hover:text-white md:hidden"
+              >
+                Use my location
+              </button>
+
+              <div className="relative flex shrink-0 items-center gap-2">
+                <div className="static md:relative">
+                  <button
+                    onClick={() => {
+                      setOpenFilter((current) => !current);
+                      setOpenSort(false);
+                    }}
+                    className="min-h-10 rounded-full border border-lumina-border bg-lumina-surface px-3 py-2 text-lumina-text transition hover:border-lumina-glass-border hover:bg-lumina-surface-soft md:px-4"
+                  >
+                    ☷ Filter {activeFilterCount > 0 && `(${activeFilterCount})`}
+                  </button>
 
                 {openFilter && (
-                  <div className="absolute left-0 top-[calc(100%+10px)] z-30 max-h-[min(70vh,560px)] w-[min(320px,calc(100vw-32px))] overflow-y-auto rounded-[22px] border border-lumina-glass-border bg-lumina-surface/95 p-5 text-lumina-text shadow-[0_18px_50px_rgba(39,36,40,0.10)] backdrop-blur-[14px] sm:left-auto sm:right-0">
+                  <div className="absolute right-0 top-[calc(100%+10px)] z-30 max-h-[min(70vh,560px)] w-[min(320px,calc(100vw-32px))] overflow-y-auto rounded-[22px] border border-lumina-glass-border bg-lumina-surface/95 p-5 text-lumina-text shadow-[0_18px_50px_rgba(39,36,40,0.10)] backdrop-blur-[14px]">
                     <div className="mb-5 flex items-center justify-between gap-4">
                       <p
                         className="text-[22px] leading-none"
@@ -457,18 +465,18 @@ if (sort) {
                     </p>
                   </div>
                 )}
-              </div>
+                </div>
 
-              <div className="relative">
-                <button
-                  onClick={() => {
-                    setOpenSort((current) => !current);
-                    setOpenFilter(false);
-                  }}
-                  className="min-h-10 rounded-full border border-lumina-border bg-lumina-surface px-3.5 py-2 text-lumina-text transition hover:border-lumina-glass-border hover:bg-lumina-surface-soft md:px-4"
-                >
-                  ☰ Sort
-                </button>
+                <div className="relative">
+                  <button
+                    onClick={() => {
+                      setOpenSort((current) => !current);
+                      setOpenFilter(false);
+                    }}
+                    className="min-h-10 rounded-full border border-lumina-border bg-lumina-surface px-3 py-2 text-lumina-text transition hover:border-lumina-glass-border hover:bg-lumina-surface-soft md:px-4"
+                  >
+                    ☰ Sort
+                  </button>
 
                 {openSort && (
                   <div className="absolute right-0 top-[calc(100%+10px)] z-30 w-[min(240px,calc(100vw-32px))] rounded-[22px] border border-lumina-glass-border bg-lumina-surface/95 p-3 text-lumina-text shadow-[0_18px_50px_rgba(39,36,40,0.10)] backdrop-blur-[14px]">
@@ -502,13 +510,20 @@ if (sort) {
                     ))}
                   </div>
                 )}
+                </div>
               </div>
             </div>
+
+            {locationStatus && (
+              <p className="mt-2 text-[12px] text-lumina-text-muted md:hidden">
+                {locationStatus}
+              </p>
+            )}
           </div>
         </div>
 
         {filteredAndSortedArtists.length === 1 ? (
-          <div className="mt-8 md:mt-16">
+          <div className="mt-6 md:mt-16">
             <p className="max-w-[720px] text-[14px] leading-6 text-lumina-text-muted">
               More professionals are joining Lumina. Explore by category, try Map view, or check back as more profiles go live.
             </p>
@@ -524,7 +539,7 @@ if (sort) {
             </div>
           </div>
         ) : filteredAndSortedArtists.length > 1 ? (
-          <div className="mt-8 grid grid-cols-2 gap-x-3 gap-y-6 sm:gap-x-4 md:mt-16 md:grid-cols-3 md:gap-5 lg:grid-cols-4 lg:gap-12">
+          <div className="mt-6 grid grid-cols-2 gap-x-3 gap-y-6 sm:gap-x-4 md:mt-16 md:grid-cols-3 md:gap-5 lg:grid-cols-4 lg:gap-12">
             {filteredAndSortedArtists.map((artist) => {
               const distance = getArtistDistance(artist);
 
