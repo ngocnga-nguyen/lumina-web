@@ -38,7 +38,7 @@ export default function ArtistCard({
       href={`/artist/${artist.id}`}
       className={`group block ${className}`}
     >
-      <div className="relative aspect-[16/10] w-full overflow-hidden rounded-[18px] bg-lumina-pearl sm:aspect-[4/3]">
+      <div className="relative aspect-video w-full overflow-hidden rounded-[16px] bg-lumina-pearl sm:aspect-[4/3] sm:rounded-[18px]">
         {artist.profile_image_url ? (
           <img
             src={artist.profile_image_url}
@@ -78,33 +78,33 @@ export default function ArtistCard({
         )}
       </div>
 
-      <div className="pt-3 sm:pt-4">
-        <p className="text-[13px] text-lumina-text-muted">
+      <div className="pt-2.5 sm:pt-4">
+        <p className="text-[12px] leading-5 text-lumina-text-muted sm:text-[13px]">
           <span className="text-lumina-black">★</span> New profile
         </p>
 
         <h3
-          className="mt-2 text-[20px] leading-[1.15] sm:mt-3 sm:text-[21px]"
+          className="mt-1 text-[19px] leading-[1.15] sm:mt-3 sm:text-[21px]"
           style={{ fontFamily: "Georgia, Times New Roman, serif" }}
         >
           {artist.name}
         </h3>
 
-        <p className="mt-1 text-[15px] text-lumina-text-muted">
+        <p className="mt-0.5 text-[14px] leading-5 text-lumina-text-muted sm:mt-1 sm:text-[15px] sm:leading-normal">
           {artist.category}
         </p>
 
-        <div className="mt-3 flex items-start justify-between gap-4 border-t border-lumina-border pt-3 text-[14px] sm:mt-4 sm:pt-4">
+        <div className="mt-2 flex items-start justify-between gap-3 border-t border-lumina-border pt-2 text-[13px] sm:mt-4 sm:gap-4 sm:pt-4 sm:text-[14px]">
           <div>
             <p className="text-lumina-text-muted">{artist.location}</p>
 
             {distance !== null && (
-              <p className="mt-1 text-[12px] text-lumina-text-muted">
+              <p className="mt-0.5 text-[12px] text-lumina-text-muted sm:mt-1">
                 {distance.toFixed(1)} miles away
               </p>
             )}
 
-            <p className="mt-1 font-medium text-lumina-black">
+            <p className="mt-0.5 font-medium text-lumina-black sm:mt-1">
               From ${artist.price_start}
             </p>
           </div>
