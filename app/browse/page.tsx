@@ -1,13 +1,17 @@
 "use client";
 
 import Link from "next/link";
-import { Suspense, useEffect, useMemo, useRef, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { useSearchParams } from "next/navigation";
 import PublicPageHeader from "@/components/PublicPageHeader";
 import SaveArtistButton from "@/components/SaveArtistButton";
 import ArtistCard from "@/components/ArtistCard";
 import SearchBar from "@/components/SearchBar";
+import {
+  getBrowseDistanceMiles,
+  useBrowseGeolocation,
+} from "@/lib/use-browse-geolocation";
 
 
 type Artist = {
@@ -21,49 +25,6 @@ type Artist = {
   profile_image_url?: string | null;
 };
 
-type UserLocation = {
-  latitude: number;
-  longitude: number;
-};
-
-let cachedUserLocation: UserLocation | null = null;
-
-function getLocationErrorMessage(error?: Pick<GeolocationPositionError, "code">) {
-  if (error?.code === 1) {
-    return "Location permission was denied. You can continue browsing by city or service.";
-  }
-
-  if (error?.code === 2) {
-    return "Your location is unavailable right now. Try searching by city instead.";
-  }
-
-  if (error?.code === 3) {
-    return "Finding your location took too long. Please try again.";
-  }
-
-  return "We couldn't determine your location. Try searching by city instead.";
-}
-
-function getDistanceMiles(
-  userLat: number,
-  userLng: number,
-  artistLat: number,
-  artistLng: number
-) {
-  const R = 3958.8;
-  const dLat = ((artistLat - userLat) * Math.PI) / 180;
-  const dLng = ((artistLng - userLng) * Math.PI) / 180;
-
-  const a =
-    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-    Math.cos((userLat * Math.PI) / 180) *
-      Math.cos((artistLat * Math.PI) / 180) *
-      Math.sin(dLng / 2) *
-      Math.sin(dLng / 2);
-
-  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-}
-
 function BrowseContent() {
   const searchParams = useSearchParams();
   const [openSort, setOpenSort] = useState(false);
@@ -71,97 +32,22 @@ function BrowseContent() {
   const browseControlsRef = useRef<HTMLDivElement>(null);
   const minPriceInputRef = useRef<HTMLInputElement>(null);
   const nearbyRequestedRef = useRef(false);
-  const locationRequestInFlightRef = useRef(false);
-  const mountedRef = useRef(true);
-  const [sortBy, setSortBy] = useState(() =>
-    cachedUserLocation ? "nearest" : "newest"
-  );
+  const [sortBy, setSortBy] = useState("newest");
   const [artists, setArtists] = useState<Artist[]>([]);
   const [searchQuery, setSearchQuery] = useState(
   searchParams.get("search") ?? ""
 );
-  const [userLocation, setUserLocation] = useState<UserLocation | null>(
-    () => cachedUserLocation
-  );
-  const [locationStatus, setLocationStatus] = useState(() =>
-    cachedUserLocation ? "Using your current location." : ""
-  );
-  const [isLocating, setIsLocating] = useState(false);
+  const {
+    userLocation,
+    locationStatus,
+    isLocating,
+    requestLocation,
+  } = useBrowseGeolocation({
+    successMessage: "Using your current location.",
+  });
   const [user, setUser] = useState<any>(null);
 const [isArtist, setIsArtist] = useState(false);
 const [accountMenuOpen, setAccountMenuOpen] = useState(false);
-
-  const applyUserLocation = (location: UserLocation) => {
-    cachedUserLocation = location;
-    setUserLocation(location);
-    setSortBy("nearest");
-    setLocationStatus("Using your current location.");
-  };
-
-  const requestUserLocation = () => {
-    if (locationRequestInFlightRef.current) return;
-
-    if (cachedUserLocation) {
-      applyUserLocation(cachedUserLocation);
-      return;
-    }
-
-    if (typeof navigator === "undefined" || !navigator.geolocation) {
-      setLocationStatus("Location is not supported on this browser. Try searching by city instead.");
-      return;
-    }
-
-    locationRequestInFlightRef.current = true;
-    setIsLocating(true);
-    setLocationStatus("Locating…");
-
-    try {
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          const location = {
-            latitude: position.coords.latitude,
-            longitude: position.coords.longitude,
-          };
-
-          cachedUserLocation = location;
-          locationRequestInFlightRef.current = false;
-
-          if (!mountedRef.current) return;
-
-          setIsLocating(false);
-          applyUserLocation(location);
-        },
-        (error) => {
-          locationRequestInFlightRef.current = false;
-
-          if (!mountedRef.current) return;
-
-          setIsLocating(false);
-          setLocationStatus(getLocationErrorMessage(error));
-        },
-        {
-          enableHighAccuracy: false,
-          maximumAge: 5 * 60 * 1000,
-          timeout: 10 * 1000,
-        }
-      );
-    } catch {
-      locationRequestInFlightRef.current = false;
-
-      if (!mountedRef.current) return;
-
-      setIsLocating(false);
-      setLocationStatus(getLocationErrorMessage());
-    }
-  };
-
-  useEffect(() => {
-    mountedRef.current = true;
-
-    return () => {
-      mountedRef.current = false;
-    };
-  }, []);
 
   useEffect(() => {
     const closeMenus = (event: PointerEvent) => {
@@ -266,12 +152,12 @@ if (sort) {
 
     if (searchParams.get("nearby") === "1" && !nearbyRequestedRef.current) {
       nearbyRequestedRef.current = true;
-      requestUserLocation();
+      requestLocation(() => setSortBy("nearest"));
     }
-  }, []);
+  }, [requestLocation, searchParams]);
 
   const useMyLocation = () => {
-    requestUserLocation();
+    requestLocation(() => setSortBy("nearest"));
   };
 
   const toggleCategory = (category: string) => {
@@ -289,18 +175,17 @@ if (sort) {
     setSearchQuery("");
   };
 
-  const getArtistDistance = (artist: Artist) => {
+  const getArtistDistance = useCallback((artist: Artist) => {
     if (!userLocation || artist.latitude === null || artist.longitude === null) {
       return null;
     }
 
-    return getDistanceMiles(
-      userLocation.latitude,
-      userLocation.longitude,
+    return getBrowseDistanceMiles(
+      userLocation,
       artist.latitude,
       artist.longitude
     );
-  };
+  }, [userLocation]);
 
   const filteredAndSortedArtists = useMemo(() => {
     let result = [...artists];
@@ -361,6 +246,7 @@ if (sort) {
     maxPrice,
     sortBy,
     userLocation,
+    getArtistDistance,
   ]);
 
   const activeFilterCount =

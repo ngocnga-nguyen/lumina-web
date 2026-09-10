@@ -2,7 +2,7 @@
 
 import { Suspense } from "react";
 import Link from "next/link";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 import { supabase } from "@/lib/supabase";
@@ -10,6 +10,10 @@ import PublicPageHeader from "@/components/PublicPageHeader";
 import { useSearchParams } from "next/navigation";
 import SaveArtistButton from "@/components/SaveArtistButton";
 import SearchBar from "@/components/SearchBar";
+import {
+  getBrowseDistanceMiles,
+  useBrowseGeolocation,
+} from "@/lib/use-browse-geolocation";
 
 type Artist = {
   id: string;
@@ -20,32 +24,6 @@ type Artist = {
   latitude: number | null;
   longitude: number | null;
 };
-
-type UserLocation = {
-  latitude: number;
-  longitude: number;
-};
-
-function getDistanceMiles(
-  userLat: number,
-  userLng: number,
-  artistLat: number,
-  artistLng: number
-) {
-  const R = 3958.8;
-
-  const dLat = ((artistLat - userLat) * Math.PI) / 180;
-  const dLng = ((artistLng - userLng) * Math.PI) / 180;
-
-  const a =
-    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-    Math.cos((userLat * Math.PI) / 180) *
-      Math.cos((artistLat * Math.PI) / 180) *
-      Math.sin(dLng / 2) *
-      Math.sin(dLng / 2);
-
-  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-}
 
 function BrowseMapContent() {
   const mapContainer = useRef<HTMLDivElement | null>(null);
@@ -83,10 +61,14 @@ const buildViewLink = (path: string) => {
   return queryString ? `${path}?${queryString}` : path;
 };
 
-  const [userLocation, setUserLocation] =
-    useState<UserLocation | null>(null);
-
-  const [locationStatus, setLocationStatus] = useState("");
+  const {
+    userLocation,
+    locationStatus,
+    isLocating,
+    requestLocation,
+  } = useBrowseGeolocation({
+    successMessage: "Using your current location.",
+  });
 
   useEffect(() => {
     const closeMenus = (event: PointerEvent) => {
@@ -165,7 +147,7 @@ const categories = searchParams.get("categories");
 if (categories) {
   setSelectedCategories(categories.split(","));
 }
-  }, []);
+  }, [searchParams]);
 
   useEffect(() => {
     if (!mapContainer.current || mapRef.current) return;
@@ -188,64 +170,27 @@ if (categories) {
 
 
   const useMyLocation = () => {
-    if (!navigator.geolocation) {
-      setLocationStatus(
-        "Location is not supported on this browser."
-      );
-
-      return;
-    }
-
-    setLocationStatus("Getting your location...");
-
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        const currentLocation = {
-          latitude: position.coords.latitude,
-          longitude: position.coords.longitude,
-        };
-
-        setUserLocation(currentLocation);
-
-        setLocationStatus(
-          "Showing nearest artists first."
-        );
-
-        if (mapRef.current) {
-          mapRef.current.flyTo({
-            center: [
-              currentLocation.longitude,
-              currentLocation.latitude,
-            ],
-            zoom: 9.5,
-          });
-
-          if (userMarkerRef.current) {
-            userMarkerRef.current.remove();
-          }
-
-          userMarkerRef.current = new mapboxgl.Marker({
-            color: "#000000",
-          })
-            .setLngLat([
-              currentLocation.longitude,
-              currentLocation.latitude,
-            ])
-            .setPopup(
-              new mapboxgl.Popup().setText("You are here")
-            )
-            .addTo(mapRef.current);
-        }
-      },
-      () => {
-        setLocationStatus(
-          "Location permission was denied."
-        );
-      }
-    );
+    requestLocation(() => setSortBy("nearest"));
   };
 
-  const getArtistDistance = (artist: Artist) => {
+  useEffect(() => {
+    if (!userLocation || !mapRef.current) return;
+
+    mapRef.current.flyTo({
+      center: [userLocation.longitude, userLocation.latitude],
+      zoom: 9.5,
+    });
+
+    userMarkerRef.current?.remove();
+    userMarkerRef.current = new mapboxgl.Marker({
+      color: "#000000",
+    })
+      .setLngLat([userLocation.longitude, userLocation.latitude])
+      .setPopup(new mapboxgl.Popup().setText("You are here"))
+      .addTo(mapRef.current);
+  }, [userLocation]);
+
+  const getArtistDistance = useCallback((artist: Artist) => {
     if (
       !userLocation ||
       artist.latitude === null ||
@@ -254,13 +199,12 @@ if (categories) {
       return null;
     }
 
-    return getDistanceMiles(
-      userLocation.latitude,
-      userLocation.longitude,
+    return getBrowseDistanceMiles(
+      userLocation,
       artist.latitude,
       artist.longitude
     );
-  };
+  }, [userLocation]);
 const toggleCategory = (category: string) => {
   setSelectedCategories((current) =>
     current.includes(category)
@@ -322,6 +266,7 @@ const activeFilterCount = selectedCategories.length;
     selectedCategories,
     sortBy,
     userLocation,
+    getArtistDistance,
   ]);
 
   useEffect(() => {
@@ -334,7 +279,7 @@ const activeFilterCount = selectedCategories.length;
     markersRef.current = [];
 
     filteredArtists.forEach((artist) => {
-      if (!artist.latitude || !artist.longitude)
+      if (artist.latitude === null || artist.longitude === null)
         return;
 
       const markerEl = document.createElement("button");
@@ -476,13 +421,15 @@ markerEl.addEventListener("mouseleave", () => {
 
             <button
               onClick={useMyLocation}
-              className="mt-4 min-h-10 rounded-full border border-lumina-black bg-lumina-surface px-4 py-2 text-[13px] transition hover:bg-lumina-black hover:text-white md:px-5 md:text-[14px]"
+              disabled={isLocating}
+              aria-busy={isLocating}
+              className="mt-4 min-h-10 rounded-full border border-lumina-black bg-lumina-surface px-4 py-2 text-[13px] transition hover:bg-lumina-black hover:text-white disabled:cursor-wait disabled:opacity-60 md:px-5 md:text-[14px]"
             >
-              Use my location
+              {isLocating ? "Locating…" : "Use my location"}
             </button>
 
             {locationStatus && (
-              <p className="mt-2 text-[13px] text-lumina-text-muted">
+              <p aria-live="polite" className="mt-2 text-[13px] text-lumina-text-muted">
                 {locationStatus}
               </p>
             )}

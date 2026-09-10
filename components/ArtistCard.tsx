@@ -23,6 +23,20 @@ type ArtistCardProps = {
   compactMobile?: boolean;
 };
 
+function getCompactLocation(location: string) {
+  const parts = location
+    .split(",")
+    .map((part) => part.trim())
+    .filter(Boolean);
+
+  if (parts.length < 3) {
+    return location.replace(/\s+\d{5}(?:-\d{4})?$/, "").trim();
+  }
+
+  const region = parts.at(-1)?.replace(/\s+\d{5}(?:-\d{4})?$/, "").trim();
+  return [parts.at(-2), region].filter(Boolean).join(", ");
+}
+
 export default function ArtistCard({
   artist,
   distance = null,
@@ -133,7 +147,17 @@ export default function ArtistCard({
         >
           <div className={compactMobile ? "flex min-w-0 flex-col lg:block" : "min-w-0"}>
             <p className={compactMobile ? "order-2 truncate text-[11px] leading-4 text-lumina-text-muted lg:text-[14px] lg:leading-normal" : "truncate text-lumina-text-muted"}>
-              {artist.location}
+              {compactMobile ? (
+                <>
+                  <span className="lg:hidden">
+                    {getCompactLocation(artist.location)}
+                    {distance !== null ? ` · ${distance.toFixed(1)} mi away` : ""}
+                  </span>
+                  <span className="hidden lg:inline">{artist.location}</span>
+                </>
+              ) : (
+                artist.location
+              )}
             </p>
 
             {distance !== null && (
