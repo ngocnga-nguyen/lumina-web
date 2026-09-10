@@ -2,8 +2,8 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { useParams } from "next/navigation";
-import { ChevronDown, ShieldCheck } from "lucide-react";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
+import { ChevronDown, ImageIcon, Layers3, ShieldCheck, Star } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import SaveArtistButton from "@/components/SaveArtistButton";
 import ReviewReportDialog from "@/components/ReviewReportDialog";
@@ -24,6 +24,10 @@ import {
   type ConsultationMaintenance,
   type ConsultationSnapshotDraft,
 } from "@/lib/consultation-snapshot";
+import {
+  getBrowseDistanceMiles,
+  useBrowseGeolocation,
+} from "@/lib/use-browse-geolocation";
 
 type Artist = {
   id: string;
@@ -47,7 +51,17 @@ type Artist = {
   repeat_client_rate?: number | null;
   verified_reviews?: boolean | null;
   is_active?: boolean | null;
+  latitude?: number | null;
+  longitude?: number | null;
 };
+
+type ProfileTab = "service" | "portfolio" | "results" | "reviews";
+
+function getProfileTab(value: string | null): ProfileTab {
+  return value === "portfolio" || value === "results" || value === "reviews"
+    ? value
+    : "service";
+}
 
 type PortfolioImage = {
   id: string;
@@ -95,6 +109,8 @@ type Review = {
 
 export default function ArtistProfile() {
   const params = useParams();
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const artistId = params.slug as string;
 
   const [artist, setArtist] = useState<Artist | null>(null);
@@ -136,17 +152,47 @@ const [accountArtistProfile, setAccountArtistProfile] = useState<any>(null);
 const [accountMenuOpen, setAccountMenuOpen] = useState(false);
 const isLuminaAdmin = useLuminaAdminAccess(user?.id);
   const clientOnboarding = useClientOnboarding();
-  const [activeTab, setActiveTab] = useState<
-    "service" | "portfolio" | "results" | "reviews"
-  >("service");
+  const [activeTab, setActiveTab] = useState<ProfileTab>(() =>
+    getProfileTab(searchParams.get("tab"))
+  );
   const [availabilityExpanded, setAvailabilityExpanded] = useState(false);
   const [profileDetailsExpanded, setProfileDetailsExpanded] = useState(true);
+  const [mobileBioExpanded, setMobileBioExpanded] = useState(false);
+  const { userLocation } = useBrowseGeolocation({ successMessage: "" });
 
   useEffect(() => {
-    if (new URLSearchParams(window.location.search).get("tab") === "reviews") {
-      setActiveTab("reviews");
-    }
+    const syncTabFromHistory = () => {
+      setActiveTab(
+        getProfileTab(new URLSearchParams(window.location.search).get("tab"))
+      );
+    };
+
+    window.addEventListener("popstate", syncTabFromHistory);
+    return () => window.removeEventListener("popstate", syncTabFromHistory);
   }, []);
+
+  const selectProfileTab = (tab: ProfileTab) => {
+    setActiveTab(tab);
+
+    if (
+      typeof window === "undefined" ||
+      !window.matchMedia("(max-width: 767px)").matches
+    ) {
+      return;
+    }
+
+    const nextParams = new URLSearchParams(searchParams.toString());
+    if (tab === "service") {
+      nextParams.delete("tab");
+    } else {
+      nextParams.set("tab", tab);
+    }
+
+    const nextQuery = nextParams.toString();
+    router.push(`/artist/${artistId}${nextQuery ? `?${nextQuery}` : ""}`, {
+      scroll: false,
+    });
+  };
 
   const [openRequest, setOpenRequest] = useState(false);
   const [requestLoading, setRequestLoading] = useState(false);
@@ -204,7 +250,7 @@ const accountImage =
 
   const focusServiceBuilder = () => {
     setOpenRequest(false);
-    setActiveTab("service");
+    selectProfileTab("service");
     requestAnimationFrame(() => {
       document.getElementById("profile-services")?.scrollIntoView({
         behavior: "smooth",
@@ -906,6 +952,23 @@ setAverageRating(updatedAverage);
   const availabilitySummary =
     artist.availability?.trim().split("\n").find(Boolean) ||
     "Availability coming soon.";
+  const profileBio =
+    artist.bio ||
+    `Professional ${artist.category.toLowerCase()} serving clients in ${artist.location}.`;
+  const mobileCoverImage =
+    portfolioPhotos[0]?.image_url || artist.profile_image_url || null;
+  const distanceMiles =
+    userLocation &&
+    typeof artist.latitude === "number" &&
+    typeof artist.longitude === "number"
+      ? getBrowseDistanceMiles(
+          userLocation,
+          artist.latitude,
+          artist.longitude
+        )
+      : null;
+  const publicWorkCount = portfolioPhotos.length + results.length;
+  const mobileBioNeedsToggle = profileBio.length > 170;
 
   return (
     <main data-lumina-public-page className="min-h-screen bg-lumina-surface text-lumina-text">
@@ -1020,9 +1083,199 @@ setAverageRating(updatedAverage);
         </div>
       )}
 
-      <section className="px-4 py-5 sm:py-6 md:px-10 md:py-8">
+      <section className="md:hidden">
+        <div className="relative h-[190px] overflow-hidden bg-lumina-pearl sm:h-[220px]">
+          {mobileCoverImage ? (
+            <img
+              src={mobileCoverImage}
+              alt=""
+              aria-hidden="true"
+              className="h-full w-full object-cover"
+            />
+          ) : (
+            <div className="h-full w-full bg-lumina-glass" />
+          )}
+          <div className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-black/15 to-transparent" />
+        </div>
+
+        <div className="px-4 pb-2">
+          <div className="-mt-12 flex items-end justify-between gap-4">
+            <div className="relative z-10 flex h-24 w-24 shrink-0 items-center justify-center overflow-hidden rounded-full border-4 border-lumina-surface bg-lumina-pearl shadow-[0_8px_24px_rgba(39,36,40,0.12)]">
+              {artist.profile_image_url ? (
+                <img
+                  src={artist.profile_image_url}
+                  alt={artist.name}
+                  className="h-full w-full object-cover"
+                />
+              ) : (
+                <span
+                  className="text-[30px] font-semibold text-lumina-text"
+                  aria-hidden="true"
+                >
+                  {artist.name.charAt(0).toUpperCase()}
+                </span>
+              )}
+            </div>
+
+            <div className="relative z-10 mb-1">
+              <SaveArtistButton
+                artistId={artist.id}
+                artistName={artist.name}
+                viewerIsArtist={viewerIsArtist}
+              />
+            </div>
+          </div>
+
+          <div className="mt-3">
+            <h1
+              className="text-[30px] font-semibold leading-[1.04] text-lumina-text"
+              style={{ fontFamily: "'Playfair Display', serif" }}
+            >
+              {artist.name}
+            </h1>
+            <p
+              className="mt-1 text-[17px] leading-tight text-lumina-text"
+              style={{ fontFamily: "Georgia, Times New Roman, serif" }}
+            >
+              {artist.category}
+            </p>
+            <p className="mt-2 text-[13px] leading-[1.45] text-lumina-text-muted">
+              {artist.location}
+              {distanceMiles !== null && (
+                <> · {distanceMiles.toFixed(1)} mi away</>
+              )}
+            </p>
+            <p className="mt-0.5 text-[13px] font-medium text-lumina-text">
+              Starting at ${artist.price_start}
+            </p>
+            {artist.location_type === "mobile_salon" && (
+              <p className="mt-2 text-[12px] leading-[1.45] text-lumina-text-muted">
+                Mobile salon — exact appointment location is shared after
+                confirmation.
+                {artist.mobile_location_details
+                  ? ` ${artist.mobile_location_details}`
+                  : ""}
+              </p>
+            )}
+            {artist.location_type === "travels" && (
+              <p className="mt-2 text-[12px] leading-[1.45] text-lumina-text-muted">
+                Exact service details are shared after booking confirmation.
+              </p>
+            )}
+          </div>
+
+          {isOwnProfile && (
+            <p className="mt-3 inline-flex rounded-full border border-lumina-border bg-lumina-surface-soft px-3 py-1.5 text-[11px] font-medium text-lumina-text-muted">
+              {privatePreview
+                ? "Private preview · Not currently active"
+                : "This is your public profile"}
+            </p>
+          )}
+
+          {(verifiedLicenseArtistId === artistId ||
+            reviews.length > 0 ||
+            publicWorkCount > 0) && (
+            <div
+              className="mt-4 flex flex-wrap gap-x-4 gap-y-2 border-y border-lumina-border py-3"
+              aria-label="Professional highlights"
+            >
+              {verifiedLicenseArtistId === artistId && (
+                <span className="inline-flex items-center gap-1.5 text-[12px] text-lumina-text">
+                  <ShieldCheck size={15} strokeWidth={1.7} aria-hidden="true" />
+                  License verified
+                </span>
+              )}
+              {reviews.length > 0 && (
+                <span className="inline-flex items-center gap-1.5 text-[12px] text-lumina-text">
+                  <Star size={14} strokeWidth={1.7} aria-hidden="true" />
+                  {averageRating.toFixed(1)} · {reviews.length}{" "}
+                  {reviews.length === 1 ? "review" : "reviews"}
+                </span>
+              )}
+              {publicWorkCount > 0 && (
+                <span className="inline-flex items-center gap-1.5 text-[12px] text-lumina-text">
+                  {results.length > 0 ? (
+                    <Layers3 size={14} strokeWidth={1.7} aria-hidden="true" />
+                  ) : (
+                    <ImageIcon size={14} strokeWidth={1.7} aria-hidden="true" />
+                  )}
+                  {publicWorkCount}{" "}
+                  {publicWorkCount === 1 ? "work sample" : "work samples"}
+                </span>
+              )}
+            </div>
+          )}
+
+          <div className="mt-4">
+            <h2
+              className="text-[20px] font-semibold text-lumina-text"
+              style={{ fontFamily: "Georgia, Times New Roman, serif" }}
+            >
+              About
+            </h2>
+            <p
+              className={`mt-2 whitespace-pre-line text-[14px] leading-[1.55] text-lumina-text ${
+                mobileBioExpanded ? "" : "line-clamp-3"
+              }`}
+            >
+              {profileBio}
+            </p>
+            {mobileBioNeedsToggle && (
+              <button
+                type="button"
+                onClick={() => setMobileBioExpanded((expanded) => !expanded)}
+                aria-expanded={mobileBioExpanded}
+                className="mt-1.5 min-h-8 text-[12px] font-medium text-lumina-text underline decoration-lumina-border underline-offset-4"
+              >
+                {mobileBioExpanded ? "Show less" : "See more"}
+              </button>
+            )}
+          </div>
+
+          <div className="mt-4 border-y border-lumina-border py-1">
+            <button
+              type="button"
+              onClick={() => setAvailabilityExpanded((expanded) => !expanded)}
+              aria-expanded={availabilityExpanded}
+              aria-controls="mobile-profile-availability-details"
+              className="flex min-h-11 w-full items-center justify-between gap-3 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lumina-attention/40"
+            >
+              <div className="min-w-0 flex-1">
+                <h2 className="text-[14px] font-medium text-lumina-text">
+                  Availability
+                </h2>
+                {!availabilityExpanded && (
+                  <p className="mt-0.5 truncate text-[12px] text-lumina-text-muted">
+                    {availabilitySummary}
+                  </p>
+                )}
+              </div>
+              <ChevronDown
+                size={15}
+                strokeWidth={1.6}
+                aria-hidden="true"
+                className={`shrink-0 text-lumina-text-muted transition-transform duration-150 ${
+                  availabilityExpanded ? "rotate-180" : ""
+                }`}
+              />
+            </button>
+            {availabilityExpanded && (
+              <div
+                id="mobile-profile-availability-details"
+                className="border-t border-lumina-border pb-3 pt-2"
+              >
+                <p className="whitespace-pre-line text-[12px] leading-[1.5] text-lumina-text-muted">
+                  {artist.availability || "Availability coming soon."}
+                </p>
+              </div>
+            )}
+          </div>
+        </div>
+      </section>
+
+      <section className="px-4 pb-10 pt-0 md:px-10 md:py-8">
         <div className="mx-auto w-full max-w-[1520px]">
-        <div className="grid grid-cols-1 gap-6 md:grid-cols-[320px_1fr] md:gap-8 lg:grid-cols-[360px_1fr] lg:gap-14">
+        <div className="hidden md:grid md:grid-cols-[320px_1fr] md:gap-8 lg:grid-cols-[360px_1fr] lg:gap-14">
           <div>
             <div className="relative h-[clamp(260px,72vw,300px)] w-full overflow-hidden bg-lumina-pearl md:h-[430px]">
               {artist.profile_image_url ? (
@@ -1269,8 +1522,7 @@ setAverageRating(updatedAverage);
     className="mt-3 text-[15px] leading-[1.6] text-lumina-text md:mt-4 md:text-[18px] md:leading-[1.7]"
     style={{ fontFamily: "Georgia, Times New Roman, serif" }}
   >
-    {artist.bio ||
-      `Professional ${artist.category.toLowerCase()} serving clients in ${artist.location}.`}
+    {profileBio}
   </p>
 </div>
             
@@ -1278,8 +1530,8 @@ setAverageRating(updatedAverage);
           </div>
       </div>
 
-        <section className="mt-5 pb-12 md:mt-6 md:pb-16">
-          <div className="grid grid-cols-4 gap-1 text-[13px] sm:flex sm:flex-wrap sm:justify-center sm:gap-6 sm:text-[16px]">
+        <section className="pb-12 md:mt-6 md:pb-16">
+          <div className="sticky top-0 z-30 -mx-4 grid grid-cols-4 gap-1 border-y border-lumina-border bg-lumina-surface/95 px-4 py-1 text-[12px] backdrop-blur-[12px] sm:flex sm:flex-wrap sm:justify-center sm:gap-6 sm:text-[15px] md:static md:mx-0 md:border-0 md:bg-transparent md:px-0 md:py-0 md:text-[16px] md:backdrop-blur-none">
             {[
               { key: "service", label: "Services" },
               { key: "portfolio", label: "Portfolio" },
@@ -1288,9 +1540,7 @@ setAverageRating(updatedAverage);
             ].map(({ key, label }) => (
               <button
                 key={key}
-                onClick={() =>
-                  setActiveTab(key as "service" | "portfolio" | "results" | "reviews")
-                }
+                onClick={() => selectProfileTab(key as ProfileTab)}
                 className={`min-h-10 whitespace-nowrap border-b px-1 pb-2 pt-1 transition focus-visible:rounded-[6px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lumina-attention/40 ${
                   activeTab === key
                     ? "border-lumina-text bg-transparent text-lumina-text"
@@ -1451,7 +1701,7 @@ setAverageRating(updatedAverage);
           )}
 
           {activeTab === "portfolio" && (
-            <div className="mx-auto mt-10 grid max-w-[1350px] grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+            <div className="mx-auto mt-6 grid max-w-[1350px] grid-cols-2 gap-3 md:mt-10 md:gap-6 lg:grid-cols-3">
               {portfolioPhotos.length > 0 ? (
                 portfolioPhotos.map((image) => (
                   <button
