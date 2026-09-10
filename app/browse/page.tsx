@@ -8,6 +8,7 @@ import PublicPageHeader from "@/components/PublicPageHeader";
 import SaveArtistButton from "@/components/SaveArtistButton";
 import ArtistCard from "@/components/ArtistCard";
 import SearchBar from "@/components/SearchBar";
+import { MapPin } from "lucide-react";
 import {
   getBrowseDistanceMiles,
   useBrowseGeolocation,
@@ -330,9 +331,11 @@ if (sort) {
                 onClick={useMyLocation}
                 disabled={isLocating}
                 aria-busy={isLocating}
-                className="mr-auto inline-flex min-h-10 shrink-0 items-center rounded-full border border-lumina-black bg-lumina-surface px-2.5 py-2 text-[11px] text-lumina-text transition hover:bg-lumina-black hover:text-white disabled:cursor-wait disabled:opacity-60 md:hidden"
+                aria-label={isLocating ? "Finding your location" : "Use my location"}
+                className="mr-auto inline-flex min-h-10 shrink-0 items-center gap-1.5 rounded-full border border-lumina-black bg-lumina-surface px-2.5 py-2 text-[11px] text-lumina-text transition hover:bg-lumina-black hover:text-white disabled:cursor-wait disabled:opacity-60 md:hidden"
               >
-                {isLocating ? "Locating…" : "Use my location"}
+                <MapPin aria-hidden="true" className="h-3.5 w-3.5 shrink-0" strokeWidth={1.8} />
+                {isLocating ? "Locating…" : "Location"}
               </button>
 
               <div className="relative flex shrink-0 items-center gap-2">
