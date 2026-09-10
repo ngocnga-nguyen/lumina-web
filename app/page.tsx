@@ -7,7 +7,7 @@ import type {
   PointerEvent as ReactPointerEvent,
   WheelEvent as ReactWheelEvent,
 } from "react";
-import { ArrowRight, Check, MapPin, MessageCircle, ShieldCheck, Sparkles } from "lucide-react";
+import { ArrowRight, Check, MapPin, MessageCircle, Play, ShieldCheck, Sparkles } from "lucide-react";
 import ArtistCard from "@/components/ArtistCard";
 import LuminaBrand from "@/components/LuminaBrand";
 import SearchBar from "@/components/SearchBar";
@@ -223,19 +223,19 @@ export default function HomePage() {
   return (
     <main data-lumina-public-page className="min-h-screen overflow-x-hidden bg-lumina-surface text-lumina-text">
       <header className="border-b border-lumina-border bg-lumina-bg-soft">
-        <div className="grid h-[76px] w-full grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center px-3 sm:px-4 lg:px-5 xl:px-6">
-          <Link href="/" aria-label="Lumina home" className="block w-[116px] justify-self-start sm:w-[132px]">
+        <div className="grid h-[70px] w-full grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center px-3 sm:h-[76px] sm:px-4 lg:px-5 xl:px-6">
+          <Link href="/" aria-label="Lumina home" className="col-start-1 row-start-1 block w-[108px] justify-self-start sm:w-[132px]">
             <LuminaBrand variant="wordmark" priority className="h-auto w-full" />
           </Link>
 
-          <nav className="hidden items-center gap-7 justify-self-center text-[14px] md:flex">
+          <nav className="col-start-2 row-start-1 hidden items-center gap-7 justify-self-center text-[14px] md:flex">
             <Link href="/browse" className="transition hover:text-lumina-attention">Browse</Link>
             <Link href="/browse/map" className="transition hover:text-lumina-attention">Map</Link>
             <Link href="/how-it-works" className="transition hover:text-lumina-attention">How it works</Link>
           </nav>
 
           {user ? (
-            <div className="relative justify-self-end">
+            <div className="relative col-start-3 row-start-1 justify-self-end">
               <button
                 type="button"
                 aria-expanded={accountMenuOpen}
@@ -281,34 +281,34 @@ export default function HomePage() {
               )}
             </div>
           ) : (
-            <div className="flex items-center justify-self-end gap-2 sm:gap-3">
-              <Link href="/login" className="rounded-full bg-lumina-black px-4 py-2.5 text-[13px] text-white transition hover:opacity-80 sm:px-5">Log in</Link>
-              <Link href="/join-as-artist" className="hidden rounded-full border border-lumina-border bg-lumina-surface px-5 py-2.5 text-[13px] transition hover:border-lumina-black sm:block">Join as Artist</Link>
+            <div className="col-start-3 row-start-1 flex items-center justify-self-end gap-2 sm:gap-3">
+              <Link href="/login" className="whitespace-nowrap rounded-full bg-lumina-black px-3.5 py-2.5 text-[12px] text-white transition hover:opacity-80 sm:px-5 sm:text-[13px]">Log in</Link>
+              <Link href="/join-as-artist" className="whitespace-nowrap px-1 py-2 text-[11px] font-medium text-lumina-text transition hover:text-lumina-black focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lumina-black focus-visible:ring-offset-2 sm:rounded-full sm:border sm:border-lumina-border sm:bg-lumina-surface sm:px-5 sm:py-2.5 sm:text-[13px] sm:font-normal sm:hover:border-lumina-black">Join as Artist</Link>
             </div>
           )}
         </div>
       </header>
 
       <div className="bg-lumina-surface">
-      <section className={`${wideVisualContainer} grid gap-10 pb-14 pt-12 md:pt-16 lg:grid-cols-[0.92fr_1.08fr] lg:items-center lg:gap-16 lg:pb-20 lg:pt-20 xl:grid-cols-[minmax(500px,0.9fr)_minmax(0,1.1fr)]`}>
+      <section className={`${wideVisualContainer} grid gap-9 pb-14 pt-10 md:gap-10 md:pt-16 lg:grid-cols-[0.92fr_1.08fr] lg:items-center lg:gap-16 lg:pb-20 lg:pt-20 xl:grid-cols-[minmax(500px,0.9fr)_minmax(0,1.1fr)]`}>
         <div className="max-w-[660px]">
-          <p className="mb-5 text-[12px] uppercase tracking-[0.24em] text-lumina-attention">Beauty. Trust. Care.</p>
+          <p className="mb-4 text-[12px] uppercase tracking-[0.24em] text-lumina-attention sm:mb-5">Beauty. Trust. Care.</p>
           <h1 className="text-[52px] leading-[0.93] tracking-[-0.045em] sm:text-[68px] lg:text-[82px]" style={serif}>
               Clarity before<br />you commit<span className="text-lumina-text">.</span>
           </h1>
-          <p className="mt-7 max-w-[540px] text-[18px] leading-[1.65] text-lumina-text-muted sm:text-[20px]">
+          <p className="mt-6 max-w-[540px] text-[18px] leading-[1.65] text-lumina-text-muted sm:mt-7 sm:text-[20px]">
             Discover beauty professionals through clear services, starting prices,
             portfolios, and verified client reviews before you decide.
           </p>
-          <div className="mt-8 flex flex-wrap gap-3">
-            <Link href="/browse" className="inline-flex items-center gap-2 rounded-full bg-lumina-black px-6 py-3.5 text-[14px] text-white transition hover:opacity-80">
+          <div className="mt-7 grid grid-cols-2 gap-3 max-[359px]:grid-cols-1 sm:mt-8 sm:flex sm:flex-wrap">
+            <Link href="/browse" className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-full bg-lumina-black px-4 py-3 text-[14px] text-white transition hover:opacity-80 sm:w-auto sm:px-6 sm:py-3.5">
               Explore artists <ArrowRight size={16} />
             </Link>
-            <Link href="/how-it-works" className="inline-flex items-center gap-2 rounded-full border border-lumina-border bg-lumina-surface px-6 py-3.5 text-[14px] transition hover:border-lumina-black">
-              How it works <span className="flex h-5 w-5 items-center justify-center rounded-full border border-current text-[10px]">▶</span>
+            <Link href="/how-it-works" className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-full border border-lumina-border bg-lumina-surface px-4 py-3 text-[14px] transition hover:border-lumina-black focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lumina-black focus-visible:ring-offset-2 sm:w-auto sm:px-6 sm:py-3.5">
+              How it works <Play size={15} strokeWidth={1.8} aria-hidden="true" />
             </Link>
           </div>
-          <p className="mt-5 text-[13px] text-lumina-text-muted">
+          <p className="mt-4 text-[13px] text-lumina-text-muted sm:mt-5">
             Beauty professional? <Link href="/join-as-artist" className="text-lumina-black underline underline-offset-4">Create a professional account</Link>
           </p>
         </div>
