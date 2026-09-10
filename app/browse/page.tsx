@@ -328,7 +328,7 @@ if (sort) {
             </p>
 
             <h1
-              className="max-w-[900px] text-[32px] font-normal leading-none md:text-[58px] md:leading-[1.02] lg:mx-auto"
+              className="w-fit max-w-[230px] text-[28px] font-normal leading-[0.94] tracking-[-0.025em] md:w-auto md:max-w-[900px] md:text-[58px] md:leading-[1.02] md:tracking-normal lg:mx-auto"
               style={{ fontFamily: "Georgia, Times New Roman, serif" }}
             >
               <span className="block md:inline">Browse beauty</span>{" "}
