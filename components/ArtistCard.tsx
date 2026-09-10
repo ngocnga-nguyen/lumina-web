@@ -41,10 +41,10 @@ export default function ArtistCard({
       className={`group block ${className}`}
     >
       <div
-        className={`relative w-full overflow-hidden bg-lumina-pearl sm:aspect-[4/3] sm:h-auto sm:rounded-[18px] ${
+        className={`relative w-full overflow-hidden bg-lumina-pearl ${
           compactMobile
-            ? "h-[152px] rounded-[14px]"
-            : "aspect-video rounded-[16px]"
+            ? "aspect-square rounded-[14px] lg:aspect-[4/3] lg:rounded-[18px]"
+            : "aspect-video rounded-[16px] sm:aspect-[4/3] sm:rounded-[18px]"
         }`}
       >
         {artist.profile_image_url ? (
@@ -64,7 +64,7 @@ export default function ArtistCard({
 
         {!viewerIsArtist && (
           <div
-            className="absolute right-3 top-3"
+            className={`absolute ${compactMobile ? "right-2 top-2 lg:right-3 lg:top-3" : "right-3 top-3"}`}
             onClick={(event) => event.preventDefault()}
           >
             <SaveArtistButton
@@ -80,24 +80,34 @@ export default function ArtistCard({
         )}
 
         {isOwnProfile && (
-          <span className="absolute left-3 top-3 rounded-full bg-lumina-black px-3 py-1.5 text-[12px] font-medium text-white shadow-sm">
+          <span
+            className={`absolute rounded-full bg-lumina-black font-medium text-white shadow-sm ${
+              compactMobile
+                ? "left-2 top-2 px-2 py-1 text-[10px] lg:left-3 lg:top-3 lg:px-3 lg:py-1.5 lg:text-[12px]"
+                : "left-3 top-3 px-3 py-1.5 text-[12px]"
+            }`}
+          >
             Your profile
           </span>
         )}
       </div>
 
-      <div className={compactMobile ? "pt-2 sm:pt-4" : "pt-2.5 sm:pt-4"}>
+      <div className={compactMobile ? "pt-2 lg:pt-4" : "pt-2.5 sm:pt-4"}>
         <p
-          className={`text-lumina-text-muted sm:text-[13px] ${
-            compactMobile ? "text-[11px] leading-4 sm:leading-normal" : "text-[12px] leading-5"
+          className={`text-lumina-text-muted ${
+            compactMobile
+              ? "text-[11px] leading-4 lg:text-[13px] lg:leading-normal"
+              : "text-[12px] leading-5 sm:text-[13px]"
           }`}
         >
           <span className="text-lumina-black">★</span> New profile
         </p>
 
         <h3
-          className={`leading-[1.15] sm:mt-3 sm:text-[21px] ${
-            compactMobile ? "mt-0.5 text-[18px]" : "mt-1 text-[19px]"
+          className={`leading-[1.15] ${
+            compactMobile
+              ? "mt-0.5 line-clamp-2 min-h-[37px] text-[16px] lg:mt-3 lg:line-clamp-none lg:min-h-0 lg:text-[21px]"
+              : "mt-1 text-[19px] sm:mt-3 sm:text-[21px]"
           }`}
           style={{ fontFamily: "Georgia, Times New Roman, serif" }}
         >
@@ -105,44 +115,47 @@ export default function ArtistCard({
         </h3>
 
         <p
-          className={`text-lumina-text-muted sm:mt-1 sm:text-[15px] sm:leading-normal ${
-            compactMobile ? "mt-0 text-[13px] leading-4" : "mt-0.5 text-[14px] leading-5"
+          className={`text-lumina-text-muted ${
+            compactMobile
+              ? "mt-0.5 truncate text-[12px] leading-4 lg:mt-1 lg:text-[15px] lg:leading-normal"
+              : "mt-0.5 text-[14px] leading-5 sm:mt-1 sm:text-[15px] sm:leading-normal"
           }`}
         >
           {artist.category}
         </p>
 
         <div
-          className={`flex justify-between border-t border-lumina-border sm:mt-4 sm:items-start sm:gap-4 sm:pt-4 sm:text-[14px] ${
+          className={`flex justify-between border-t border-lumina-border ${
             compactMobile
-              ? "mt-1.5 items-end gap-2 pt-1.5 text-[12px]"
-              : "mt-2 items-start gap-3 pt-2 text-[13px]"
+              ? "mt-2 items-start gap-2 pt-2 text-[12px] lg:mt-4 lg:gap-4 lg:pt-4 lg:text-[14px]"
+              : "mt-2 items-start gap-3 pt-2 text-[13px] sm:mt-4 sm:gap-4 sm:pt-4 sm:text-[14px]"
           }`}
         >
-          <div className="min-w-0">
-            <p className="truncate text-lumina-text-muted">
+          <div className={compactMobile ? "flex min-w-0 flex-col lg:block" : "min-w-0"}>
+            <p className={compactMobile ? "order-2 truncate text-[11px] leading-4 text-lumina-text-muted lg:text-[14px] lg:leading-normal" : "truncate text-lumina-text-muted"}>
               {artist.location}
-              {compactMobile && distance !== null && (
-                <span className="sm:hidden"> · {distance.toFixed(1)} mi</span>
-              )}
             </p>
 
             {distance !== null && (
               <p
                 className={`text-[12px] text-lumina-text-muted sm:mt-1 ${
-                  compactMobile ? "hidden sm:block" : "mt-0.5"
+                  compactMobile ? "hidden lg:block" : "mt-0.5"
                 }`}
               >
                 {distance.toFixed(1)} miles away
               </p>
             )}
 
-            <p className={compactMobile ? "mt-0 font-medium text-lumina-black sm:mt-1" : "mt-0.5 font-medium text-lumina-black sm:mt-1"}>
+            <p className={compactMobile ? "order-1 font-medium leading-4 text-lumina-black lg:mt-1 lg:leading-normal" : "mt-0.5 font-medium text-lumina-black sm:mt-1"}>
               From ${artist.price_start}
             </p>
           </div>
 
-          <span className="shrink-0 text-lumina-text-muted transition group-hover:translate-x-1 group-hover:text-lumina-black">
+          <span
+            className={`shrink-0 text-lumina-text-muted transition group-hover:translate-x-1 group-hover:text-lumina-black ${
+              compactMobile ? "hidden lg:inline" : ""
+            }`}
+          >
             {isOwnProfile ? "View your profile →" : "View →"}
           </span>
           {showCompare && (

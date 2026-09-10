@@ -511,7 +511,7 @@ if (sort) {
             <p className="max-w-[720px] text-[14px] leading-6 text-lumina-text-muted">
               More professionals are joining Lumina. Explore by category, try Map view, or check back as more profiles go live.
             </p>
-            <div className="mt-5 grid grid-cols-1 md:mt-7">
+            <div className="mt-5 grid grid-cols-2 gap-3 sm:gap-4 md:mt-7 md:grid-cols-3 md:gap-5 lg:grid-cols-1 lg:gap-0">
               <ArtistCard
                 artist={filteredAndSortedArtists[0]}
                 distance={getArtistDistance(filteredAndSortedArtists[0])}
@@ -523,7 +523,7 @@ if (sort) {
             </div>
           </div>
         ) : filteredAndSortedArtists.length > 1 ? (
-          <div className="mt-8 grid grid-cols-1 gap-7 md:mt-16 md:grid-cols-2 md:gap-8 lg:grid-cols-4 lg:gap-12">
+          <div className="mt-8 grid grid-cols-2 gap-x-3 gap-y-6 sm:gap-x-4 md:mt-16 md:grid-cols-3 md:gap-5 lg:grid-cols-4 lg:gap-12">
             {filteredAndSortedArtists.map((artist) => {
               const distance = getArtistDistance(artist);
 
