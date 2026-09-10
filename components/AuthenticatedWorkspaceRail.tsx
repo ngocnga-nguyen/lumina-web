@@ -85,19 +85,25 @@ export default function AuthenticatedWorkspaceRail() {
     };
 
     const loadAccount = async () => {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
+      try {
+        const {
+          data: { user },
+          error,
+        } = await supabase.auth.getUser();
 
-      if (cancelled) return;
-      if (!user) {
-        setRole(null);
-        setAccountId(null);
-        setProfessionalId(null);
-        return;
+        if (cancelled) return;
+        if (error) throw error;
+        if (!user) {
+          setRole(null);
+          setAccountId(null);
+          setProfessionalId(null);
+          return;
+        }
+
+        await resolveRole(user.id);
+      } catch (error) {
+        if (!cancelled) console.log("Workspace account load failed:", error);
       }
-
-      await resolveRole(user.id);
     };
 
     void loadAccount();
@@ -112,7 +118,9 @@ export default function AuthenticatedWorkspaceRail() {
         return;
       }
 
-      void resolveRole(session.user.id);
+      void resolveRole(session.user.id).catch((error) => {
+        if (!cancelled) console.log("Workspace role refresh failed:", error);
+      });
     });
 
     return () => {
@@ -149,10 +157,14 @@ export default function AuthenticatedWorkspaceRail() {
     return () => desktopRail.removeEventListener("change", handleBreakpointChange);
   }, []);
 
-  const actionCounts = useWorkspaceActionCounts(role || "client", accountId);
+  const workspaceAccountId = role && !excludedRoute ? accountId : null;
+  const actionCounts = useWorkspaceActionCounts(
+    role || "client",
+    workspaceAccountId
+  );
   const messageUnreadCount = useWorkspaceMessageUnreadCount(
     role === "professional" ? "artist" : "client",
-    role && !excludedRoute ? accountId : null
+    workspaceAccountId
   );
 
   const toggleRail = () => {

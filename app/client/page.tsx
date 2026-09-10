@@ -100,6 +100,7 @@ export default function ClientOverviewPage() {
   const [savedCount, setSavedCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
+  const [loadAttempt, setLoadAttempt] = useState(0);
   const [welcomeManuallyOpen, setWelcomeManuallyOpen] = useState(false);
   const clientOnboarding = useClientOnboarding();
 
@@ -107,10 +108,15 @@ export default function ClientOverviewPage() {
     let cancelled = false;
 
     const loadOverview = async () => {
+      setLoading(true);
+      setLoadError(false);
       const {
         data: { user },
+        error: authError,
       } = await supabase.auth.getUser();
 
+      if (cancelled) return;
+      if (authError) throw authError;
       if (!user) {
         router.replace("/login?redirect=/client");
         return;
@@ -151,12 +157,17 @@ export default function ClientOverviewPage() {
       setLoading(false);
     };
 
-    void loadOverview();
+    void loadOverview().catch((error) => {
+      if (cancelled) return;
+      console.log("Client overview load failed:", error);
+      setLoadError(true);
+      setLoading(false);
+    });
 
     return () => {
       cancelled = true;
     };
-  }, [router]);
+  }, [loadAttempt, router]);
 
   const activeRequests = useMemo(
     () =>
@@ -243,8 +254,15 @@ export default function ClientOverviewPage() {
           )}
 
           {loadError && (
-            <div className="mt-8 rounded-[18px] border border-lumina-border bg-lumina-surface px-5 py-4 text-[13px] text-lumina-text-muted">
-              Some account details could not be loaded. Refresh to try again.
+            <div className="mt-8 flex flex-wrap items-center justify-between gap-3 rounded-[18px] border border-lumina-border bg-lumina-surface px-5 py-4 text-[13px] text-lumina-text-muted">
+              <span>Some account details could not be loaded.</span>
+              <button
+                type="button"
+                onClick={() => setLoadAttempt((current) => current + 1)}
+                className="min-h-10 rounded-full border border-lumina-border px-4 font-medium text-lumina-text"
+              >
+                Try again
+              </button>
             </div>
           )}
 

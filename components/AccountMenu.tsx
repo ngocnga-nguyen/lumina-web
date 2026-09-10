@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { ShieldCheck } from "lucide-react";
+import type { User } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
 import { useLuminaAdminAccess } from "@/lib/use-lumina-admin-access";
 
@@ -13,52 +14,77 @@ type AccountMenuProps = {
 
 type AccountRole = "professional" | "client";
 
+type AccountProfile = {
+  full_name: string | null;
+};
+
+type ArtistAccountProfile = {
+  id: string;
+  name: string | null;
+  category: string | null;
+  profile_image_url: string | null;
+};
+
 export default function AccountMenu({
   showNotifications = false,
   workspace,
 }: AccountMenuProps) {
-  const [user, setUser] = useState<any>(null);
-  const [profile, setProfile] = useState<any>(null);
-  const [artistProfile, setArtistProfile] = useState<any>(null);
+  const [user, setUser] = useState<User | null>(null);
+  const [profile, setProfile] = useState<AccountProfile | null>(null);
+  const [artistProfile, setArtistProfile] =
+    useState<ArtistAccountProfile | null>(null);
   const [accountRole, setAccountRole] = useState<AccountRole | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const isLuminaAdmin = useLuminaAdminAccess(user?.id);
 
   useEffect(() => {
+    let cancelled = false;
+
     const loadAccount = async () => {
-      const {
-        data: { user: currentUser },
-      } = await supabase.auth.getUser();
+      try {
+        const {
+          data: { user: currentUser },
+          error: authError,
+        } = await supabase.auth.getUser();
 
-      setUser(currentUser);
+        if (authError) throw authError;
+        if (cancelled) return;
+        setUser(currentUser);
 
-      if (!currentUser) return;
+        if (!currentUser) return;
 
-      const { data: profileData } = await supabase
-        .from("profiles")
-        .select("full_name")
-        .eq("id", currentUser.id)
-        .maybeSingle();
+        const { data: profileData } = await supabase
+          .from("profiles")
+          .select("full_name")
+          .eq("id", currentUser.id)
+          .maybeSingle();
 
-      setProfile(profileData);
+        if (cancelled) return;
+        setProfile(profileData);
 
-      const { data: artistData, error: artistError } = await supabase
-        .from("artists")
-        .select("id, name, category, profile_image_url")
-        .eq("id", currentUser.id)
-        .maybeSingle();
+        const { data: artistData, error: artistError } = await supabase
+          .from("artists")
+          .select("id, name, category, profile_image_url")
+          .eq("id", currentUser.id)
+          .maybeSingle();
 
-      if (artistError) {
-        console.log("Account role check failed:", artistError);
+        if (artistError) throw artistError;
+        if (cancelled) return;
+
+        setArtistProfile(artistData);
+        setAccountRole(artistData ? "professional" : "client");
+      } catch (error) {
+        if (cancelled) return;
+        console.log("Account menu load failed:", error);
         setAccountRole(null);
-        return;
       }
-
-      setArtistProfile(artistData);
-      setAccountRole(artistData ? "professional" : "client");
     };
 
-    loadAccount();
+    void loadAccount();
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const accountName =

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import {
   Menu,
@@ -52,45 +52,59 @@ export default function ClientWorkspaceShell({
   const [accountResolved, setAccountResolved] = useState(false);
   const [accountId, setAccountId] = useState<string | null>(null);
   const [locationHash, setLocationHash] = useState("");
+  const [accountLoadError, setAccountLoadError] = useState(false);
+  const [accountLoadAttempt, setAccountLoadAttempt] = useState(0);
+  const pathnameRef = useRef(pathname);
+
+  useEffect(() => {
+    pathnameRef.current = pathname;
+  }, [pathname]);
 
   useEffect(() => {
     let cancelled = false;
 
     const loadClient = async () => {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
+      try {
+        setAccountLoadError(false);
+        const {
+          data: { user },
+          error: authError,
+        } = await supabase.auth.getUser();
 
-      if (!user) {
-        router.replace(`/login?redirect=${encodeURIComponent(pathname)}`);
-        return;
-      }
+        if (cancelled) return;
+        if (authError) throw authError;
+        if (!user) {
+          router.replace(
+            `/login?redirect=${encodeURIComponent(pathnameRef.current)}`
+          );
+          return;
+        }
 
-      const [profileResult, artistResult] = await Promise.all([
-        supabase
-          .from("profiles")
-          .select("full_name")
-          .eq("id", user.id)
-          .maybeSingle(),
-        supabase.from("artists").select("id").eq("id", user.id).maybeSingle(),
-      ]);
+        const [profileResult, artistResult] = await Promise.all([
+          supabase
+            .from("profiles")
+            .select("full_name")
+            .eq("id", user.id)
+            .maybeSingle(),
+          supabase.from("artists").select("id").eq("id", user.id).maybeSingle(),
+        ]);
 
-      if (artistResult.error) {
-        console.log("Client workspace account check failed:", artistResult.error);
-        return;
-      }
+        if (cancelled) return;
+        if (artistResult.error) throw artistResult.error;
+        if (artistResult.data) {
+          router.replace("/dashboard");
+          return;
+        }
 
-      if (artistResult.data) {
-        router.replace("/dashboard");
-        return;
-      }
-
-      if (!cancelled) {
         setProfile(profileResult.data);
         setAvatarUrl(user.user_metadata?.avatar_url || "");
         setEmail(user.email || "");
         setAccountId(user.id);
         setAccountResolved(true);
+      } catch (error) {
+        if (cancelled) return;
+        console.log("Client workspace account load failed:", error);
+        setAccountLoadError(true);
       }
     };
 
@@ -99,7 +113,7 @@ export default function ClientWorkspaceShell({
     return () => {
       cancelled = true;
     };
-  }, [pathname, router]);
+  }, [accountLoadAttempt, router]);
 
   useEffect(() => {
     const updateHash = () => setLocationHash(window.location.hash);
@@ -341,6 +355,26 @@ export default function ClientWorkspaceShell({
       </div>
     </div>
   );
+
+  if (accountLoadError) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-lumina-bg px-5 text-lumina-text">
+        <div role="alert" className="max-w-sm text-center">
+          <p className="text-[15px] font-medium">Your account could not be loaded.</p>
+          <p className="mt-2 text-[13px] text-lumina-text-muted">
+            Check your connection and try again.
+          </p>
+          <button
+            type="button"
+            onClick={() => setAccountLoadAttempt((current) => current + 1)}
+            className="mt-5 min-h-11 rounded-full bg-lumina-black px-6 text-[13px] font-medium text-white"
+          >
+            Try again
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   if (!accountResolved) {
     return <div className="min-h-screen bg-lumina-bg" aria-label="Loading client workspace" />;

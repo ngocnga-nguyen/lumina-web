@@ -45,6 +45,8 @@ export default function SavedPage() {
   const [clientId, setClientId] = useState<string | null>(null);
   const [selectedCompareIds, setSelectedCompareIds] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
+  const [loadAttempt, setLoadAttempt] = useState(0);
   const clientOnboarding = useClientOnboarding();
   const [userLocation, setUserLocation] = useState<{
   latitude: number;
@@ -52,11 +54,17 @@ export default function SavedPage() {
 } | null>(null);
 
   useEffect(() => {
+    let cancelled = false;
     const loadSavedArtists = async () => {
+      setLoading(true);
+      setLoadError(false);
       const {
         data: { user },
+        error: authError,
       } = await supabase.auth.getUser();
 
+      if (cancelled) return;
+      if (authError) throw authError;
       if (!user) {
         setSavedArtists([]);
         setLoading(false);
@@ -94,11 +102,14 @@ export default function SavedPage() {
           .eq("user_id", user.id),
       ]);
 
+      if (cancelled) return;
+
       const savedData = (savedResult.data || []) as SavedArtistRecord[];
       const savedError = savedResult.error;
 
       if (savedError) {
         console.log(savedError);
+        setLoadError(true);
         setLoading(false);
         return;
       }
@@ -133,8 +144,10 @@ export default function SavedPage() {
         .in("id", artistIds)
         .eq("is_active", true);
 
+      if (cancelled) return;
       if (artistsError) {
         console.log(artistsError);
+        setLoadError(true);
         setLoading(false);
         return;
       }
@@ -143,23 +156,39 @@ export default function SavedPage() {
       setLoading(false);
     };
 
-    loadSavedArtists();
-  }, [router]);
-  useEffect(() => {
-  if (!navigator.geolocation) return;
+    void loadSavedArtists().catch((error) => {
+      if (cancelled) return;
+      console.log("Saved professionals load failed:", error);
+      setLoadError(true);
+      setLoading(false);
+    });
 
-  navigator.geolocation.getCurrentPosition(
-    (position) => {
-      setUserLocation({
-        latitude: position.coords.latitude,
-        longitude: position.coords.longitude,
-      });
-    },
-    () => {
-      console.log("Location permission denied");
-    }
-  );
-}, []);
+    return () => {
+      cancelled = true;
+    };
+  }, [loadAttempt, router]);
+
+  useEffect(() => {
+    if (!navigator.geolocation) return;
+    let cancelled = false;
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        if (cancelled) return;
+        setUserLocation({
+          latitude: position.coords.latitude,
+          longitude: position.coords.longitude,
+        });
+      },
+      () => {
+        if (!cancelled) console.log("Location permission denied");
+      }
+    );
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const selectedArtists = useMemo(() => {
     return savedArtists.filter((artist) =>
@@ -437,7 +466,18 @@ export default function SavedPage() {
             </div>
           )}
 
-        {loading ? (
+        {loadError ? (
+          <div className="rounded-[18px] border border-lumina-border bg-lumina-surface px-5 py-5 text-[13px] text-lumina-text-muted">
+            <p>Saved professionals could not be loaded.</p>
+            <button
+              type="button"
+              onClick={() => setLoadAttempt((current) => current + 1)}
+              className="mt-4 min-h-10 rounded-full border border-lumina-border px-4 font-medium text-lumina-text"
+            >
+              Try again
+            </button>
+          </div>
+        ) : loading ? (
           <p className="text-lumina-text-muted">
             Loading saved artists...
           </p>

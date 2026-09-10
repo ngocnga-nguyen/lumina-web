@@ -13,6 +13,7 @@ import {
   sendRequestMessage,
 } from "@/lib/request-messaging";
 import { supabase } from "@/lib/supabase";
+import { createRealtimeChannelTopic } from "@/lib/realtime-channel";
 
 const REQUEST_COLUMNS = [
   "id",
@@ -58,16 +59,32 @@ export function useRequestInbox(role: RequestConversationRole) {
   const [error, setError] = useState<string | null>(null);
   const requestIdsRef = useRef<Set<string>>(new Set());
   const selectedRequestIdRef = useRef<string | null>(null);
+  const loadSequenceRef = useRef(0);
+  const mountedRef = useRef(true);
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+      loadSequenceRef.current += 1;
+    };
+  }, []);
 
   useEffect(() => {
     selectedRequestIdRef.current = selectedRequestId;
   }, [selectedRequestId]);
 
   const loadInbox = useCallback(async () => {
+    const loadSequence = ++loadSequenceRef.current;
+    const canCommit = () =>
+      mountedRef.current && loadSequence === loadSequenceRef.current;
     const {
       data: { user },
+      error: authError,
     } = await supabase.auth.getUser();
 
+    if (!canCommit()) return;
+    if (authError) throw authError;
     if (!user) {
       setLoading(false);
       return;
@@ -81,6 +98,7 @@ export function useRequestInbox(role: RequestConversationRole) {
       .eq(ownerColumn, user.id)
       .order("created_at", { ascending: false });
 
+    if (!canCommit()) return;
     if (requestError) {
       setError(requestError.message);
       setLoading(false);
@@ -98,6 +116,7 @@ export function useRequestInbox(role: RequestConversationRole) {
           .select("id, full_name")
           .in("id", clientIds);
 
+        if (!canCommit()) return;
         if (!profilesError) {
           (profiles || []).forEach((profile) => {
             if (profile.full_name) clientNames.set(profile.id, profile.full_name);
@@ -142,6 +161,7 @@ export function useRequestInbox(role: RequestConversationRole) {
       .in("request_id", requestIds)
       .order("created_at", { ascending: true });
 
+    if (!canCommit()) return;
     if (updatesError) {
       setError(updatesError.message);
       setLoading(false);
@@ -161,10 +181,30 @@ export function useRequestInbox(role: RequestConversationRole) {
     setLoading(false);
   }, [role]);
 
-  useEffect(() => {
-    const initialLoad = window.setTimeout(() => void loadInbox(), 0);
-    return () => window.clearTimeout(initialLoad);
+  const loadInboxSafely = useCallback(async () => {
+    const expectedLoadSequence = loadSequenceRef.current + 1;
+    try {
+      await loadInbox();
+    } catch (loadError) {
+      if (
+        !mountedRef.current ||
+        expectedLoadSequence !== loadSequenceRef.current
+      ) {
+        return;
+      }
+      setError(
+        loadError instanceof Error
+          ? loadError.message
+          : "This conversation list could not be loaded."
+      );
+      setLoading(false);
+    }
   }, [loadInbox]);
+
+  useEffect(() => {
+    const initialLoad = window.setTimeout(() => void loadInboxSafely(), 0);
+    return () => window.clearTimeout(initialLoad);
+  }, [loadInboxSafely]);
 
   const markRead = useCallback(
     async (requestId: string) => {
@@ -184,10 +224,10 @@ export function useRequestInbox(role: RequestConversationRole) {
       );
       if (readError) {
         setError(readError.message);
-        await loadInbox();
+        await loadInboxSafely();
       }
     },
-    [loadInbox, role]
+    [loadInboxSafely, role]
   );
 
   const openConversation = useCallback(
@@ -202,13 +242,15 @@ export function useRequestInbox(role: RequestConversationRole) {
   useEffect(() => {
     if (!userId) return;
 
+    let cancelled = false;
     const ownerColumn = role === "client" ? "client_id" : "artist_id";
     const channel = supabase
-      .channel(`request-inbox-${role}-${userId}`)
+      .channel(createRealtimeChannelTopic(`request-inbox-${role}-${userId}`))
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "request_updates" },
         (payload) => {
+          if (cancelled) return;
           const nextUpdate = payload.new as RequestConversationUpdate;
           const previousUpdate = payload.old as Partial<RequestConversationUpdate>;
           const requestId = nextUpdate.request_id || previousUpdate.request_id;
@@ -254,14 +296,17 @@ export function useRequestInbox(role: RequestConversationRole) {
           table: "client_requests",
           filter: `${ownerColumn}=eq.${userId}`,
         },
-        () => void loadInbox()
+        () => {
+          if (!cancelled) void loadInboxSafely();
+        }
       );
 
     channel.subscribe();
     return () => {
+      cancelled = true;
       void supabase.removeChannel(channel);
     };
-  }, [loadInbox, markRead, role, userId]);
+  }, [loadInboxSafely, markRead, role, userId]);
 
   const sendMessage = useCallback(
     async (requestId: string, message: string, image: File | null) => {
@@ -275,18 +320,18 @@ export function useRequestInbox(role: RequestConversationRole) {
         message: message.trim(),
         image,
       });
-      await loadInbox();
+      await loadInboxSafely();
     },
-    [loadInbox, requests, role]
+    [loadInboxSafely, requests, role]
   );
 
   const removeMessage = useCallback(
     async (messageId: string) => {
       const { error: deleteError } = await deleteRequestMessage(messageId);
       if (deleteError) throw deleteError;
-      await loadInbox();
+      await loadInboxSafely();
     },
-    [loadInbox]
+    [loadInboxSafely]
   );
 
   return {
@@ -300,6 +345,6 @@ export function useRequestInbox(role: RequestConversationRole) {
     removeMessage,
     loading,
     error,
-    refresh: loadInbox,
+    refresh: loadInboxSafely,
   };
 }

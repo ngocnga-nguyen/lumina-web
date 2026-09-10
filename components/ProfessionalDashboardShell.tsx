@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import {
   ExternalLink,
@@ -52,39 +52,53 @@ export default function ProfessionalDashboardShell({ children }: ShellProps) {
   const [sidebarCollapsed, setSidebarCollapsed] =
     useWorkspaceSidebarPreference();
   const [accountResolved, setAccountResolved] = useState(false);
+  const [accountLoadError, setAccountLoadError] = useState(false);
+  const [accountLoadAttempt, setAccountLoadAttempt] = useState(0);
+  const pathnameRef = useRef(pathname);
+
+  useEffect(() => {
+    pathnameRef.current = pathname;
+  }, [pathname]);
 
   useEffect(() => {
     let cancelled = false;
 
     const loadProfessional = async () => {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
+      try {
+        setAccountLoadError(false);
+        const {
+          data: { user },
+          error: authError,
+        } = await supabase.auth.getUser();
 
-      if (!user) {
-        router.replace(`/login?redirect=${encodeURIComponent(pathname)}`);
-        return;
-      }
+        if (cancelled) return;
+        if (authError) throw authError;
+        if (!user) {
+          router.replace(
+            `/login?redirect=${encodeURIComponent(pathnameRef.current)}`
+          );
+          return;
+        }
 
-      const { data, error } = await supabase
-        .from("artists")
-        .select("id, name, category, profile_image_url")
-        .eq("id", user.id)
-        .maybeSingle();
+        const { data, error } = await supabase
+          .from("artists")
+          .select("id, name, category, profile_image_url")
+          .eq("id", user.id)
+          .maybeSingle();
 
-      if (error) {
-        console.log("Professional workspace account check failed:", error);
-        return;
-      }
+        if (cancelled) return;
+        if (error) throw error;
+        if (!data) {
+          router.replace("/client");
+          return;
+        }
 
-      if (!data) {
-        router.replace("/client");
-        return;
-      }
-
-      if (!cancelled) {
         setProfessional(data);
         setAccountResolved(true);
+      } catch (error) {
+        if (cancelled) return;
+        console.log("Professional workspace account load failed:", error);
+        setAccountLoadError(true);
       }
     };
 
@@ -93,7 +107,7 @@ export default function ProfessionalDashboardShell({ children }: ShellProps) {
     return () => {
       cancelled = true;
     };
-  }, [pathname, router]);
+  }, [accountLoadAttempt, router]);
 
   const currentTitle =
     pageTitles.find(({ path }) =>
@@ -325,6 +339,26 @@ export default function ProfessionalDashboardShell({ children }: ShellProps) {
       </div>
     </div>
   );
+
+  if (accountLoadError) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-lumina-bg px-5 text-lumina-text">
+        <div role="alert" className="max-w-sm text-center">
+          <p className="text-[15px] font-medium">Your dashboard could not be loaded.</p>
+          <p className="mt-2 text-[13px] text-lumina-text-muted">
+            Check your connection and try again.
+          </p>
+          <button
+            type="button"
+            onClick={() => setAccountLoadAttempt((current) => current + 1)}
+            className="mt-5 min-h-11 rounded-full bg-lumina-black px-6 text-[13px] font-medium text-white"
+          >
+            Try again
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   if (!accountResolved) {
     return <div className="min-h-screen bg-lumina-bg" aria-label="Loading professional workspace" />;

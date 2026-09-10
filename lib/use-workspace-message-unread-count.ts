@@ -7,6 +7,7 @@ import {
 } from "@/lib/request-conversations";
 import { applyDatabaseConfirmedReadCount } from "@/lib/message-unread";
 import { supabase } from "@/lib/supabase";
+import { createRealtimeChannelTopic } from "@/lib/realtime-channel";
 
 export function useWorkspaceMessageUnreadCount(
   role: RequestConversationRole,
@@ -15,12 +16,21 @@ export function useWorkspaceMessageUnreadCount(
   const [unreadCount, setUnreadCount] = useState(0);
   const visibleRequestIdsRef = useRef<Set<string>>(new Set());
   const refreshSequenceRef = useRef(0);
+  const mountedRef = useRef(true);
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+      refreshSequenceRef.current += 1;
+    };
+  }, []);
 
   const refresh = useCallback(async () => {
     const refreshSequence = ++refreshSequenceRef.current;
     if (!userId) {
       visibleRequestIdsRef.current = new Set();
-      setUnreadCount(0);
+      if (mountedRef.current) setUnreadCount(0);
       return;
     }
 
@@ -36,7 +46,7 @@ export function useWorkspaceMessageUnreadCount(
       console.log("Workspace message request lookup failed:", requestsError);
       return;
     }
-    if (refreshSequence !== refreshSequenceRef.current) return;
+    if (!mountedRef.current || refreshSequence !== refreshSequenceRef.current) return;
 
     const requestIds = (visibleRequests || []).map((request) => request.id);
     visibleRequestIdsRef.current = new Set(requestIds);
@@ -59,22 +69,33 @@ export function useWorkspaceMessageUnreadCount(
       console.log("Workspace message unread count failed:", countError);
       return;
     }
-    if (refreshSequence !== refreshSequenceRef.current) return;
+    if (!mountedRef.current || refreshSequence !== refreshSequenceRef.current) return;
 
     setUnreadCount(count || 0);
   }, [role, userId]);
 
-  useEffect(() => {
-    const initialRefresh = window.setTimeout(() => void refresh(), 0);
-    return () => window.clearTimeout(initialRefresh);
+  const refreshSafely = useCallback(() => {
+    void refresh().catch((error) => {
+      if (mountedRef.current) {
+        console.log("Workspace message unread refresh failed:", error);
+      }
+    });
   }, [refresh]);
+
+  useEffect(() => {
+    const initialRefresh = window.setTimeout(refreshSafely, 0);
+    return () => window.clearTimeout(initialRefresh);
+  }, [refreshSafely]);
 
   useEffect(() => {
     if (!userId) return;
 
+    let active = true;
     const ownerColumn = role === "client" ? "client_id" : "artist_id";
     const channel = supabase
-      .channel(`workspace-message-unread-${role}-${userId}`)
+      .channel(
+        createRealtimeChannelTopic(`workspace-message-unread-${role}-${userId}`)
+      )
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "request_updates" },
@@ -95,7 +116,7 @@ export function useWorkspaceMessageUnreadCount(
           ) {
             return;
           }
-          void refresh();
+          if (active) refreshSafely();
         }
       )
       .on(
@@ -106,14 +127,17 @@ export function useWorkspaceMessageUnreadCount(
           table: "client_requests",
           filter: `${ownerColumn}=eq.${userId}`,
         },
-        () => void refresh()
+        () => {
+          if (active) refreshSafely();
+        }
       );
 
     channel.subscribe();
     return () => {
+      active = false;
       void supabase.removeChannel(channel);
     };
-  }, [refresh, role, userId]);
+  }, [refreshSafely, role, userId]);
 
   useEffect(() => {
     if (!userId) return;
@@ -135,11 +159,11 @@ export function useWorkspaceMessageUnreadCount(
           applyDatabaseConfirmedReadCount(current, detail.markedReadCount || 0)
         );
       }
-      void refresh();
+      refreshSafely();
     };
-    const refreshOnFocus = () => void refresh();
+    const refreshOnFocus = refreshSafely;
     const refreshOnVisibility = () => {
-      if (document.visibilityState === "visible") void refresh();
+      if (document.visibilityState === "visible") refreshSafely();
     };
 
     window.addEventListener(
@@ -156,7 +180,7 @@ export function useWorkspaceMessageUnreadCount(
       window.removeEventListener("focus", refreshOnFocus);
       document.removeEventListener("visibilitychange", refreshOnVisibility);
     };
-  }, [refresh, role, userId]);
+  }, [refreshSafely, role, userId]);
 
   return unreadCount;
 }

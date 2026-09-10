@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/lib/supabase";
+import { createRealtimeChannelTopic } from "@/lib/realtime-channel";
 import { Bell, MessageCircle, Sparkles, CalendarDays, Clock } from "lucide-react";
 import ChatModal from "@/components/ChatModal";
 import ConsultationSnapshot from "@/components/ConsultationSnapshot";
@@ -118,6 +119,14 @@ export default function DashboardRequestsPage() {
   const openChatRequestIdRef = useRef<string | null>(null);
   const requestTabRef = useRef<"active" | "archived">("active");
   const handledDeepLinkRef = useRef<string | null>(null);
+  const routeActiveRef = useRef(true);
+
+  useEffect(() => {
+    routeActiveRef.current = true;
+    return () => {
+      routeActiveRef.current = false;
+    };
+  }, []);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -148,6 +157,7 @@ export default function DashboardRequestsPage() {
       data: { user },
     } = await supabase.auth.getUser();
 
+    if (!routeActiveRef.current) return;
     if (!user) return;
 const { data: notificationData } = await supabase
   .from("notifications")
@@ -155,6 +165,7 @@ const { data: notificationData } = await supabase
   .eq("user_id", user.id)
   .order("created_at", { ascending: false });
 
+if (!routeActiveRef.current) return;
 setNotifications(notificationData || []);
 
     const { data, error } = await supabase
@@ -164,6 +175,7 @@ setNotifications(notificationData || []);
       .eq("artist_hidden", requestTab === "archived")
       .order("created_at", { ascending: false });
 
+    if (!routeActiveRef.current) return;
     if (error) {
       console.log(error);
       return;
@@ -178,6 +190,7 @@ setNotifications(notificationData || []);
           .select("id, full_name")
           .in("id", clientIds)
       : { data: [] };
+    if (!routeActiveRef.current) return;
     const clientProfileMap = new Map(
       (clientProfiles || []).map((profile) => [profile.id, profile])
     );
@@ -198,12 +211,14 @@ setNotifications(notificationData || []);
         await createConsultationSignedUrls(request.consultation_snapshot),
       ] as const)
     );
+    if (!routeActiveRef.current) return;
     setConsultationImageUrls(Object.fromEntries(consultationEntries));
     const { data: updateData } = await supabase
   .from("request_updates")
   .select("*")
   .order("created_at", { ascending: true });
 
+if (!routeActiveRef.current) return;
 const updateMap: Record<string, RequestUpdate[]> = {};
 
 (updateData || []).forEach((update) => {
@@ -242,8 +257,16 @@ setUpdates(updateMap);
   };
 
  useEffect(() => {
-  const refreshTimer = window.setTimeout(() => void fetchRequests(), 0);
-  return () => window.clearTimeout(refreshTimer);
+  let cancelled = false;
+  const refreshTimer = window.setTimeout(() => {
+    void fetchRequests().catch((error) => {
+      if (!cancelled) console.log("Professional requests load failed:", error);
+    });
+  }, 0);
+  return () => {
+    cancelled = true;
+    window.clearTimeout(refreshTimer);
+  };
 }, [requestTab]);
 useEffect(() => {
   openChatRequestIdRef.current = chatRequest?.id || null;
@@ -263,7 +286,7 @@ useEffect(() => {
     if (!user || cancelled) return;
 
     channel = supabase
-      .channel(`artist-dashboard-${user.id}`)
+      .channel(createRealtimeChannelTopic(`artist-dashboard-${user.id}`))
       .on(
         "postgres_changes",
         {
@@ -272,6 +295,7 @@ useEffect(() => {
           table: "request_updates",
         },
         (payload) => {
+          if (cancelled) return;
           const update = payload.new as RequestUpdate;
           const isOpenIncomingMessage =
             openChatRequestIdRef.current === update.request_id &&
@@ -310,6 +334,7 @@ useEffect(() => {
           filter: `user_id=eq.${user.id}`,
         },
         (payload) => {
+          if (cancelled) return;
           setNotifications((prev) => [
             payload.new as Notification,
             ...prev,
@@ -325,6 +350,7 @@ useEffect(() => {
           filter: `artist_id=eq.${user.id}`,
         },
         (payload) => {
+          if (cancelled) return;
           const newRequest = payload.new as ClientRequest;
 
           if (requestTabRef.current !== "active" || newRequest.artist_hidden) {
@@ -347,6 +373,7 @@ useEffect(() => {
           filter: `artist_id=eq.${user.id}`,
         },
         (payload) => {
+          if (cancelled) return;
           const updatedRequest = payload.new as ClientRequest;
 
           setRequests((prev) =>
@@ -360,7 +387,11 @@ useEffect(() => {
     channel.subscribe();
   };
 
-  setupRealtime();
+  void setupRealtime().catch((error) => {
+    if (!cancelled) {
+      console.log("Professional request realtime setup failed:", error);
+    }
+  });
 
   return () => {
     cancelled = true;

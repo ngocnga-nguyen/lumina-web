@@ -181,8 +181,17 @@ export default function RequestInbox({ role }: RequestInboxProps) {
         </div>
 
         {(inbox.error || actionError) && (
-          <div className="mt-4 rounded-[16px] border border-lumina-attention/25 bg-lumina-attention-soft px-4 py-3 text-[13px] text-lumina-text">
-            {actionError || "Messages could not be loaded. Please refresh and try again."}
+          <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-[16px] border border-lumina-attention/25 bg-lumina-attention-soft px-4 py-3 text-[13px] text-lumina-text">
+            <span>{actionError || "Messages could not be loaded."}</span>
+            {!actionError && (
+              <button
+                type="button"
+                onClick={() => void inbox.refresh()}
+                className="min-h-10 rounded-full border border-lumina-border bg-lumina-surface px-4 font-medium"
+              >
+                Try again
+              </button>
+            )}
           </div>
         )}
 

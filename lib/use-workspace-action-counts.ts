@@ -1,6 +1,12 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import {
   getClientWorkspaceActionCounts,
   getNextRequestStateTransitionAt,
@@ -8,6 +14,7 @@ import {
   type WorkspaceActionRequest,
 } from "@/lib/request-completion";
 import { supabase } from "@/lib/supabase";
+import { createRealtimeChannelTopic } from "@/lib/realtime-channel";
 
 type WorkspaceRole = "client" | "professional";
 
@@ -23,9 +30,29 @@ export function useWorkspaceActionCounts(
     () => new Set()
   );
   const [now, setNow] = useState(() => new Date());
+  const mountedRef = useRef(true);
+  const refreshSequenceRef = useRef(0);
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+      refreshSequenceRef.current += 1;
+    };
+  }, []);
 
   const refresh = useCallback(async () => {
-    if (!userId) return;
+    const refreshSequence = ++refreshSequenceRef.current;
+    if (!userId) {
+      if (mountedRef.current) {
+        setRequests([]);
+        setReviewedRequestIds(new Set());
+      }
+      return;
+    }
+
+    const canCommit = () =>
+      mountedRef.current && refreshSequence === refreshSequenceRef.current;
 
     const requestOwnerColumn = role === "client" ? "client_id" : "artist_id";
     const hiddenColumn = role === "client" ? "client_hidden" : "artist_hidden";
@@ -50,6 +77,8 @@ export function useWorkspaceActionCounts(
         return;
       }
 
+      if (!canCommit()) return;
+
       setRequests((requestsResult.data || []) as WorkspaceActionRequest[]);
       if (!reviewsResult.error) {
         setReviewedRequestIds(
@@ -69,23 +98,35 @@ export function useWorkspaceActionCounts(
         );
         return;
       }
+      if (!canCommit()) return;
       setRequests((requestsResult.data || []) as WorkspaceActionRequest[]);
     }
 
-    setNow(new Date());
+    if (canCommit()) setNow(new Date());
   }, [role, userId]);
 
+  const refreshSafely = useCallback(() => {
+    void refresh().catch((error) => {
+      if (mountedRef.current) {
+        console.log(`${role} workspace action count refresh failed:`, error);
+      }
+    });
+  }, [refresh, role]);
+
   useEffect(() => {
-    const initialRefresh = window.setTimeout(() => void refresh(), 0);
+    const initialRefresh = window.setTimeout(refreshSafely, 0);
     return () => window.clearTimeout(initialRefresh);
-  }, [refresh]);
+  }, [refreshSafely]);
 
   useEffect(() => {
     if (!userId) return;
 
+    let active = true;
     const ownerColumn = role === "client" ? "client_id" : "artist_id";
     const channel = supabase
-      .channel(`workspace-action-counts-${role}-${userId}`)
+      .channel(
+        createRealtimeChannelTopic(`workspace-action-counts-${role}-${userId}`)
+      )
       .on(
         "postgres_changes",
         {
@@ -94,7 +135,9 @@ export function useWorkspaceActionCounts(
           table: "client_requests",
           filter: `${ownerColumn}=eq.${userId}`,
         },
-        () => void refresh()
+        () => {
+          if (active) refreshSafely();
+        }
       );
 
     if (role === "client") {
@@ -106,15 +149,18 @@ export function useWorkspaceActionCounts(
           table: "reviews",
           filter: `client_id=eq.${userId}`,
         },
-        () => void refresh()
+        () => {
+          if (active) refreshSafely();
+        }
       );
     }
 
     channel.subscribe();
     return () => {
+      active = false;
       void supabase.removeChannel(channel);
     };
-  }, [refresh, role, userId]);
+  }, [refreshSafely, role, userId]);
 
   useEffect(() => {
     if (!userId) return;
@@ -138,9 +184,9 @@ export function useWorkspaceActionCounts(
       timer = window.setTimeout(scheduleNextTransition, delay);
     };
 
-    const refreshOnFocus = () => void refresh();
+    const refreshOnFocus = refreshSafely;
     const refreshOnVisibility = () => {
-      if (document.visibilityState === "visible") void refresh();
+      if (document.visibilityState === "visible") refreshSafely();
     };
 
     scheduleNextTransition();
@@ -151,7 +197,7 @@ export function useWorkspaceActionCounts(
       window.removeEventListener("focus", refreshOnFocus);
       document.removeEventListener("visibilitychange", refreshOnVisibility);
     };
-  }, [refresh, requests, userId]);
+  }, [refreshSafely, requests, userId]);
 
   return useMemo(
     () => {

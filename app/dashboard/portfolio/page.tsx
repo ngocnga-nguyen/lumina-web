@@ -110,6 +110,8 @@ export default function DashboardPortfolioPage() {
   const [services, setServices] = useState<Service[]>([]);
   const [completedRequests, setCompletedRequests] = useState<CompletedRequest[]>([]);
   const [loading, setLoading] = useState(false);
+  const [initialLoadError, setInitialLoadError] = useState(false);
+  const [initialLoadAttempt, setInitialLoadAttempt] = useState(0);
   const [entryType, setEntryType] = useState<EntryType>("single_photo");
   const [caption, setCaption] = useState("");
   const [serviceName, setServiceName] = useState("");
@@ -127,8 +129,12 @@ export default function DashboardPortfolioPage() {
   const [croppedAreaPixels, setCroppedAreaPixels] = useState<Area | null>(null);
 
   useEffect(() => {
+    let cancelled = false;
     const fetchPortfolio = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
+      setInitialLoadError(false);
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      if (authError) throw authError;
+      if (cancelled) return;
       if (!user) return;
 
       setOnboardingMode(
@@ -142,8 +148,10 @@ export default function DashboardPortfolioPage() {
         .eq("id", user.id)
         .single();
 
+      if (cancelled) return;
       if (artistError || !artist) {
         console.log(artistError);
+        setInitialLoadError(true);
         return;
       }
 
@@ -174,8 +182,11 @@ export default function DashboardPortfolioPage() {
           .order("completed_at", { ascending: false }),
       ]);
 
+      if (cancelled) return;
+
       if (error) {
         console.log(error);
+        setInitialLoadError(true);
         return;
       }
 
@@ -188,8 +199,16 @@ export default function DashboardPortfolioPage() {
       }
     };
 
-    fetchPortfolio();
-  }, []);
+    void fetchPortfolio().catch((error) => {
+      if (cancelled) return;
+      console.log("Portfolio load failed:", error);
+      setInitialLoadError(true);
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [initialLoadAttempt]);
 
   const handleAfterFileSelect = (file: File | null) => {
     if (!validateImage(file)) return;
@@ -357,6 +376,19 @@ export default function DashboardPortfolioPage() {
         <p className="mt-4 max-w-[720px] text-[16px] leading-[1.6] text-lumina-text-muted">
           Show clients finished work or a clear Before & After. Every upload is labeled honestly so clients know what Lumina can—and cannot—confirm.
         </p>
+
+        {initialLoadError && (
+          <div className="mt-6 flex flex-wrap items-center justify-between gap-3 rounded-[18px] border border-lumina-border bg-lumina-surface px-5 py-4 text-[13px] text-lumina-text-muted">
+            <span>Your Results workspace could not be loaded.</span>
+            <button
+              type="button"
+              onClick={() => setInitialLoadAttempt((current) => current + 1)}
+              className="min-h-10 rounded-full border border-lumina-border px-4 font-medium text-lumina-text"
+            >
+              Try again
+            </button>
+          </div>
+        )}
 
         <div className="mt-10 grid grid-cols-1 gap-10 lg:grid-cols-[480px_1fr]">
           <div className="rounded-[24px] border border-lumina-border p-6 md:p-7">

@@ -65,7 +65,37 @@ test("one shell-level unread source feeds client, professional, public, and mobi
   assert.match(publicRail, /itemId === "messages"/);
   assert.match(clientShell, /label: "unread message"/);
   assert.match(professionalShell, /label: "unread message"/);
-  assert.match(publicRail, /role && !excludedRoute \? accountId : null/);
+  assert.match(
+    publicRail,
+    /const workspaceAccountId = role && !excludedRoute \? accountId : null/
+  );
+  assert.match(
+    publicRail,
+    /useWorkspaceActionCounts\([\s\S]*?workspaceAccountId/
+  );
+  assert.match(
+    publicRail,
+    /useWorkspaceMessageUnreadCount\([\s\S]*?workspaceAccountId/
+  );
+});
+
+test("workspace realtime topics are unique per mounted shell during route transitions", async () => {
+  const [unreadSource, actionSource] = await Promise.all([
+    unreadHookSource,
+    readFile(
+      new URL("../lib/use-workspace-action-counts.ts", import.meta.url),
+      "utf8"
+    ),
+  ]);
+
+  assert.match(
+    unreadSource,
+    /createRealtimeChannelTopic\(`workspace-message-unread-\$\{role\}-\$\{userId\}`\)/
+  );
+  assert.match(
+    actionSource,
+    /createRealtimeChannelTopic\(`workspace-action-counts-\$\{role\}-\$\{userId\}`\)/
+  );
 });
 
 test("Messages and both Requests views use the same persistent mark-read helper", async () => {

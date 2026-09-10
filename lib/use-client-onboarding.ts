@@ -67,7 +67,12 @@ export function useClientOnboarding() {
       setReady(true);
     };
 
-    void load();
+    void load().catch((error) => {
+      if (cancelled) return;
+      console.log("Client onboarding load failed:", error);
+      setIsClient(false);
+      setReady(true);
+    });
     return () => {
       cancelled = true;
     };
