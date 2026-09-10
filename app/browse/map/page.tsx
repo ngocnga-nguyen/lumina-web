@@ -10,6 +10,7 @@ import PublicPageHeader from "@/components/PublicPageHeader";
 import { useSearchParams } from "next/navigation";
 import SaveArtistButton from "@/components/SaveArtistButton";
 import SearchBar from "@/components/SearchBar";
+import { MapPin } from "lucide-react";
 import {
   getBrowseDistanceMiles,
   useBrowseGeolocation,
@@ -423,9 +424,12 @@ markerEl.addEventListener("mouseleave", () => {
               onClick={useMyLocation}
               disabled={isLocating}
               aria-busy={isLocating}
-              className="mt-4 min-h-10 rounded-full border border-lumina-black bg-lumina-surface px-4 py-2 text-[13px] transition hover:bg-lumina-black hover:text-white disabled:cursor-wait disabled:opacity-60 md:px-5 md:text-[14px]"
+              aria-label={isLocating ? "Finding your location" : "Use my location"}
+              className="mt-4 inline-flex min-h-10 shrink-0 items-center gap-1.5 rounded-full border border-lumina-black bg-lumina-surface px-2.5 py-2 text-[11px] text-lumina-text transition hover:bg-lumina-black hover:text-white disabled:cursor-wait disabled:opacity-60 md:px-5 md:text-[14px]"
             >
-              {isLocating ? "Locating…" : "Use my location"}
+              <MapPin aria-hidden="true" className="h-3.5 w-3.5 shrink-0 md:hidden" strokeWidth={1.8} />
+              <span className="md:hidden">{isLocating ? "Locating…" : "Location"}</span>
+              <span className="hidden md:inline">{isLocating ? "Locating…" : "Use my location"}</span>
             </button>
 
             {locationStatus && (
