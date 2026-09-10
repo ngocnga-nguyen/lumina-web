@@ -26,6 +26,24 @@ type UserLocation = {
   longitude: number;
 };
 
+let cachedUserLocation: UserLocation | null = null;
+
+function getLocationErrorMessage(error?: Pick<GeolocationPositionError, "code">) {
+  if (error?.code === 1) {
+    return "Location permission was denied. You can continue browsing by city or service.";
+  }
+
+  if (error?.code === 2) {
+    return "Your location is unavailable right now. Try searching by city instead.";
+  }
+
+  if (error?.code === 3) {
+    return "Finding your location took too long. Please try again.";
+  }
+
+  return "We couldn't determine your location. Try searching by city instead.";
+}
+
 function getDistanceMiles(
   userLat: number,
   userLng: number,
@@ -53,16 +71,97 @@ function BrowseContent() {
   const browseControlsRef = useRef<HTMLDivElement>(null);
   const minPriceInputRef = useRef<HTMLInputElement>(null);
   const nearbyRequestedRef = useRef(false);
-  const [sortBy, setSortBy] = useState("newest");
+  const locationRequestInFlightRef = useRef(false);
+  const mountedRef = useRef(true);
+  const [sortBy, setSortBy] = useState(() =>
+    cachedUserLocation ? "nearest" : "newest"
+  );
   const [artists, setArtists] = useState<Artist[]>([]);
   const [searchQuery, setSearchQuery] = useState(
   searchParams.get("search") ?? ""
 );
-  const [userLocation, setUserLocation] = useState<UserLocation | null>(null);
-  const [locationStatus, setLocationStatus] = useState("");
+  const [userLocation, setUserLocation] = useState<UserLocation | null>(
+    () => cachedUserLocation
+  );
+  const [locationStatus, setLocationStatus] = useState(() =>
+    cachedUserLocation ? "Using your current location." : ""
+  );
+  const [isLocating, setIsLocating] = useState(false);
   const [user, setUser] = useState<any>(null);
 const [isArtist, setIsArtist] = useState(false);
 const [accountMenuOpen, setAccountMenuOpen] = useState(false);
+
+  const applyUserLocation = (location: UserLocation) => {
+    cachedUserLocation = location;
+    setUserLocation(location);
+    setSortBy("nearest");
+    setLocationStatus("Using your current location.");
+  };
+
+  const requestUserLocation = () => {
+    if (locationRequestInFlightRef.current) return;
+
+    if (cachedUserLocation) {
+      applyUserLocation(cachedUserLocation);
+      return;
+    }
+
+    if (typeof navigator === "undefined" || !navigator.geolocation) {
+      setLocationStatus("Location is not supported on this browser. Try searching by city instead.");
+      return;
+    }
+
+    locationRequestInFlightRef.current = true;
+    setIsLocating(true);
+    setLocationStatus("Locating…");
+
+    try {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const location = {
+            latitude: position.coords.latitude,
+            longitude: position.coords.longitude,
+          };
+
+          cachedUserLocation = location;
+          locationRequestInFlightRef.current = false;
+
+          if (!mountedRef.current) return;
+
+          setIsLocating(false);
+          applyUserLocation(location);
+        },
+        (error) => {
+          locationRequestInFlightRef.current = false;
+
+          if (!mountedRef.current) return;
+
+          setIsLocating(false);
+          setLocationStatus(getLocationErrorMessage(error));
+        },
+        {
+          enableHighAccuracy: false,
+          maximumAge: 5 * 60 * 1000,
+          timeout: 10 * 1000,
+        }
+      );
+    } catch {
+      locationRequestInFlightRef.current = false;
+
+      if (!mountedRef.current) return;
+
+      setIsLocating(false);
+      setLocationStatus(getLocationErrorMessage());
+    }
+  };
+
+  useEffect(() => {
+    mountedRef.current = true;
+
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
 
   useEffect(() => {
     const closeMenus = (event: PointerEvent) => {
@@ -167,48 +266,12 @@ if (sort) {
 
     if (searchParams.get("nearby") === "1" && !nearbyRequestedRef.current) {
       nearbyRequestedRef.current = true;
-
-      if (!navigator.geolocation) {
-        setLocationStatus("Location is not supported on this browser.");
-      } else {
-        setLocationStatus("Getting your location...");
-        navigator.geolocation.getCurrentPosition(
-          (position) => {
-            setUserLocation({
-              latitude: position.coords.latitude,
-              longitude: position.coords.longitude,
-            });
-            setSortBy("nearest");
-            setLocationStatus("Using your current location.");
-          },
-          () => setLocationStatus("Location permission was denied.")
-        );
-      }
+      requestUserLocation();
     }
   }, []);
 
   const useMyLocation = () => {
-    if (!navigator.geolocation) {
-      setLocationStatus("Location is not supported on this browser.");
-      return;
-    }
-
-    setLocationStatus("Getting your location...");
-
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        setUserLocation({
-          latitude: position.coords.latitude,
-          longitude: position.coords.longitude,
-        });
-
-        setSortBy("nearest");
-        setLocationStatus("Using your current location.");
-      },
-      () => {
-        setLocationStatus("Location permission was denied.");
-      }
-    );
+    requestUserLocation();
   };
 
   const toggleCategory = (category: string) => {
@@ -342,13 +405,15 @@ if (sort) {
 
             <button
               onClick={useMyLocation}
-              className="mt-5 hidden min-h-10 items-center rounded-full border border-lumina-black bg-lumina-surface px-5 py-2 text-[14px] transition hover:bg-lumina-black hover:text-white md:inline-flex"
+              disabled={isLocating}
+              aria-busy={isLocating}
+              className="mt-5 hidden min-h-10 items-center rounded-full border border-lumina-black bg-lumina-surface px-5 py-2 text-[14px] transition hover:bg-lumina-black hover:text-white disabled:cursor-wait disabled:opacity-60 md:inline-flex"
             >
-              Use my location
+              {isLocating ? "Locating…" : "Use my location"}
             </button>
 
             {locationStatus && (
-              <p className="mt-2 hidden text-[13px] text-lumina-text-muted md:block">
+              <p aria-live="polite" className="mt-2 hidden text-[13px] text-lumina-text-muted md:block">
                 {locationStatus}
               </p>
             )}
@@ -377,9 +442,11 @@ if (sort) {
             >
               <button
                 onClick={useMyLocation}
-                className="mr-auto inline-flex min-h-10 shrink-0 items-center rounded-full border border-lumina-black bg-lumina-surface px-3 py-2 text-lumina-text transition hover:bg-lumina-black hover:text-white md:hidden"
+                disabled={isLocating}
+                aria-busy={isLocating}
+                className="mr-auto inline-flex min-h-10 shrink-0 items-center rounded-full border border-lumina-black bg-lumina-surface px-2.5 py-2 text-[11px] text-lumina-text transition hover:bg-lumina-black hover:text-white disabled:cursor-wait disabled:opacity-60 md:hidden"
               >
-                Use my location
+                {isLocating ? "Locating…" : "Use my location"}
               </button>
 
               <div className="relative flex shrink-0 items-center gap-2">
@@ -515,7 +582,7 @@ if (sort) {
             </div>
 
             {locationStatus && (
-              <p className="mt-2 text-[12px] text-lumina-text-muted md:hidden">
+              <p aria-live="polite" className="mt-2 text-[12px] text-lumina-text-muted md:hidden">
                 {locationStatus}
               </p>
             )}
