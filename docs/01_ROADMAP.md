@@ -52,7 +52,8 @@ The protected core lifecycle is:
 
 - Public professional profiles
 - Services, pricing, and duration
-- Portfolio
+- Results with finished-work and Before & After formats
+- Service context, optional dates, and professional-submitted evidence labels
 - Availability
 - Structured experience
 - Salon, home-studio, mobile-salon, and travel-based locations
@@ -96,6 +97,9 @@ The protected core lifecycle is:
 
 ### Production validation
 
+- [ ] Apply and verify the structured Results database migration in production
+- [ ] Test finished-work and Before & After uploads on desktop and mobile
+- [ ] Confirm Results display correctly on the public professional profile
 - [ ] Complete a clean client-to-professional production test from discovery through review
 - [ ] Repeat the test on both desktop and mobile
 - [ ] Verify request, proposal, message, completion, and notification realtime behavior

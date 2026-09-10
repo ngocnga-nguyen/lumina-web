@@ -1,25 +1,12 @@
-import Link from "next/link";
-import AccountMenu from "@/components/AccountMenu";
+import PublicPageHeader from "@/components/PublicPageHeader";
 
 export default function AboutPage() {
   return (
-    <main className="min-h-screen bg-white text-black">
-      <header className="grid grid-cols-3 items-center bg-[#faf6f5] px-5 py-5">
-        <Link href="/" className="justify-self-start text-sm hover:opacity-70">
-          ← Home
-        </Link>
-
-        <Link href="/" className="justify-self-center font-medium">
-          Lumina
-        </Link>
-
-        <div className="justify-self-end">
-          <AccountMenu />
-        </div>
-      </header>
+    <main data-lumina-public-page className="min-h-screen bg-lumina-surface text-lumina-text">
+      <PublicPageHeader backHref="/" />
 
       <section className="mx-auto max-w-[900px] px-5 py-16 md:py-24">
-        <p className="text-[12px] uppercase tracking-[0.14em] text-neutral-400">
+        <p className="text-[12px] uppercase tracking-[0.14em] text-lumina-text-muted">
           About Lumina
         </p>
 
@@ -32,19 +19,19 @@ export default function AboutPage() {
           built around trust
         </h1>
 
-        <p className="mt-8 max-w-[720px] text-[20px] leading-[1.7] text-neutral-700">
+        <p className="mt-8 max-w-[720px] text-[20px] leading-[1.7] text-lumina-text">
           Lumina is a beauty discovery platform designed to help clients
           explore beauty professionals with more clarity before booking.
         </p>
 
-        <p className="mt-6 max-w-[720px] text-[17px] leading-[1.8] text-neutral-600">
+        <p className="mt-6 max-w-[720px] text-[17px] leading-[1.8] text-lumina-text-muted">
           Instead of relying only on social media, Lumina focuses on cleaner
           professional profiles, portfolio work, pricing transparency,
           availability, and trust signals that help clients feel more confident
           about who they choose.
         </p>
 
-        <p className="mt-6 max-w-[720px] text-[17px] leading-[1.8] text-neutral-600">
+        <p className="mt-6 max-w-[720px] text-[17px] leading-[1.8] text-lumina-text-muted">
           Our goal is to create a platform where beauty professionals can grow
           their visibility while clients can compare artists more clearly and
           discover professionals that truly match their style and needs.

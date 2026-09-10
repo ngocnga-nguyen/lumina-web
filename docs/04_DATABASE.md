@@ -76,19 +76,27 @@ Status: ✅ Active
 
 ### `portfolio_images`
 
-Stores professional portfolio entries.
+Stores professional-submitted finished work and structured Before & After results.
 
 Important fields:
 
 - `id`
 - `artist_id`
 - `image_url`
+- `entry_type` — `single_photo` or `before_after`
+- `before_image_url` — required for Before & After entries
+- `service_name` — the professional's selected service context
+- `result_date` — optional date supplied by the professional
+- `evidence_level` — currently `professional_submitted`; stronger future levels require real service evidence
 - `caption`
 - `created_at`
 
 Relationship: `portfolio_images.artist_id → artists.id`
 
-Status: ✅ Active
+The current application labels these entries **Added by professional**. Uploading
+photos alone does not make a result Lumina-verified.
+
+Status: ✅ Active; structured Results migration prepared for production
 
 ---
 
@@ -100,7 +108,7 @@ Important fields:
 
 - Request identity: `id`, `client_id`, `artist_id`
 - Display snapshots: `client_name`, `artist_name`, `artist_image_url`, `artist_slug`, `artist_category`
-- Request details: `client_contact`, `service_requested`, `preferred_date`, `preferred_time`, `notes`, `image_url`
+- Request details: `client_contact`, `service_requested`, `requested_services`, `consultation_snapshot`, `preferred_date`, `preferred_time`, `notes`, `image_url`
 - Artist proposal: `artist_response`, `proposed_date`, `proposed_time`, `proposed_price`
 - Workflow: `status`, `client_status`, `client_confirmed`, `client_response_note`, `booking_status`
 - Completion: `completed_at`, `completed_by`
@@ -203,8 +211,10 @@ Stores the professionals saved by client accounts.
 
 Important fields:
 
+- `id`
 - `user_id`
 - `artist_id`
+- `created_at`
 
 Relationships:
 
@@ -212,6 +222,46 @@ Relationships:
 - `saved_artists.artist_id → artists.id`
 
 Status: ✅ Active
+
+---
+
+### `saved_collections`
+
+Stores client-created names used to organize globally saved professionals.
+`All saved` remains a virtual view of `saved_artists` and is not stored here.
+
+Important fields:
+
+- `id`
+- `user_id`
+- `name`
+- `created_at`
+- `updated_at`
+
+Status: ✅ Active and owner-protected
+
+---
+
+### `saved_collection_memberships`
+
+Connects a client collection to an existing canonical `saved_artists` row.
+One saved professional may belong to multiple collections.
+
+Important fields:
+
+- `collection_id`
+- `saved_artist_id`
+- `user_id`
+- `created_at`
+
+Relationships:
+
+- membership owner must match the collection owner
+- membership owner must match the global saved-professional owner
+- deleting a collection removes memberships only
+- deleting a global save removes its memberships automatically
+
+Status: ✅ Active and owner-protected
 
 ---
 
@@ -279,6 +329,7 @@ The active application uses these Supabase Storage buckets:
 - `profile-images` — account and professional profile images
 - `portfolio` — professional portfolio images
 - `chat-images` — images shared in request conversations
+- `consultation-images` — private inspiration images submitted with an optional Consultation Snapshot; participants use short-lived signed URLs
 
 There is also an older admin route that references `portfolio-images`. It should be treated as legacy until that route is audited or removed.
 
@@ -291,6 +342,7 @@ The live Row Level Security policies should continue to enforce these rules:
 - Clients can access only their own private request and account data.
 - Professionals can access only requests assigned to them.
 - Only conversation participants can access request messages.
+- Only the request client and assigned professional can access private Consultation Snapshot images.
 - Notifications are private to the recipient.
 - Client saved-artist records belong to that client.
 - Professionals manage only their own services, portfolio, profile, and review responses.

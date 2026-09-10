@@ -1,9 +1,9 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
-import AccountMenu from "@/components/AccountMenu";
+import ProfessionalOnboardingContext from "@/components/ProfessionalOnboardingContext";
 
 type Service = {
   id: string;
@@ -14,10 +14,12 @@ type Service = {
 };
 
 export default function DashboardServicesPage() {
+  const router = useRouter();
   const [artistId, setArtistId] = useState<string | null>(null);
   const [services, setServices] = useState<Service[]>([]);
   const [loading, setLoading] = useState(false);
   const [editingServiceId, setEditingServiceId] = useState<string | null>(null);
+  const [onboardingMode, setOnboardingMode] = useState(false);
 
   const [form, setForm] = useState({
     service_name: "",
@@ -33,6 +35,11 @@ export default function DashboardServicesPage() {
       } = await supabase.auth.getUser();
 
       if (!user) return;
+
+      setOnboardingMode(
+        new URLSearchParams(window.location.search).get("onboarding") ===
+          "services"
+      );
 
       const { data: artist, error: artistError } = await supabase
         .from("artists")
@@ -84,12 +91,12 @@ export default function DashboardServicesPage() {
     const price = Number(form.price);
 
     if (!cleanName || !form.price) {
-      alert("Please add a service name and price.");
+      alert("Please add a service name and starting price.");
       return;
     }
 
     if (!Number.isFinite(price) || price < 0) {
-      alert("Please enter a valid service price.");
+      alert("Please enter a valid starting price.");
       return;
     }
 
@@ -130,6 +137,9 @@ export default function DashboardServicesPage() {
         : [data, ...currentServices]
     );
     resetForm();
+    if (onboardingMode) {
+      router.push("/dashboard/onboarding?step=portfolio");
+    }
   };
 
   const editService = (service: Service) => {
@@ -156,31 +166,27 @@ export default function DashboardServicesPage() {
   };
 
   return (
-    <main className="min-h-screen bg-white text-black">
-      <header className="flex items-center justify-between bg-[#faf6f5] px-5 py-5 text-[15px]">
-        <Link href="/dashboard">← Dashboard</Link>
-
-        <Link href="/" className="font-medium">
-          Lumina
-        </Link>
-
-        <AccountMenu />
-      </header>
-
-      <section className="px-5 py-10 md:px-10">
+    <div className="bg-lumina-surface text-lumina-text">
+      <section className="px-5 py-10 md:px-10 md:py-14">
+        {onboardingMode && (
+          <ProfessionalOnboardingContext
+            step="services"
+            title="Add at least one service"
+          />
+        )}
         <h1
-          className="text-[44px] leading-[1.02] font-semibold md:text-[64px]"
+          className="text-[42px] leading-[1.02] font-semibold md:text-[56px]"
           style={{ fontFamily: "Georgia, Times New Roman, serif" }}
         >
           Manage services
         </h1>
 
-        <p className="mt-4 max-w-[680px] text-[16px] leading-[1.6] text-neutral-600">
+        <p className="mt-4 max-w-[680px] text-[16px] leading-[1.6] text-lumina-text-muted">
           Create service cards that will appear on your Lumina profile.
         </p>
 
         <div className="mt-10 grid grid-cols-1 gap-10 lg:grid-cols-[420px_1fr]">
-          <div className="rounded-[24px] border border-neutral-200 p-6">
+          <div className="rounded-[24px] border border-lumina-border p-6">
             <h2
               className="text-[30px] font-semibold"
               style={{ fontFamily: "Georgia, Times New Roman, serif" }}
@@ -196,15 +202,15 @@ export default function DashboardServicesPage() {
                 onChange={(e) =>
                   setForm({ ...form, service_name: e.target.value })
                 }
-                className="w-full border border-neutral-200 px-4 py-3 outline-none"
+                className="w-full rounded-[14px] border border-lumina-border bg-lumina-surface px-4 py-3 text-[15px] text-lumina-text outline-none transition placeholder:text-lumina-text-muted/75 focus:border-lumina-text-muted/60"
               />
 
               <input
                 type="number"
-                placeholder="Price"
+                placeholder="Starting price"
                 value={form.price}
                 onChange={(e) => setForm({ ...form, price: e.target.value })}
-                className="w-full border border-neutral-200 px-4 py-3 outline-none"
+                className="w-full rounded-[14px] border border-lumina-border bg-lumina-surface px-4 py-3 text-[15px] text-lumina-text outline-none transition placeholder:text-lumina-text-muted/75 focus:border-lumina-text-muted/60"
               />
 
               <input
@@ -214,7 +220,7 @@ export default function DashboardServicesPage() {
                 onChange={(e) =>
                   setForm({ ...form, duration: e.target.value })
                 }
-                className="w-full border border-neutral-200 px-4 py-3 outline-none"
+                className="w-full rounded-[14px] border border-lumina-border bg-lumina-surface px-4 py-3 text-[15px] text-lumina-text outline-none transition placeholder:text-lumina-text-muted/75 focus:border-lumina-text-muted/60"
               />
 
               <textarea
@@ -223,29 +229,31 @@ export default function DashboardServicesPage() {
                 onChange={(e) =>
                   setForm({ ...form, description: e.target.value })
                 }
-                className="h-[130px] w-full resize-none border border-neutral-200 px-4 py-3 outline-none"
+                className="h-[130px] w-full resize-none rounded-[14px] border border-lumina-border bg-lumina-surface px-4 py-3 text-[15px] text-lumina-text outline-none transition placeholder:text-lumina-text-muted/75 focus:border-lumina-text-muted/60"
               />
             </div>
 
             <button
               onClick={() => void saveService()}
               disabled={loading}
-              className="mt-6 w-full rounded-full bg-black px-6 py-3 text-white disabled:opacity-50"
+              className="mt-6 w-full rounded-full bg-lumina-black px-6 py-3 text-[14px] font-medium text-white transition hover:opacity-90 disabled:opacity-50"
             >
               {loading
                 ? "Saving..."
-                : editingServiceId
-                ? "Update Service"
-                : "Save Service"}
+                : onboardingMode
+                  ? "Save and continue"
+                  : editingServiceId
+                    ? "Save changes"
+                    : "Save service"}
             </button>
 
             {editingServiceId && (
               <button
                 onClick={resetForm}
                 disabled={loading}
-                className="mt-3 w-full rounded-full border border-neutral-200 px-6 py-3 text-[13px] text-neutral-600 disabled:opacity-50"
+                className="mt-3 w-full rounded-full border border-lumina-border px-6 py-3 text-[13px] text-lumina-text-muted disabled:opacity-50"
               >
-                Cancel editing
+                Cancel
               </button>
             )}
           </div>
@@ -259,21 +267,24 @@ export default function DashboardServicesPage() {
                 Service cards
               </h2>
 
-              <p className="text-[14px] text-neutral-500">
+              <p className="text-[14px] text-lumina-text-muted">
                 {services.length} saved
               </p>
             </div>
 
             {services.length === 0 ? (
-              <div className="rounded-[24px] bg-[#fbf4f4] p-6 text-neutral-600">
-                No services yet. Add your first service to build your profile.
+              <div className="rounded-[24px] border border-lumina-border bg-lumina-surface p-6">
+                <h3 className="text-[16px] font-medium text-lumina-text">No services yet</h3>
+                <p className="mt-1 text-[14px] leading-[1.55] text-lumina-text-muted">
+                  Add your first service to build your profile.
+                </p>
               </div>
             ) : (
               <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
                 {services.map((service) => (
                   <div
                     key={service.id}
-                    className="rounded-[20px] bg-[#fbf4f4] p-5"
+                    className="rounded-[20px] border border-lumina-border bg-lumina-surface p-5"
                   >
                     <div className="flex items-start justify-between gap-4">
                       <h3
@@ -288,26 +299,28 @@ export default function DashboardServicesPage() {
                       <div className="flex items-center gap-3">
                         <button
                           onClick={() => editService(service)}
-                          className="text-[13px] text-neutral-500 hover:text-black"
+                          className="text-[13px] text-lumina-text-muted hover:text-lumina-text"
                         >
                           Edit
                         </button>
                         <button
                           onClick={() => void deleteService(service.id)}
-                          className="text-[13px] text-neutral-400 hover:text-black"
+                          className="text-[13px] text-lumina-text-muted hover:text-lumina-text"
                         >
                           Delete
                         </button>
                       </div>
                     </div>
 
-                    <p className="mt-2 text-[18px]">${service.price}</p>
+                    <p className="mt-2 text-[18px]">
+                      Starting at ${service.price}
+                    </p>
 
-                    <p className="mt-5 whitespace-pre-line text-[14px] leading-[1.6] text-neutral-700">
+                    <p className="mt-5 whitespace-pre-line text-[14px] leading-[1.6] text-lumina-text">
                       {service.description || "No description added."}
                     </p>
 
-                    <p className="mt-8 text-right text-[13px] text-neutral-500">
+                    <p className="mt-8 text-right text-[13px] text-lumina-text-muted">
                       ◔ {service.duration || "duration"}
                     </p>
                   </div>
@@ -317,6 +330,6 @@ export default function DashboardServicesPage() {
           </div>
         </div>
       </section>
-    </main>
+    </div>
   );
 }

@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import ArtistCard from "@/components/ArtistCard";
 import AccountMenu from "@/components/AccountMenu";
 import { supabase } from "@/lib/supabase";
 
@@ -18,11 +17,16 @@ export default function LashPage() {
       const userId = authData.user?.id;
       if (!userId) return;
 
-      const { data: artistProfile } = await supabase
-        .from("artist_profiles")
+      const { data: artistProfile, error: artistError } = await supabase
+        .from("artists")
         .select("id")
         .eq("id", userId)
         .maybeSingle();
+
+      if (artistError) {
+        console.log("Account role check failed:", artistError);
+        return;
+      }
 
       if (artistProfile) router.replace("/dashboard");
     };
@@ -70,8 +74,8 @@ export default function LashPage() {
   const selectedArtists = artists.filter((artist) => selected.includes(artist.id));
 
   return (
-    <main className="min-h-screen bg-white text-black">
-      <header className="flex items-center justify-between bg-[#faf6f5] px-4 py-5 text-[15px] md:px-10 md:py-6">
+    <main className="min-h-screen bg-lumina-surface text-lumina-text">
+      <header className="flex items-center justify-between border-b border-lumina-border bg-lumina-surface px-4 py-5 text-[15px] md:px-10 md:py-6">
         <Link href="/saved" className="transition hover:opacity-70">
           ← Back
         </Link>
@@ -86,10 +90,10 @@ export default function LashPage() {
       <section className="px-4 py-8 md:px-10 md:py-10">
         <div className="mb-10 flex flex-col gap-4 md:mb-12 md:flex-row md:items-start md:justify-between">
           <div className="flex items-center gap-3">
-            <span className="text-[22px] text-[#9a7f86]">♡</span>
+            <span className="text-[22px] text-lumina-attention">♡</span>
             <div>
               <h1 className="text-[22px] font-medium md:text-[24px]">Lash</h1>
-              <p className="text-sm text-neutral-500">2 saved</p>
+              <p className="text-sm text-lumina-text-muted">2 saved</p>
             </div>
           </div>
 
@@ -117,21 +121,21 @@ export default function LashPage() {
               <h2 className="mt-4 text-[18px] font-medium md:mt-5 md:text-[20px]">
                 {artist.name}
               </h2>
-              <p className="text-[15px] text-neutral-500 md:text-[16px]">
+              <p className="text-[15px] text-lumina-text-muted md:text-[16px]">
                 {artist.role}
               </p>
 
-              <p className="mt-3 text-[14px] text-neutral-700 md:mt-4 md:text-[15px]">
+              <p className="mt-3 text-[14px] text-lumina-text md:mt-4 md:text-[15px]">
                 ⭐ {artist.rating} ({artist.reviews})
               </p>
 
               <p className="mt-2 text-[15px] md:text-[16px]">{artist.price}</p>
 
               <div className="mt-6 flex items-center justify-between text-[13px] md:mt-8 md:text-[14px]">
-                <span className="text-neutral-700">{artist.location}</span>
+                <span className="text-lumina-text-muted">{artist.location}</span>
                 <Link
                   href="/artist/emma-l"
-                  className="text-[#d8b4b4] transition hover:text-black"
+                  className="text-lumina-attention transition hover:text-lumina-black"
                 >
                   View Profile
                 </Link>
@@ -142,8 +146,8 @@ export default function LashPage() {
                   onClick={() => toggleSelect(artist.id)}
                   className={`mt-4 rounded-full border px-4 py-2 text-[14px] transition md:mt-5 ${
                     selected.includes(artist.id)
-                      ? "border-black bg-black text-white"
-                      : "border-neutral-300 bg-white text-black"
+                      ? "border-lumina-black bg-lumina-black text-white"
+                      : "border-lumina-border bg-lumina-surface text-lumina-text hover:border-lumina-text-muted/45"
                   }`}
                 >
                   {selected.includes(artist.id) ? "Selected" : "Select"}
@@ -155,14 +159,14 @@ export default function LashPage() {
       </section>
 
       {selected.length === 2 && (
-        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/20 md:items-stretch md:justify-end">
-          <div className="h-[82vh] w-full rounded-t-[20px] bg-[#f7f2f2] p-5 shadow-xl md:h-full md:w-[460px] md:rounded-none md:p-6">
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-lumina-black/20 md:items-stretch md:justify-end">
+          <div className="h-[82vh] w-full overflow-y-auto rounded-t-[24px] border border-lumina-glass-border bg-lumina-glass p-5 shadow-lg backdrop-blur-[14px] md:h-full md:w-[460px] md:rounded-none md:p-6">
             <button
               onClick={() => {
                 setSelected([]);
                 setCompareMode(false);
               }}
-              className="text-[14px] text-neutral-500 transition hover:text-black"
+              className="text-[14px] text-lumina-text-muted transition hover:text-lumina-black"
             >
               × Close
             </button>
@@ -204,7 +208,7 @@ export default function LashPage() {
                     {artist.compareNote}
                   </p>
 
-                  <button className="mt-4 rounded-full border border-black px-4 py-2 text-[13px] transition hover:bg-black hover:text-white md:mt-5 md:text-[14px]">
+                  <button className="mt-4 rounded-full border border-lumina-border bg-lumina-surface px-4 py-2.5 text-[13px] font-medium transition hover:border-lumina-black hover:bg-lumina-black hover:text-white md:mt-5 md:text-[14px]">
                     Request booking
                   </button>
                 </div>

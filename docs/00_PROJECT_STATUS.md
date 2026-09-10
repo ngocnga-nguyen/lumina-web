@@ -60,7 +60,9 @@ Lumina is a beauty marketplace that helps clients discover, compare, message, an
 - Profile editing
 - Services
 - Pricing
-- Portfolio
+- Structured Results
+- Finished Work and Before & After entries
+- Honest professional-submitted evidence labels
 - Availability
 - Professional settings
 - Public artist profile

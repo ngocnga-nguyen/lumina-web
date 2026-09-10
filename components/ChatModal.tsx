@@ -1,7 +1,12 @@
 "use client";
-import { useRef, useState } from "react";
-import ProposalBubble from "./ProposalBubble";
-import MessageBubble from "./MessageBubble";
+
+import RequestConversationPanel from "@/components/RequestConversationPanel";
+import {
+  getRequestConversationStateLabel,
+  type RequestConversationRecord,
+  type RequestConversationUpdate,
+} from "@/lib/request-conversations";
+import { getRequestServiceNames } from "@/lib/request-services";
 
 type ClientRequest = {
   id: string;
@@ -10,40 +15,42 @@ type ClientRequest = {
   artist_category: string | null;
   status: string | null;
   client_status: string | null;
+  booking_status?: string | null;
   proposed_date: string | null;
   proposed_time: string | null;
   proposed_price: number | null;
+  scheduled_for?: string | null;
+  expected_end_at?: string | null;
+  completion_protocol_version?: number | null;
+  appointment_confirmed_at?: string | null;
+  appointment_exception_reason?:
+    | "client_cancelled"
+    | "no_show"
+    | "did_not_take_place"
+    | "issue"
+    | null;
+  artist_completion_response?: "confirmed" | "disputed" | null;
+  client_completion_response?: "confirmed" | "disputed" | null;
   image_url: string | null;
-};
-
-type RequestUpdate = {
-  id: string;
-  request_id: string;
-  sender_type: string;
-  message: string | null;
-  status: string | null;
-  proposed_date: string | null;
-  proposed_time: string | null;
-  proposed_price: number | null;
-  image_url: string | null;
-  created_at: string;
-  is_deleted: boolean | null;
+  service_requested: string | null;
+  requested_services?: unknown;
+  created_at?: string;
 };
 
 type ChatModalProps = {
   request: ClientRequest;
-  updates: RequestUpdate[];
+  updates: RequestConversationUpdate[];
   draft: string;
   onDraftChange: (value: string) => void;
   selectedImage: File | null;
-onImageChange: (file: File | null) => void;
+  onImageChange: (file: File | null) => void;
   onSend: () => void | Promise<void>;
   onClose: () => void;
-  onAccept: () => void;
-  onDecline: () => void;
-  onRequestDifferentTime: () => void;
+  onAccept?: () => void;
+  onDecline?: () => void;
+  onRequestDifferentTime?: () => void;
   currentUserType?: "client" | "artist";
-  onDeleteMessage: (messageId: string) => void;
+  onDeleteMessage: (messageId: string) => void | Promise<void>;
 };
 
 export default function ChatModal({
@@ -53,257 +60,58 @@ export default function ChatModal({
   onDraftChange,
   onSend,
   selectedImage,
-onImageChange,
-  onClose,
-  onAccept,
-  onDecline,
+  onImageChange,
   onDeleteMessage,
-  onRequestDifferentTime,
-currentUserType = "client",
+  currentUserType = "client",
+  onClose,
 }: ChatModalProps) {
-  const [activeMessageId, setActiveMessageId] = useState<string | null>(null);
-  const [isSending, setIsSending] = useState(false);
-  const messageInputRef = useRef<HTMLTextAreaElement | null>(null);
-  const canSend = Boolean(draft.trim() || selectedImage) && !isSending;
-
-  const handleSend = async () => {
-    if (!canSend) return;
-
-    setIsSending(true);
-
-    try {
-      await onSend();
-    } finally {
-      setIsSending(false);
-      requestAnimationFrame(() => messageInputRef.current?.focus());
-    }
+  const participantName = request.artist_name || "Lumina participant";
+  const participantSubtitle =
+    request.artist_category ||
+    (currentUserType === "client" ? "Beauty professional" : "Client");
+  const normalizedRequest: RequestConversationRecord = {
+    ...request,
+    client_id: "",
+    artist_id: "",
+    client_name: null,
+    created_at: request.created_at || new Date().toISOString(),
+    client_hidden: false,
+    artist_hidden: false,
+    participant_name: participantName,
+    participant_image_url: request.artist_image_url,
+    participant_subtitle: participantSubtitle,
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 px-4">
-      <div className="flex h-[84vh] w-full max-w-[640px] flex-col overflow-hidden rounded-[32px] bg-white shadow-2xl">
-        <div className="flex items-center justify-between border-b border-neutral-100 bg-white px-5 py-4">
-          <div className="flex items-center gap-3">
-            <div className="h-11 w-11 overflow-hidden rounded-full bg-neutral-100">
-              {request.artist_image_url && (
-                <img
-                  src={request.artist_image_url}
-                  alt={request.artist_name || "Artist"}
-                  className="h-full w-full object-cover"
-                />
-              )}
-            </div>
-
-            <div>
-              <p className="text-[16px] font-medium">
-                {request.artist_name || "Artist"}
-              </p>
-              <p className="text-[13px] text-neutral-500">
-                {request.artist_category || "Beauty Professional"}
-              </p>
-            </div>
-          </div>
-
-          <button
-            onClick={onClose}
-            className="flex h-9 w-9 items-center justify-center rounded-full bg-neutral-100 text-[20px] leading-none transition hover:bg-neutral-200"
-          >
-            ×
-          </button>
-        </div>
-
-        <div className="flex-1 space-y-5 overflow-y-auto bg-[#fbf7f6] px-5 py-6">
-  {updates.length === 0 ? (
-  <div className="flex h-full items-center justify-center">
-  <div className="text-center">
-    <p className="text-[15px] font-medium text-neutral-700">
-      No messages yet
-    </p>
-
-    <p className="mt-1 text-[13px] text-neutral-400">
-      Start the conversation with this artist.
-    </p>
-  </div>
-</div>
-) : (
-  (() => {
-    let lastDate = "";
-
-    return updates.map((update) => {
-      const isMe = update.sender_type === currentUserType;
-      const canDelete = isMe && !update.is_deleted;
-      const hasMessage = !!update.message;
-      const currentDate = new Date(update.created_at).toLocaleDateString(
-        "en-US",
-        {
-          month: "short",
-          day: "numeric",
-          year: "numeric",
-        }
-      );
-
-      const showDate = currentDate !== lastDate;
-      lastDate = currentDate;
-
-      return (
-        <div key={update.id}>
-          {showDate && (
-            <div className="my-2 flex justify-center">
-              <span className="rounded-full bg-white px-3 py-1 text-[11px] text-neutral-400 shadow-sm">
-                {currentDate}
-              </span>
-            </div>
-          )}
-
-          <div
-            className={`flex ${
-              isMe ? "justify-end" : "justify-start"
-            } ${isMe ? "" : "items-end gap-3"}`}
-          >
-            {!isMe && hasMessage && (
-              <div className="h-9 w-9 overflow-hidden rounded-full bg-neutral-200">
-                {request.artist_image_url && (
-                  <img
-                    src={request.artist_image_url}
-                    alt={request.artist_name || "Artist"}
-                    className="h-full w-full object-cover"
-                  />
-                )}
-              </div>
-            )}
-
-            <div
-
-  onClick={() => {
-  if (canDelete) {
-    setActiveMessageId(update.id);
-  } else {
-    setActiveMessageId(null);
-  }
-}}
-
-  className={`flex flex-col ${isMe ? "items-end" : "items-start"}`}
->
-              {canDelete && activeMessageId === update.id && (
-  <div className="mb-1 flex justify-end">
-    <button
-      onClick={(e) => {
-        e.stopPropagation();
-        onDeleteMessage(update.id);
-        setActiveMessageId(null);
-      }}
-      className="rounded-full bg-white px-3 py-1 text-[11px] text-red-500 shadow-sm transition hover:bg-red-50"
-    >
-      Delete for everyone
-    </button>
-  </div>
-)}
-
-{update.is_deleted ? (
-  <div className="rounded-[18px] bg-neutral-100 px-4 py-3 text-[13px] italic text-neutral-500">
-    {isMe ? "You deleted this message." : "This message was deleted."}
-  </div>
-) : (
-  <MessageBubble
-    isMe={isMe}
-    message={update.message}
-    imageUrl={update.image_url}
-    createdAt={update.created_at}
-  />
-)}
-
-              {(update.proposed_date ||
-                update.proposed_time ||
-                update.proposed_price) && (
-                <ProposalBubble
-                  date={update.proposed_date}
-                  time={update.proposed_time}
-                  price={update.proposed_price}
-                />
-              )}
-            </div>
-          </div>
-        </div>
-      );
-    });
-  })()
-)}
-</div>
-
-        <div className="border-t border-neutral-100 bg-white p-4">
-          <div className="flex items-end gap-3">
-            {selectedImage && (
-  <div className="mb-3 rounded-[18px] bg-[#faf6f5] p-3">
-    <div className="mb-2 flex items-center justify-between">
-      <p className="max-w-[75%] truncate text-[13px] text-neutral-600">
-        {selectedImage.name}
-      </p>
-
-      <button
-        onClick={() => onImageChange(null)}
-        className="text-[13px] text-neutral-500 hover:text-black"
-      >
-        Remove
-      </button>
-    </div>
-
-    <img
-      src={URL.createObjectURL(selectedImage)}
-      alt="Selected preview"
-      className="max-h-[180px] rounded-[14px] object-cover"
-    />
-  </div>
-)}
-            <label className="flex h-11 w-11 cursor-pointer items-center justify-center rounded-full border border-neutral-200 bg-white text-[18px] transition hover:bg-[#faf6f5]">
-  +
-  <input
-    type="file"
-    accept="image/*"
-    className="hidden"
-    onChange={(e) => {
-      onImageChange(e.target.files?.[0] || null);
-    }}
-  />
-</label>
-            <div className="flex-1">
-              <textarea
-                ref={messageInputRef}
-                value={draft}
-                onChange={(e) => onDraftChange(e.target.value)}
-                onKeyDown={(e) => {
-                  const isTouchDevice = window.matchMedia(
-                    "(pointer: coarse)"
-                  ).matches;
-
-                  if (
-                    e.key === "Enter" &&
-                    !e.shiftKey &&
-                    !e.nativeEvent.isComposing &&
-                    !isTouchDevice
-                  ) {
-                    e.preventDefault();
-                    void handleSend();
-                  }
-                }}
-                placeholder="Type a message..."
-                rows={1}
-                autoFocus
-                className="min-h-[44px] w-full resize-none rounded-[20px] border border-neutral-200 px-4 py-3 text-[14px] outline-none focus:border-black"
-              />
-              <p className="hidden pl-2 pt-1 text-[11px] text-neutral-400 md:block">
-                Enter to send · Shift + Enter for a new line
-              </p>
-            </div>
-
-            <button
-              onClick={() => void handleSend()}
-              disabled={!canSend}
-              className="rounded-full bg-black px-5 py-3 text-[13px] text-white transition hover:bg-neutral-800 disabled:cursor-not-allowed disabled:bg-neutral-300"
-            >
-              {isSending ? "Sending…" : "Send"}
-            </button>
-          </div>
-        </div>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 px-3 py-4 md:px-4">
+      <div className="h-[min(88vh,820px)] w-full max-w-[680px] overflow-hidden rounded-[28px] border border-lumina-border bg-lumina-surface shadow-2xl md:rounded-[32px]">
+        <RequestConversationPanel
+          context={{
+            requestId: request.id,
+            participantName,
+            participantImageUrl: request.artist_image_url,
+            participantSubtitle,
+            services: getRequestServiceNames(request),
+            requestDate: request.created_at,
+            stateLabel: getRequestConversationStateLabel(
+              normalizedRequest,
+              currentUserType
+            ),
+            relatedRequestHref:
+              currentUserType === "client"
+                ? `/my-requests?request=${request.id}`
+                : `/dashboard/requests?request=${request.id}`,
+          }}
+          updates={updates}
+          currentUserType={currentUserType}
+          draft={draft}
+          selectedImage={selectedImage}
+          onDraftChange={onDraftChange}
+          onImageChange={onImageChange}
+          onSend={onSend}
+          onDeleteMessage={onDeleteMessage}
+          onClose={onClose}
+        />
       </div>
     </div>
   );

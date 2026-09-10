@@ -1,9 +1,9 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
-import AccountMenu from "@/components/AccountMenu";
+import ProfessionalOnboardingContext from "@/components/ProfessionalOnboardingContext";
 
 type ProfileForm = {
   name: string;
@@ -33,9 +33,13 @@ type ProfileForm = {
 };
 
 export default function DashboardProfilePage() {
+  const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
   const [locationSaved, setLocationSaved] = useState(false);
+  const [onboardingStep, setOnboardingStep] = useState<
+    "about" | "availability" | null
+  >(null);
 
   const [form, setForm] = useState<ProfileForm>({
     name: "",
@@ -71,6 +75,13 @@ export default function DashboardProfilePage() {
       } = await supabase.auth.getUser();
 
       if (!user) return;
+
+      const requestedStep = new URLSearchParams(window.location.search).get(
+        "onboarding"
+      );
+      if (requestedStep === "about" || requestedStep === "availability") {
+        setOnboardingStep(requestedStep);
+      }
 
       const { data, error } = await supabase
         .from("artists")
@@ -315,49 +326,56 @@ export default function DashboardProfilePage() {
       social_link: bookingLink,
     }));
 
+    if (onboardingStep === "about") {
+      router.push("/dashboard/onboarding?step=services");
+      return;
+    }
+    if (onboardingStep === "availability") {
+      router.push("/dashboard/onboarding?step=license");
+      return;
+    }
+
     alert("Profile updated ✨");
   };
 
   const inputClass =
-    "w-full rounded-[14px] border border-neutral-200 px-4 py-3 text-[15px] outline-none transition focus:border-black";
+    "w-full rounded-[14px] border border-lumina-border bg-lumina-surface px-4 py-3 text-[15px] text-lumina-text outline-none transition placeholder:text-lumina-text-muted/75 focus:border-lumina-text-muted/60";
 
   const sectionTitleClass =
-    "text-[13px] uppercase tracking-[0.14em] text-neutral-400";
+    "text-[12px] font-medium uppercase tracking-[0.14em] text-lumina-text-muted";
 
   return (
-    <main className="min-h-screen bg-white text-black">
-      <header className="flex items-center justify-between bg-[#faf6f5] px-5 py-5 text-[15px]">
-        <Link href="/dashboard" className="transition hover:opacity-70">
-          ← Dashboard
-        </Link>
-
-        <Link href="/" className="font-medium transition hover:opacity-70">
-          Lumina
-        </Link>
-
-        <AccountMenu />
-      </header>
-
-      <section className="px-5 py-10 md:px-10">
+    <div className="bg-lumina-surface text-lumina-text">
+      <section className="px-5 py-10 md:px-10 md:py-14">
+        {onboardingStep && (
+          <ProfessionalOnboardingContext
+            step={onboardingStep}
+            title={
+              onboardingStep === "about"
+                ? "About your business"
+                : "Availability"
+            }
+          />
+        )}
         <h1
-          className="text-[42px] leading-[1.02] font-semibold md:text-[58px]"
+          className="text-[42px] leading-[1.02] font-semibold md:text-[56px]"
           style={{ fontFamily: "Georgia, Times New Roman, serif" }}
         >
           Edit profile
         </h1>
 
-        <p className="mt-4 max-w-[680px] text-[16px] leading-[1.6] text-neutral-600">
+        <p className="mt-4 max-w-[680px] text-[16px] leading-[1.6] text-lumina-text-muted">
           Keep your profile clear, accurate, and easy for clients to understand.
         </p>
 
-        <div className="mt-10 max-w-[780px] rounded-[28px] border border-neutral-200 bg-white p-6 md:p-8">
+        <div className="mt-10 max-w-[780px] rounded-[24px] border border-lumina-border bg-lumina-surface p-5 md:p-7">
           <div className="space-y-9">
             <section>
               <p className={sectionTitleClass}>Basic info</p>
 
               <div className="mt-4 space-y-4">
                 <div>
-                  <p className="mb-2 text-[13px] font-medium text-neutral-700">Location type</p>
+                  <p className="mb-2 text-[13px] font-medium text-lumina-text">Location type</p>
                   <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                     {([
                       ["salon", "Salon or studio"],
@@ -369,7 +387,7 @@ export default function DashboardProfilePage() {
                         key={value}
                         type="button"
                         onClick={() => setForm({ ...form, location_type: value, travels_to_clients: value === "travels", hide_street_address: value === "home_studio" ? true : form.hide_street_address })}
-                        className={`rounded-[14px] px-4 py-3 text-left text-[14px] transition ${form.location_type === value ? "bg-black text-white" : "border border-neutral-200 bg-white text-neutral-600 hover:border-neutral-400"}`}
+                        className={`rounded-[14px] px-4 py-3 text-left text-[14px] transition ${form.location_type === value ? "bg-lumina-black text-white" : "border border-lumina-border bg-lumina-surface text-lumina-text-muted hover:border-lumina-text-muted/45 hover:bg-lumina-surface-soft"}`}
                       >
                         {label}
                       </button>
@@ -378,36 +396,36 @@ export default function DashboardProfilePage() {
                 </div>
 
                 <label className="block">
-                  <span className="mb-2 block text-[13px] font-medium text-neutral-700">Your name</span>
+                  <span className="mb-2 block text-[13px] font-medium text-lumina-text">Your name</span>
                   <input type="text" placeholder="Example: Maya Nguyen" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className={inputClass} />
                 </label>
 
                 <label className="block">
-                  <span className="mb-2 block text-[13px] font-medium text-neutral-700">
-                    Business or salon name <span className="font-normal text-neutral-400">(optional)</span>
+                  <span className="mb-2 block text-[13px] font-medium text-lumina-text">
+                    Business or salon name <span className="font-normal text-lumina-text-muted">(optional)</span>
                   </span>
                   <input type="text" placeholder="Example: Rose Beauty Studio" value={form.business_name} onChange={(e) => setForm({ ...form, business_name: e.target.value })} className={inputClass} />
                 </label>
 
                 <label className="block">
-                  <span className="mb-2 block text-[13px] font-medium text-neutral-700">Service category</span>
+                  <span className="mb-2 block text-[13px] font-medium text-lumina-text">Service category</span>
                   <input type="text" placeholder="Example: Nail Technician" value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} className={inputClass} />
                 </label>
 
                 <label className="block">
-                  <span className="mb-2 block text-[13px] font-medium text-neutral-700">Starting price</span>
+                  <span className="mb-2 block text-[13px] font-medium text-lumina-text">Starting price</span>
                   <input type="number" placeholder="Example: 35" value={form.price_start} onChange={(e) => setForm({ ...form, price_start: e.target.value })} className={inputClass} />
                 </label>
 
-                <div className="rounded-[18px] bg-neutral-50 p-4">
-                  <p className="text-[13px] font-medium text-neutral-700">Professional experience</p>
+                <div className="rounded-[18px] bg-lumina-surface-soft p-4">
+                  <p className="text-[13px] font-medium text-lumina-text">Professional experience</p>
                   <div className="mt-3 grid grid-cols-3 gap-2">
                     {(["new", "months", "years"] as const).map((unit) => (
                       <button
                         key={unit}
                         type="button"
                         onClick={() => setForm({ ...form, experience_unit: unit, experience_amount: unit === "new" ? "" : form.experience_amount })}
-                        className={`rounded-full px-3 py-2 text-[13px] capitalize transition ${form.experience_unit === unit ? "bg-black text-white" : "border border-neutral-200 bg-white text-neutral-600"}`}
+                        className={`rounded-full px-3 py-2 text-[13px] capitalize transition ${form.experience_unit === unit ? "bg-lumina-black text-white" : "border border-lumina-border bg-lumina-surface text-lumina-text-muted hover:border-lumina-text-muted/45"}`}
                       >
                         {unit === "new" ? "New artist" : unit}
                       </button>
@@ -433,7 +451,7 @@ export default function DashboardProfilePage() {
 
               <div className="mt-4 space-y-4">
                 <label className="block">
-                  <span className="mb-2 block text-[13px] font-medium text-neutral-700">Street address</span>
+                  <span className="mb-2 block text-[13px] font-medium text-lumina-text">Street address</span>
                   <input
                     type="text"
                     placeholder="Example: 123 Beauty Ave"
@@ -448,49 +466,49 @@ export default function DashboardProfilePage() {
 
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   <label className="block">
-                    <span className="mb-2 block text-[13px] font-medium text-neutral-700">City</span>
+                    <span className="mb-2 block text-[13px] font-medium text-lumina-text">City</span>
                     <input type="text" placeholder="Example: Tulsa" value={form.city} onChange={(e) => { setLocationSaved(false); setForm({ ...form, city: e.target.value }); }} className={inputClass} />
                   </label>
                   <label className="block">
-                    <span className="mb-2 block text-[13px] font-medium text-neutral-700">State</span>
+                    <span className="mb-2 block text-[13px] font-medium text-lumina-text">State</span>
                     <input type="text" placeholder="Example: OK" value={form.region} onChange={(e) => { setLocationSaved(false); setForm({ ...form, region: e.target.value }); }} className={inputClass} />
                   </label>
                 </div>
 
                 <label className="block sm:max-w-[50%] sm:pr-2">
-                  <span className="mb-2 block text-[13px] font-medium text-neutral-700">ZIP code</span>
+                  <span className="mb-2 block text-[13px] font-medium text-lumina-text">ZIP code</span>
                   <input type="text" inputMode="numeric" placeholder="Example: 74103" value={form.postal_code} onChange={(e) => { setLocationSaved(false); setForm({ ...form, postal_code: e.target.value }); }} className={inputClass} />
                 </label>
 
-                <div className="space-y-3 rounded-[18px] bg-neutral-50 p-4">
+                <div className="space-y-3 rounded-[18px] bg-lumina-surface-soft p-4">
                   {(form.location_type === "travels" || form.location_type === "mobile_salon") && (
                     <label className="block">
-                      <span className="mb-2 block text-[13px] font-medium text-neutral-700">Service area</span>
+                      <span className="mb-2 block text-[13px] font-medium text-lumina-text">Service area</span>
                       <input type="text" placeholder="Example: Tulsa and surrounding areas" value={form.service_area} onChange={(e) => setForm({ ...form, service_area: e.target.value })} className={inputClass} />
                     </label>
                   )}
                   {form.location_type === "mobile_salon" && (
                     <label className="block">
-                      <span className="mb-2 block text-[13px] font-medium text-neutral-700">Usual locations or schedule <span className="font-normal text-neutral-400">(optional)</span></span>
-                      <textarea placeholder="Example: Downtown Tulsa on weekdays; Broken Arrow on Saturdays" value={form.mobile_location_details} onChange={(e) => setForm({ ...form, mobile_location_details: e.target.value })} className="h-[90px] w-full resize-none rounded-[14px] border border-neutral-200 bg-white px-4 py-3 text-[15px] outline-none transition focus:border-black" />
+                      <span className="mb-2 block text-[13px] font-medium text-lumina-text">Usual locations or schedule <span className="font-normal text-lumina-text-muted">(optional)</span></span>
+                      <textarea placeholder="Example: Downtown Tulsa on weekdays; Broken Arrow on Saturdays" value={form.mobile_location_details} onChange={(e) => setForm({ ...form, mobile_location_details: e.target.value })} className="h-[90px] w-full resize-none rounded-[14px] border border-lumina-border bg-lumina-surface px-4 py-3 text-[15px] text-lumina-text outline-none transition placeholder:text-lumina-text-muted/75 focus:border-lumina-text-muted/60" />
                     </label>
                   )}
-                  <label className="flex cursor-pointer items-start gap-3 text-[14px] text-neutral-700">
+                  <label className="flex cursor-pointer items-start gap-3 text-[14px] text-lumina-text">
                     <input type="checkbox" checked={form.hide_street_address} onChange={(e) => setForm({ ...form, hide_street_address: e.target.checked })} className="mt-0.5 h-4 w-4 accent-black" />
                     <span>{form.location_type === "mobile_salon" || form.location_type === "travels" ? "Keep my base address private" : "Hide my exact street address from clients"}</span>
                   </label>
                   {(form.location_type === "mobile_salon" || form.location_type === "travels") && (
-                    <p className="text-[12px] leading-[1.5] text-neutral-500">Exact appointment details can be shared after the booking is confirmed.</p>
+                    <p className="text-[12px] leading-[1.5] text-lumina-text-muted">Exact appointment details can be shared after the booking is confirmed.</p>
                   )}
                 </div>
 
-                <p className="text-[13px] leading-[1.5] text-neutral-500">
+                <p className="text-[13px] leading-[1.5] text-lumina-text-muted">
                   Your map pin will be created automatically from this address
                   when you save.
                 </p>
 
                 {locationSaved && (
-                  <p className="inline-block rounded-full bg-[#faf6f5] px-4 py-2 text-[13px] text-neutral-700">
+                  <p className="inline-block rounded-full bg-lumina-success-soft px-4 py-2 text-[13px] text-lumina-success">
                     Map location saved
                   </p>
                 )}
@@ -528,11 +546,11 @@ export default function DashboardProfilePage() {
 
               <div className="mt-4 space-y-4">
                 <div>
-                  <p className="mb-3 text-[14px] text-neutral-600">
+                  <p className="mb-3 text-[14px] text-lumina-text-muted">
                     Profile photo
                   </p>
 
-                  <label className="flex h-[220px] w-full cursor-pointer items-center justify-center overflow-hidden rounded-[18px] border border-dashed border-neutral-300 bg-[#fafafa] transition hover:bg-[#f5f5f5]">
+                  <label className="flex h-[220px] w-full cursor-pointer items-center justify-center overflow-hidden rounded-[18px] border border-dashed border-lumina-text-muted/35 bg-lumina-surface-soft transition hover:bg-lumina-pearl">
                     {form.profile_image_url ? (
                       <img
                         src={form.profile_image_url}
@@ -545,7 +563,7 @@ export default function DashboardProfilePage() {
                           Upload profile photo
                         </p>
 
-                        <p className="mt-2 text-[13px] text-neutral-500">
+                        <p className="mt-2 text-[13px] text-lumina-text-muted">
                           Tap to choose from phone or files
                         </p>
                       </div>
@@ -611,17 +629,17 @@ export default function DashboardProfilePage() {
                   onChange={(e) =>
                     setForm({ ...form, bio: e.target.value })
                   }
-                  className="h-[130px] w-full resize-none rounded-[14px] border border-neutral-200 px-4 py-3 text-[15px] outline-none transition focus:border-black"
+                  className="h-[130px] w-full resize-none rounded-[14px] border border-lumina-border bg-lumina-surface px-4 py-3 text-[15px] text-lumina-text outline-none transition placeholder:text-lumina-text-muted/75 focus:border-lumina-text-muted/60"
                 />
 
                 <div id="availability" className="scroll-mt-28">
                   <label
                     htmlFor="artist-availability"
-                    className="text-[14px] font-medium text-neutral-900"
+                    className="text-[14px] font-medium text-lumina-text"
                   >
                     Availability
                   </label>
-                  <p className="mt-1 text-[13px] leading-[1.5] text-neutral-500">
+                  <p className="mt-1 text-[13px] leading-[1.5] text-lumina-text-muted">
                     Share your usual working days and hours. Mention if you also
                     accept flexible requests.
                   </p>
@@ -635,7 +653,7 @@ export default function DashboardProfilePage() {
                         availability: e.target.value,
                       })
                     }
-                    className="mt-3 h-[110px] w-full resize-none rounded-[14px] border border-neutral-200 px-4 py-3 text-[15px] outline-none transition focus:border-black"
+                    className="mt-3 h-[110px] w-full resize-none rounded-[14px] border border-lumina-border bg-lumina-surface px-4 py-3 text-[15px] text-lumina-text outline-none transition placeholder:text-lumina-text-muted/75 focus:border-lumina-text-muted/60"
                   />
                 </div>
               </div>
@@ -644,17 +662,19 @@ export default function DashboardProfilePage() {
             <button
               onClick={saveProfile}
               disabled={loading || uploadingImage}
-              className="w-full rounded-full bg-black px-6 py-3 text-[15px] text-white transition hover:opacity-90 disabled:opacity-50"
+              className="w-full rounded-full bg-lumina-black px-6 py-3 text-[14px] font-medium text-white transition hover:opacity-90 disabled:opacity-50"
             >
               {uploadingImage
                 ? "Uploading photo..."
                 : loading
                 ? "Saving changes..."
-                : "Save changes"}
+                : onboardingStep
+                  ? "Save and continue"
+                  : "Save changes"}
             </button>
           </div>
         </div>
       </section>
-    </main>
+    </div>
   );
 }

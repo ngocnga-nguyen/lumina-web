@@ -33,7 +33,7 @@ export async function POST(req: Request) {
         <h2>New Lumina Request for ${artistName}</h2>
         <p><strong>Client:</strong> ${clientName}</p>
         <p><strong>Contact:</strong> ${clientContact}</p>
-        <p><strong>Service:</strong> ${service || "Not specified"}</p>
+        <p><strong>Services:</strong> ${service || "Not specified"}</p>
         <p><strong>Date:</strong> ${date || "Not specified"}</p>
         <p><strong>Time:</strong> ${time || "Not specified"}</p>
         <p><strong>Notes:</strong> ${notes || "None"}</p>

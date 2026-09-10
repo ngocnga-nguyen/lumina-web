@@ -1,26 +1,85 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  color-scheme: only light;
+
+  --lumina-bg: #fffdfd;
+  --lumina-bg-soft: #fbf8fa;
+  --lumina-surface: #ffffff;
+  --lumina-surface-soft: #f7f5f7;
+  --lumina-pearl: #f1f0f2;
+  --lumina-blush: #f8ecef;
+  --lumina-border: #e3dfe3;
+  --lumina-text: #272428;
+  --lumina-text-muted: #68636c;
+  --lumina-black: #111111;
+  --lumina-glass: rgba(250, 247, 249, 0.78);
+  --lumina-glass-border: rgba(163, 157, 164, 0.22);
+
+  --lumina-attention: #815b62;
+  --lumina-attention-soft: #f8edef;
+  --lumina-success: #3f6950;
+  --lumina-success-soft: #eef6f1;
+
+  --background: var(--lumina-bg);
+  --foreground: var(--lumina-text);
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-lumina-bg: var(--lumina-bg);
+  --color-lumina-bg-soft: var(--lumina-bg-soft);
+  --color-lumina-surface: var(--lumina-surface);
+  --color-lumina-surface-soft: var(--lumina-surface-soft);
+  --color-lumina-pearl: var(--lumina-pearl);
+  --color-lumina-blush: var(--lumina-blush);
+  --color-lumina-border: var(--lumina-border);
+  --color-lumina-text: var(--lumina-text);
+  --color-lumina-text-muted: var(--lumina-text-muted);
+  --color-lumina-black: var(--lumina-black);
+  --color-lumina-glass: var(--lumina-glass);
+  --color-lumina-glass-border: var(--lumina-glass-border);
+  --color-lumina-attention: var(--lumina-attention);
+  --color-lumina-attention-soft: var(--lumina-attention-soft);
+  --color-lumina-success: var(--lumina-success);
+  --color-lumina-success-soft: var(--lumina-success-soft);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
-
+html,
 body {
   background: var(--background);
   color: var(--foreground);
+}
+
+body {
   font-family: Arial, Helvetica, sans-serif;
+}
+
+@media (min-width: 1280px) {
+  body:has(> [data-authenticated-workspace-rail="true"][data-expanded="false"])
+    > div
+    > main[data-lumina-public-page]
+    > section {
+    padding-left: max(
+      3rem,
+      calc(96px - max(calc((100vw - 1600px) / 2), 0px))
+    );
+  }
+
+  body:has(> [data-authenticated-workspace-rail="true"][data-expanded="true"])
+    > div
+    > main[data-lumina-public-page]
+    > section {
+    padding-left: max(
+      3rem,
+      calc(268px - max(calc((100vw - 1600px) / 2), 0px))
+    );
+  }
+
+  main[data-lumina-public-page] > section {
+    transition: padding-left 200ms ease;
+  }
 }

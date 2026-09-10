@@ -2,19 +2,27 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { ShieldCheck } from "lucide-react";
 import { supabase } from "@/lib/supabase";
+import { useLuminaAdminAccess } from "@/lib/use-lumina-admin-access";
 
 type AccountMenuProps = {
   showNotifications?: boolean;
+  workspace?: "professional";
 };
+
+type AccountRole = "professional" | "client";
 
 export default function AccountMenu({
   showNotifications = false,
+  workspace,
 }: AccountMenuProps) {
   const [user, setUser] = useState<any>(null);
   const [profile, setProfile] = useState<any>(null);
   const [artistProfile, setArtistProfile] = useState<any>(null);
+  const [accountRole, setAccountRole] = useState<AccountRole | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
+  const isLuminaAdmin = useLuminaAdminAccess(user?.id);
 
   useEffect(() => {
     const loadAccount = async () => {
@@ -28,19 +36,26 @@ export default function AccountMenu({
 
       const { data: profileData } = await supabase
         .from("profiles")
-        .select("full_name, profile_image_url")
+        .select("full_name")
         .eq("id", currentUser.id)
         .maybeSingle();
 
       setProfile(profileData);
 
-      const { data: artistData } = await supabase
+      const { data: artistData, error: artistError } = await supabase
         .from("artists")
         .select("id, name, category, profile_image_url")
         .eq("id", currentUser.id)
         .maybeSingle();
 
+      if (artistError) {
+        console.log("Account role check failed:", artistError);
+        setAccountRole(null);
+        return;
+      }
+
       setArtistProfile(artistData);
+      setAccountRole(artistData ? "professional" : "client");
     };
 
     loadAccount();
@@ -57,7 +72,6 @@ export default function AccountMenu({
 
   const accountImage =
     artistProfile?.profile_image_url ||
-    profile?.profile_image_url ||
     user?.user_metadata?.avatar_url ||
     null;
 
@@ -88,7 +102,7 @@ export default function AccountMenu({
       {showNotifications && (
         <button
           type="button"
-          className="flex h-10 w-10 items-center justify-center rounded-full transition hover:bg-[#f5f2f1]"
+          className="flex h-10 w-10 items-center justify-center rounded-full transition hover:bg-lumina-surface-soft"
           aria-label="Notifications"
         >
           🔔
@@ -107,15 +121,15 @@ export default function AccountMenu({
             className="h-9 w-9 shrink-0 rounded-full object-cover"
           />
         ) : (
-          <span className="flex h-9 w-9 items-center justify-center rounded-full bg-black text-[13px] font-medium text-white">
+          <span className="flex h-9 w-9 items-center justify-center rounded-full bg-lumina-black text-[13px] font-medium text-white">
             {accountInitial}
           </span>
         )}
       </button>
 
       {menuOpen && (
-        <div className="absolute right-0 top-12 z-50 w-[220px] rounded-[20px] border border-neutral-200 bg-white p-2 shadow-xl">
-          <div className="mb-2 border-b border-neutral-100 pb-2">
+        <div className="absolute right-0 top-12 z-50 w-[220px] rounded-[20px] border border-lumina-glass-border bg-lumina-surface/95 p-2 text-lumina-text shadow-[0_12px_32px_rgba(39,36,40,0.10)] backdrop-blur-[14px]">
+          <div className="mb-2 border-b border-lumina-border pb-2">
             <div className="flex min-w-0 items-center gap-3 px-3 py-2">
               {accountImage ? (
                 <img
@@ -124,77 +138,92 @@ export default function AccountMenu({
                   className="h-10 w-10 shrink-0 rounded-full object-cover"
                 />
               ) : (
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-black text-sm font-medium text-white">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-lumina-black text-sm font-medium text-white">
                   {accountInitial}
                 </div>
               )}
 
               <div className="min-w-0">
-                <p className="truncate text-[14px] font-medium">
+                <p className="truncate text-[14px] font-medium text-lumina-text">
                   {accountName}
                 </p>
-                <p className="truncate text-[12px] text-neutral-500">
-                  {artistProfile?.category || "Client account"}
+                <p className="truncate text-[12px] text-lumina-text-muted">
+                  {accountRole === "professional"
+                    ? artistProfile?.category || "Professional account"
+                    : accountRole === "client"
+                      ? "Client account"
+                      : "Confirming account type…"}
                 </p>
               </div>
             </div>
           </div>
 
-          {artistProfile ? (
+          {workspace === "professional" || accountRole === "professional" ? (
             <>
               <Link
                 href="/dashboard"
-                className="block rounded-[14px] px-4 py-3 text-sm hover:bg-[#faf6f5]"
+                className="block rounded-[14px] px-4 py-3 text-sm font-medium text-lumina-text hover:bg-lumina-blush/70 focus-visible:bg-lumina-blush/70"
               >
-                Dashboard
+                Open dashboard
               </Link>
 
               <Link
-                href="/dashboard/profile"
-                className="block rounded-[14px] px-4 py-3 text-sm hover:bg-[#faf6f5]"
+                href={
+                  artistProfile?.id
+                    ? `/artist/${artistProfile.id}`
+                    : "/dashboard/profile"
+                }
+                className="block rounded-[14px] px-4 py-3 text-sm text-lumina-text hover:bg-lumina-blush/70 focus-visible:bg-lumina-blush/70"
               >
-                Edit Profile
+                View profile
               </Link>
 
               <Link
                 href="/dashboard/settings"
-                className="block rounded-[14px] px-4 py-3 text-sm hover:bg-[#faf6f5]"
+                className="block rounded-[14px] px-4 py-3 text-sm text-lumina-text hover:bg-lumina-blush/70 focus-visible:bg-lumina-blush/70"
               >
-                Settings &amp; Privacy
+                Account / Settings
               </Link>
             </>
-          ) : (
+          ) : accountRole === "client" ? (
             <>
               <Link
-                href="/saved"
-                className="block rounded-[14px] px-4 py-3 text-sm hover:bg-[#faf6f5]"
+                href="/client"
+                className="block rounded-[14px] px-4 py-3 text-sm font-medium text-lumina-text hover:bg-lumina-blush/70 focus-visible:bg-lumina-blush/70"
               >
-                Saved Artists
-              </Link>
-
-              <Link
-                href="/my-requests"
-                className="block rounded-[14px] px-4 py-3 text-sm hover:bg-[#faf6f5]"
-              >
-                My Requests
+                Open my account
               </Link>
 
               <Link
                 href="/account"
-                className="block rounded-[14px] px-4 py-3 text-sm hover:bg-[#faf6f5]"
+                className="block rounded-[14px] px-4 py-3 text-sm text-lumina-text hover:bg-lumina-blush/70 focus-visible:bg-lumina-blush/70"
               >
-                Account
+                Profile / Settings
               </Link>
             </>
+          ) : (
+            <p className="px-4 py-3 text-[12px] text-lumina-text-muted">
+              Confirming account type…
+            </p>
           )}
 
-          <div className="my-1 border-t border-neutral-100" />
+          {isLuminaAdmin && (
+            <Link
+              href="/admin/reviews"
+              className="flex items-center gap-2 rounded-[14px] px-4 py-3 text-sm text-lumina-text hover:bg-lumina-blush/70 focus-visible:bg-lumina-blush/70"
+            >
+              <ShieldCheck size={15} strokeWidth={1.6} aria-hidden="true" />
+              Admin / Moderation
+            </Link>
+          )}
+
+          <div className="my-1 border-t border-lumina-border" />
 
           <button
             onClick={handleSignOut}
-            className="block w-full rounded-[14px] px-4 py-3 text-left text-sm text-neutral-500 hover:bg-[#faf6f5] hover:text-black"
+            className="block w-full rounded-[14px] px-4 py-3 text-left text-sm text-lumina-text-muted hover:bg-lumina-blush/70 hover:text-lumina-black focus-visible:bg-lumina-blush/70 focus-visible:text-lumina-black"
           >
-            Sign Out
+            Sign out
           </button>
         </div>
       )}

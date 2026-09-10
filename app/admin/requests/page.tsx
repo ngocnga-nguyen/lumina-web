@@ -42,8 +42,8 @@ export default function AdminRequestsPage() {
   }, []);
 
   return (
-    <main className="min-h-screen bg-white text-black">
-      <header className="flex items-center justify-between bg-[#faf6f5] px-4 py-5 md:px-10">
+    <main className="min-h-screen bg-lumina-surface text-lumina-text">
+      <header className="flex items-center justify-between border-b border-lumina-border bg-lumina-surface px-4 py-5 md:px-10">
         <Link href="/" className="font-medium">
           Lumina
         </Link>
@@ -55,28 +55,29 @@ export default function AdminRequestsPage() {
         </Link>
       </header>
 
-      <section className="px-4 py-10 md:px-10">
+      <section className="mx-auto w-full max-w-[1280px] px-5 py-10 md:px-8 md:py-14">
         <div className="mb-8">
           <h1
-            className="text-[36px] font-semibold leading-[1.05] md:text-[56px]"
+            className="text-[38px] font-semibold leading-[1.05] md:text-[50px]"
             style={{ fontFamily: "Georgia, Times New Roman, serif" }}
           >
             Client Requests
           </h1>
 
-          <p className="mt-3 text-[15px] text-neutral-600 md:text-[18px]">
+          <p className="mt-3 max-w-[680px] text-[14px] leading-[1.7] text-lumina-text-muted">
             View incoming client requests from artist profiles.
           </p>
         </div>
 
         {loading && (
-          <p className="text-[15px] text-neutral-500">Loading requests...</p>
+          <p className="text-[14px] text-lumina-text-muted">Loading requests...</p>
         )}
 
         {!loading && requests.length === 0 && (
-          <div className="rounded-[20px] bg-[#fbf7f6] p-6">
-            <p className="text-[15px] text-neutral-600">
-              No requests yet. Once a client sends a request, it will appear here.
+          <div className="rounded-[24px] border border-lumina-border bg-lumina-surface p-6">
+            <h2 className="text-[16px] font-medium">No requests yet</h2>
+            <p className="mt-1 text-[14px] leading-[1.55] text-lumina-text-muted">
+              Once a client sends a request, it will appear here.
             </p>
           </div>
         )}
@@ -85,7 +86,7 @@ export default function AdminRequestsPage() {
           {requests.map((request) => (
             <div
               key={request.id}
-              className="rounded-[20px] border border-neutral-200 bg-white p-5 shadow-sm md:p-6"
+              className="rounded-[24px] border border-lumina-border bg-lumina-surface p-5 md:p-6"
             >
               <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
                 <div>
@@ -93,33 +94,33 @@ export default function AdminRequestsPage() {
                     {request.client_name}
                   </h2>
 
-                  <p className="mt-1 text-[14px] text-neutral-500">
+                  <p className="mt-1 text-[14px] text-lumina-text-muted">
                     Contact: {request.client_contact}
                   </p>
                 </div>
 
-                <span className="w-fit rounded-full bg-[#f3ecea] px-4 py-2 text-[13px] text-neutral-700">
+                <span className="w-fit rounded-full bg-lumina-pearl px-4 py-2 text-[13px] text-lumina-text-muted">
                   {request.status || "new"}
                 </span>
               </div>
 
-              <div className="mt-5 grid grid-cols-1 gap-4 text-[14px] text-neutral-700 md:grid-cols-3">
+              <div className="mt-5 grid grid-cols-1 gap-4 text-[14px] text-lumina-text md:grid-cols-3">
                 <div>
-                  <p className="text-neutral-400">Service</p>
+                  <p className="text-lumina-text-muted">Service</p>
                   <p className="mt-1">
                     {request.service_requested || "Not specified"}
                   </p>
                 </div>
 
                 <div>
-                  <p className="text-neutral-400">Preferred Date</p>
+                  <p className="text-lumina-text-muted">Preferred date</p>
                   <p className="mt-1">
                     {request.preferred_date || "Not specified"}
                   </p>
                 </div>
 
                 <div>
-                  <p className="text-neutral-400">Preferred Time</p>
+                  <p className="text-lumina-text-muted">Preferred time</p>
                   <p className="mt-1">
                     {request.preferred_time || "Not specified"}
                   </p>
@@ -127,13 +128,13 @@ export default function AdminRequestsPage() {
               </div>
 
               <div className="mt-5">
-                <p className="text-[14px] text-neutral-400">Notes</p>
-                <p className="mt-1 text-[15px] leading-[1.6] text-neutral-700">
+                <p className="text-[13px] text-lumina-text-muted">Notes</p>
+                <p className="mt-1 text-[15px] leading-[1.6] text-lumina-text">
                   {request.notes || "No notes added."}
                 </p>
               </div>
 
-              <p className="mt-5 text-[12px] text-neutral-400">
+              <p className="mt-5 text-[12px] text-lumina-text-muted">
                 Received: {new Date(request.created_at).toLocaleString()}
               </p>
             </div>

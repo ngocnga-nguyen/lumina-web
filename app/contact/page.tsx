@@ -1,25 +1,12 @@
-import Link from "next/link";
-import AccountMenu from "@/components/AccountMenu";
+import PublicPageHeader from "@/components/PublicPageHeader";
 
 export default function ContactPage() {
   return (
-    <main className="min-h-screen bg-white text-black">
-      <header className="grid grid-cols-3 items-center bg-[#faf6f5] px-5 py-5">
-        <Link href="/" className="justify-self-start text-sm hover:opacity-70">
-          ← Home
-        </Link>
-
-        <Link href="/" className="justify-self-center font-medium">
-          Lumina
-        </Link>
-
-        <div className="justify-self-end">
-          <AccountMenu />
-        </div>
-      </header>
+    <main data-lumina-public-page className="min-h-screen bg-lumina-surface text-lumina-text">
+      <PublicPageHeader backHref="/" />
 
       <section className="mx-auto max-w-[760px] px-5 py-16 md:py-24">
-        <p className="text-[12px] uppercase tracking-[0.14em] text-neutral-400">
+        <p className="text-[12px] uppercase tracking-[0.14em] text-lumina-text-muted">
           Contact
         </p>
 
@@ -30,12 +17,12 @@ export default function ContactPage() {
           Get in touch
         </h1>
 
-        <p className="mt-8 text-[18px] leading-[1.7] text-neutral-700">
+        <p className="mt-8 text-[18px] leading-[1.7] text-lumina-text">
           Questions, feedback, partnerships, or support requests can be sent to:
         </p>
 
-        <div className="mt-10 rounded-[24px] bg-[#faf6f5] p-6">
-          <p className="text-[14px] uppercase tracking-[0.12em] text-neutral-400">
+        <div className="mt-10 rounded-[24px] bg-lumina-surface-soft p-6">
+          <p className="text-[14px] uppercase tracking-[0.12em] text-lumina-text-muted">
             Email
           </p>
 
@@ -44,7 +31,7 @@ export default function ContactPage() {
           </p>
         </div>
 
-        <p className="mt-8 text-[15px] text-neutral-500">
+        <p className="mt-8 text-[15px] text-lumina-text-muted">
           Response times may vary during early beta testing.
         </p>
       </section>

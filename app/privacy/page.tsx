@@ -1,25 +1,12 @@
-import Link from "next/link";
-import AccountMenu from "@/components/AccountMenu";
+import PublicPageHeader from "@/components/PublicPageHeader";
 
 export default function PrivacyPage() {
   return (
-    <main className="min-h-screen bg-white text-black">
-      <header className="grid grid-cols-3 items-center bg-[#faf6f5] px-5 py-5">
-        <Link href="/" className="justify-self-start text-sm hover:opacity-70">
-          ← Home
-        </Link>
-
-        <Link href="/" className="justify-self-center font-medium">
-          Lumina
-        </Link>
-
-        <div className="justify-self-end">
-          <AccountMenu />
-        </div>
-      </header>
+    <main data-lumina-public-page className="min-h-screen bg-lumina-surface text-lumina-text">
+      <PublicPageHeader backHref="/" />
 
       <section className="mx-auto max-w-[820px] px-5 py-16 md:py-24">
-        <p className="text-[12px] uppercase tracking-[0.14em] text-neutral-400">
+        <p className="text-[12px] uppercase tracking-[0.14em] text-lumina-text-muted">
           Privacy Policy
         </p>
 
@@ -30,9 +17,9 @@ export default function PrivacyPage() {
           Your privacy matters
         </h1>
 
-        <div className="mt-10 space-y-8 text-[16px] leading-[1.8] text-neutral-700">
+        <div className="mt-10 space-y-8 text-[16px] leading-[1.8] text-lumina-text">
           <div>
-            <h2 className="text-[20px] font-semibold text-black">
+            <h2 className="text-[20px] font-semibold text-lumina-text">
               Information we collect
             </h2>
 
@@ -44,7 +31,7 @@ export default function PrivacyPage() {
           </div>
 
           <div>
-            <h2 className="text-[20px] font-semibold text-black">
+            <h2 className="text-[20px] font-semibold text-lumina-text">
               How information is used
             </h2>
 
@@ -56,7 +43,7 @@ export default function PrivacyPage() {
           </div>
 
           <div>
-            <h2 className="text-[20px] font-semibold text-black">
+            <h2 className="text-[20px] font-semibold text-lumina-text">
               Profile visibility
             </h2>
 
@@ -67,7 +54,7 @@ export default function PrivacyPage() {
           </div>
 
           <div>
-            <h2 className="text-[20px] font-semibold text-black">
+            <h2 className="text-[20px] font-semibold text-lumina-text">
               Early beta notice
             </h2>
 

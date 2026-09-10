@@ -6,7 +6,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 import { supabase } from "@/lib/supabase";
-import AccountMenu from "@/components/AccountMenu";
+import PublicPageHeader from "@/components/PublicPageHeader";
 import { useSearchParams } from "next/navigation";
 import SaveArtistButton from "@/components/SaveArtistButton";
 import SearchBar from "@/components/SearchBar";
@@ -122,6 +122,7 @@ const buildViewLink = (path: string) => {
       const { data, error } = await supabase
         .from("artists")
         .select("*")
+        .eq("is_active", true)
         .order("name", { ascending: true });
 
       if (error) {
@@ -439,41 +440,27 @@ markerEl.addEventListener("mouseleave", () => {
   }, [filteredArtists, userLocation]);
 
   return (
-    <main className="min-h-screen bg-white text-black">
-      <header className="grid grid-cols-3 items-center bg-[#faf6f5] px-4 py-5 text-[15px] md:px-10 md:py-6">
-  <div className="justify-self-start">
-    <Link href="/" className="text-sm transition hover:opacity-70">
-      ← Home
-    </Link>
-  </div>
-
-  <Link href="/" className="justify-self-center font-medium transition hover:opacity-70">
-    Lumina
-  </Link>
-
-  <div className="justify-self-end">
-  <AccountMenu />
-</div>
-</header>
+    <main data-lumina-public-page className="min-h-screen bg-lumina-surface text-lumina-text">
+      <PublicPageHeader backHref="/" surface="white" />
 
       <section className="px-4 pt-8 pb-16 md:px-10 md:pt-10 md:pb-20">
-        <div className="flex flex-col gap-6 md:flex-row md:items-start md:justify-between">
+        <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
           <div>
             
-<div className="mb-5 flex items-center rounded-full border border-neutral-200 p-1 text-sm w-fit">
+<div className="mb-5 flex w-fit items-center rounded-full border border-lumina-border bg-lumina-surface p-1 text-sm">
   <Link
       href={buildViewLink("/browse")}
-    className="rounded-full px-4 py-1.5 text-neutral-500 transition hover:text-black"
+    className="rounded-full px-4 py-1.5 text-lumina-text-muted transition hover:text-lumina-black"
   >
     List
   </Link>
 
-  <span className="rounded-full bg-black px-4 py-1.5 text-white">
+  <span className="rounded-full bg-lumina-black px-4 py-1.5 text-white">
     Map
   </span>
-</div>
+            </div>
             <h1
-              className="mt-5 text-[32px] leading-[1.02] font-semibold md:mt-8 md:text-[54px]"
+              className="mt-5 text-[38px] font-normal leading-[1.02] md:mt-8 md:text-[58px]"
               style={{
                 fontFamily:
                   "Georgia, Times New Roman, serif",
@@ -482,27 +469,27 @@ markerEl.addEventListener("mouseleave", () => {
               Explore on map
             </h1>
 
-            <p className="mt-2 text-[15px] text-neutral-700 md:mt-3 md:text-[18px]">
+            <p className="mt-3 text-[15px] leading-7 text-lumina-text-muted md:text-[18px]">
               Discover {filteredArtists.length} beauty
               professionals
             </p>
 
             <button
               onClick={useMyLocation}
-              className="mt-4 rounded-full border border-black px-5 py-2 text-[14px] transition hover:bg-black hover:text-white"
+              className="mt-4 rounded-full border border-lumina-black bg-lumina-surface px-5 py-2 text-[14px] transition hover:bg-lumina-black hover:text-white"
             >
               Use my location
             </button>
 
             {locationStatus && (
-              <p className="mt-2 text-[13px] text-neutral-500">
+              <p className="mt-2 text-[13px] text-lumina-text-muted">
                 {locationStatus}
               </p>
             )}
           </div>
 
-          <div className="w-full md:w-[620px]">
-  <div className="w-full md:w-[620px]">
+          <div className="w-full lg:w-[620px]">
+  <div className="w-full lg:w-[620px]">
   <SearchBar
     value={searchQuery}
     onChange={setSearchQuery}
@@ -511,26 +498,26 @@ markerEl.addEventListener("mouseleave", () => {
   />
 </div>
 
-  <div ref={browseControlsRef} className="mt-4 flex items-center justify-end gap-8 text-sm text-neutral-700 md:text-[15px]">
+  <div ref={browseControlsRef} className="mt-4 flex items-center justify-end gap-8 text-sm text-lumina-text md:text-[15px]">
     <div className="relative">
       <button
         onClick={() => {
           setOpenFilter((current) => !current);
           setOpenSort(false);
         }}
-        className="transition hover:text-black"
+        className="transition hover:text-lumina-black"
       >
         ☷ Filter {activeFilterCount > 0 && `(${activeFilterCount})`}
       </button>
 
       {openFilter && (
-        <div className="absolute right-0 top-8 z-20 w-[280px] rounded-[18px] border border-neutral-200 bg-white p-4 shadow-lg">
+        <div className="absolute right-0 top-8 z-20 w-[280px] rounded-[18px] border border-lumina-glass-border bg-lumina-surface/95 p-4 text-lumina-text shadow-lg backdrop-blur-[14px]">
           <div className="mb-4 flex items-center justify-between">
             <p className="font-medium">Filters</p>
 
             <button
               onClick={clearFilters}
-              className="text-xs text-neutral-500 hover:text-black"
+              className="text-xs text-lumina-text-muted hover:text-lumina-black"
             >
               Clear all
             </button>
@@ -551,8 +538,8 @@ markerEl.addEventListener("mouseleave", () => {
               onClick={() => toggleCategory(item)}
               className={`block w-full rounded-[10px] px-2 py-2 text-left text-sm ${
                 selectedCategories.includes(item)
-                  ? "bg-[#faf6f5] font-medium text-black"
-                  : "text-neutral-600 hover:bg-[#faf6f5]"
+                  ? "bg-lumina-pearl font-medium text-lumina-text"
+                  : "text-lumina-text-muted hover:bg-lumina-surface-soft"
               }`}
             >
               {item}
@@ -568,15 +555,15 @@ markerEl.addEventListener("mouseleave", () => {
           setOpenSort((current) => !current);
           setOpenFilter(false);
         }}
-        className="transition hover:text-black"
+        className="transition hover:text-lumina-black"
       >
         ☰ Sort
       </button>
 
       {openSort && (
-        <div className="absolute right-0 top-8 z-20 w-[220px] rounded-[18px] border border-neutral-200 bg-white p-3 shadow-lg">
+        <div className="absolute right-0 top-8 z-20 w-[220px] rounded-[18px] border border-lumina-glass-border bg-lumina-surface/95 p-3 text-lumina-text shadow-lg backdrop-blur-[14px]">
           <button
-            className="block w-full rounded-[10px] px-3 py-2 text-left hover:bg-[#faf6f5]"
+            className="block w-full rounded-[10px] px-3 py-2 text-left hover:bg-lumina-surface-soft"
             onClick={() => {
               setSortBy("newest");
               setOpenSort(false);
@@ -586,7 +573,7 @@ markerEl.addEventListener("mouseleave", () => {
           </button>
 
           <button
-            className="block w-full rounded-[10px] px-3 py-2 text-left hover:bg-[#faf6f5]"
+            className="block w-full rounded-[10px] px-3 py-2 text-left hover:bg-lumina-surface-soft"
             onClick={() => {
               setSortBy("nearest");
               setOpenSort(false);
@@ -596,7 +583,7 @@ markerEl.addEventListener("mouseleave", () => {
           </button>
 
           <button
-            className="block w-full rounded-[10px] px-3 py-2 text-left hover:bg-[#faf6f5]"
+            className="block w-full rounded-[10px] px-3 py-2 text-left hover:bg-lumina-surface-soft"
             onClick={() => {
               setSortBy("low");
               setOpenSort(false);
@@ -606,7 +593,7 @@ markerEl.addEventListener("mouseleave", () => {
           </button>
 
           <button
-            className="block w-full rounded-[10px] px-3 py-2 text-left hover:bg-[#faf6f5]"
+            className="block w-full rounded-[10px] px-3 py-2 text-left hover:bg-lumina-surface-soft"
             onClick={() => {
               setSortBy("high");
               setOpenSort(false);
@@ -626,7 +613,7 @@ markerEl.addEventListener("mouseleave", () => {
           <div className="relative">
   <div
     ref={mapContainer}
-    className="h-[430px] w-full overflow-hidden rounded-[28px] bg-[#f1ece8] md:h-[620px]"
+    className="h-[430px] w-full overflow-hidden rounded-[28px] bg-lumina-pearl md:h-[620px]"
   />
 
   <div className="absolute bottom-5 right-5 z-20 w-[calc(100%-40px)] max-w-[380px]"
@@ -643,8 +630,8 @@ onMouseLeave={() => {
 
   }}
 >
-    <div className="relative overflow-hidden rounded-[26px] border border-white/30 bg-white/20 p-6 shadow-[0_20px_60px_rgba(0,0,0,0.20),inset_0_1px_0_rgba(255,255,255,0.40)] backdrop-blur-3xl">
-    <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-white/30 via-white/10 to-transparent" />
+    <div className="relative overflow-hidden rounded-[26px] border border-lumina-glass-border bg-lumina-glass p-6 text-lumina-text shadow-[0_20px_60px_rgba(39,36,40,0.10),inset_0_1px_0_rgba(255,255,255,0.45)] backdrop-blur-[14px]">
+    <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-lumina-surface/35 via-lumina-surface/10 to-transparent" />
 
 <div className="relative z-10">
 
@@ -653,7 +640,7 @@ onMouseLeave={() => {
         <>
           <div className="flex items-start justify-between gap-4">
             <div>
-              <p className="text-[11px] uppercase tracking-[0.16em] text-neutral-500">
+              <p className="text-[11px] uppercase tracking-[0.16em] text-lumina-text-muted">
                 {viewerIsArtist && viewerUserId === selectedArtist.id
                   ? "Your profile"
                   : "Selected artist"}
@@ -666,7 +653,7 @@ onMouseLeave={() => {
                 {selectedArtist.name}
               </h3>
 
-              <p className="mt-2 text-[14px] text-neutral-600">
+              <p className="mt-2 text-[14px] text-lumina-text-muted">
                 {selectedArtist.category}
               </p>
             </div>
@@ -678,9 +665,9 @@ onMouseLeave={() => {
             />
           </div>
 
-          <div className="mt-5 flex items-center gap-3 text-[13px] text-neutral-700">
+          <div className="mt-5 flex items-center gap-3 text-[13px] text-lumina-text">
             <span>From ${selectedArtist.price_start}</span>
-            <span className="text-neutral-400">•</span>
+            <span className="text-lumina-text-muted">•</span>
             <span>
               {getArtistDistance(selectedArtist) !== null
                 ? `${getArtistDistance(selectedArtist)?.toFixed(1)} mi`
@@ -688,13 +675,13 @@ onMouseLeave={() => {
             </span>
           </div>
 
-          <p className="mt-3 text-[13px] leading-[1.5] text-neutral-600">
+          <p className="mt-3 text-[13px] leading-[1.5] text-lumina-text-muted">
             {selectedArtist.location}
           </p>
 
           <Link
             href={`/artist/${selectedArtist.id}`}
-            className="mt-5 inline-flex w-full items-center justify-between rounded-full bg-black px-5 py-3 text-[14px] text-white transition hover:opacity-85"
+            className="mt-5 inline-flex w-full items-center justify-between rounded-full bg-lumina-black px-5 py-3 text-[14px] text-white transition hover:opacity-85"
           >
             {viewerIsArtist && viewerUserId === selectedArtist.id
               ? "View your public profile"
@@ -708,7 +695,7 @@ onMouseLeave={() => {
             Select an artist
           </p>
 
-          <p className="mt-1 text-[13px] text-neutral-500">
+          <p className="mt-1 text-[13px] text-lumina-text-muted">
             Choose a map marker to preview their profile.
           </p>
         </div>
@@ -726,8 +713,8 @@ export default function BrowseMapPage() {
   return (
     <Suspense
       fallback={
-        <main className="min-h-screen bg-white px-4 py-10 text-black md:px-10">
-          <p className="text-neutral-500">Loading map...</p>
+        <main className="min-h-screen bg-lumina-surface px-4 py-10 text-lumina-text md:px-10">
+          <p className="text-lumina-text-muted">Loading map...</p>
         </main>
       }
     >

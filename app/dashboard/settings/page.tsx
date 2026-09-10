@@ -4,7 +4,24 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
-import AccountMenu from "@/components/AccountMenu";
+import ProfessionalOnboardingContext from "@/components/ProfessionalOnboardingContext";
+import {
+  professionalVerificationStatusLabels,
+  type ProfessionalLicenseVerification,
+} from "@/lib/professional-license-verification";
+import type { ProfessionalActivationStatus } from "@/lib/professional-activation";
+import {
+  loadMyProfessionalActivationStatus,
+  setProfessionalProfileVisibility,
+} from "@/lib/professional-activation-client";
+
+const emptyVerificationForm = {
+  legal_professional_name: "",
+  license_number: "",
+  license_jurisdiction: "",
+  license_type: "",
+  business_name: "",
+};
 
 export default function ArtistSettingsPage() {
   const router = useRouter();
@@ -17,6 +34,15 @@ export default function ArtistSettingsPage() {
   const [visibilityLoading, setVisibilityLoading] = useState(false);
   const [loading, setLoading] = useState(true);
   const [signingOutOthers, setSigningOutOthers] = useState(false);
+  const [verification, setVerification] =
+    useState<ProfessionalLicenseVerification | null>(null);
+  const [verificationForm, setVerificationForm] = useState(
+    emptyVerificationForm
+  );
+  const [submittingVerification, setSubmittingVerification] = useState(false);
+  const [activationStatus, setActivationStatus] =
+    useState<ProfessionalActivationStatus | null>(null);
+  const [onboardingMode, setOnboardingMode] = useState(false);
 
   useEffect(() => {
     const loadSettings = async () => {
@@ -29,9 +55,14 @@ export default function ArtistSettingsPage() {
         return;
       }
 
+      setOnboardingMode(
+        new URLSearchParams(window.location.search).get("onboarding") ===
+          "license"
+      );
+
       const { data: artist } = await supabase
         .from("artists")
-        .select("is_active")
+        .select("is_active, name")
         .eq("id", user.id)
         .maybeSingle();
 
@@ -41,7 +72,48 @@ export default function ArtistSettingsPage() {
       }
 
       setEmail(user.email || "");
-      setIsVisible(artist.is_active ?? true);
+      setIsVisible(artist.is_active ?? false);
+
+      const activationResult = await loadMyProfessionalActivationStatus();
+      if (activationResult.error) {
+        console.log(
+          "Professional activation status fetch error:",
+          activationResult.error
+        );
+      } else if (activationResult.data) {
+        setActivationStatus(activationResult.data);
+        setIsVisible(activationResult.data.is_active);
+      }
+
+      const { data: verificationData, error: verificationError } =
+        await supabase
+          .from("professional_license_verifications")
+          .select("*")
+          .eq("artist_id", user.id)
+          .maybeSingle();
+
+      if (verificationError) {
+        console.log("License verification fetch error:", verificationError);
+      } else if (verificationData) {
+        const savedVerification =
+          verificationData as ProfessionalLicenseVerification;
+        setVerification(savedVerification);
+        setVerificationForm({
+          legal_professional_name: savedVerification.legal_professional_name,
+          license_number: savedVerification.license_number,
+          license_jurisdiction: savedVerification.license_jurisdiction,
+          license_type: savedVerification.license_type,
+          business_name: savedVerification.business_name || "",
+        });
+      } else {
+        setVerificationForm({
+          ...emptyVerificationForm,
+          legal_professional_name:
+            user.user_metadata?.full_name || artist.name || "",
+          business_name: user.user_metadata?.business_name || "",
+        });
+      }
+
       setLoading(false);
     };
 
@@ -104,10 +176,9 @@ export default function ArtistSettingsPage() {
 
     if (!user) return;
 
-    const { error } = await supabase
-      .from("artists")
-      .update({ is_active: nextVisibility })
-      .eq("id", user.id);
+    const { data, error } = await setProfessionalProfileVisibility(
+      nextVisibility
+    );
 
     setVisibilityLoading(false);
 
@@ -116,12 +187,73 @@ export default function ArtistSettingsPage() {
       return;
     }
 
-    setIsVisible(nextVisibility);
+    setActivationStatus(data);
+    setIsVisible(Boolean(data?.is_active));
   };
 
   const signOut = async () => {
     await supabase.auth.signOut({ scope: "local" });
     router.push("/login");
+  };
+
+  const submitLicenseVerification = async () => {
+    const legalName = verificationForm.legal_professional_name.trim();
+    const licenseNumber = verificationForm.license_number.trim();
+    const jurisdiction = verificationForm.license_jurisdiction.trim();
+    const licenseType = verificationForm.license_type.trim();
+    const businessName = verificationForm.business_name.trim();
+
+    if (!legalName || !licenseNumber || !jurisdiction || !licenseType) {
+      alert("Please complete your professional name, license number, jurisdiction, and license type.");
+      return;
+    }
+
+    if (
+      verification?.status === "verified" &&
+      !window.confirm(
+        "Resubmitting changed license information will return your verification to Pending review and temporarily remove the public License verified label. Continue?"
+      )
+    ) {
+      return;
+    }
+
+    setSubmittingVerification(true);
+    const { data, error } = await supabase.rpc(
+      "submit_professional_license_verification",
+      {
+        p_legal_professional_name: legalName,
+        p_license_number: licenseNumber,
+        p_license_jurisdiction: jurisdiction,
+        p_license_type: licenseType,
+        p_business_name: businessName || null,
+      }
+    );
+    setSubmittingVerification(false);
+
+    if (error) {
+      alert(error.message || "We couldn't submit your license information.");
+      return;
+    }
+
+    setVerification(data as ProfessionalLicenseVerification);
+    setVerificationForm({
+      legal_professional_name: legalName,
+      license_number: licenseNumber,
+      license_jurisdiction: jurisdiction,
+      license_type: licenseType,
+      business_name: businessName,
+    });
+    const activationResult = await loadMyProfessionalActivationStatus();
+    if (activationResult.data) {
+      setActivationStatus(activationResult.data);
+      setIsVisible(activationResult.data.is_active);
+    }
+
+    if (onboardingMode) {
+      router.push("/dashboard/onboarding?step=requests");
+      return;
+    }
+    alert("License information submitted for Lumina review.");
   };
 
   const signOutOtherDevices = async () => {
@@ -137,65 +269,59 @@ export default function ArtistSettingsPage() {
   };
 
   return (
-    <main className="min-h-screen bg-white text-black">
-      <header className="grid grid-cols-3 items-center bg-[#faf6f5] px-5 py-5">
-        <Link href="/dashboard" className="text-sm transition hover:opacity-70">
-          ← Dashboard
-        </Link>
-        <Link href="/" className="justify-self-center font-medium">
-          Lumina
-        </Link>
-        <div className="justify-self-end">
-          <AccountMenu />
-        </div>
-      </header>
-
-      <section className="mx-auto max-w-2xl px-5 py-12">
+    <div className="bg-lumina-surface text-lumina-text">
+      <section className="mx-auto max-w-2xl px-5 py-10 md:px-10 md:py-14">
+        {onboardingMode && (
+          <ProfessionalOnboardingContext
+            step="license"
+            title="Submit license verification"
+          />
+        )}
         <h1
-          className="text-[42px] font-semibold leading-tight"
+          className="text-[42px] font-semibold leading-[1.02] md:text-[56px]"
           style={{ fontFamily: "Georgia, Times New Roman, serif" }}
         >
           Settings &amp; Privacy
         </h1>
-        <p className="mt-3 text-[15px] text-neutral-500">
+        <p className="mt-4 text-[16px] leading-[1.6] text-lumina-text-muted">
           Manage your professional account, security, and visibility.
         </p>
 
         {loading ? (
-          <div className="mt-8 rounded-[22px] bg-[#faf9f7] p-5 text-[14px] text-neutral-500">
+          <div className="mt-8 rounded-[22px] bg-lumina-surface-soft p-5 text-[14px] text-lumina-text-muted">
             Loading settings…
           </div>
         ) : (
           <div className="mt-8 space-y-5">
-            <section className="rounded-[24px] border border-neutral-200 p-5">
-              <p className="text-[12px] uppercase tracking-[0.14em] text-neutral-400">
+            <section className="rounded-[24px] border border-lumina-border p-5">
+              <p className="text-[12px] uppercase tracking-[0.14em] text-lumina-text-muted">
                 Account &amp; security
               </p>
 
               <div className="mt-5">
-                <p className="text-[13px] text-neutral-500">Sign-in email</p>
+                <p className="text-[13px] text-lumina-text-muted">Sign-in email</p>
                 <p className="mt-1 text-[15px]">{email}</p>
-                <p className="mt-2 text-[12px] text-neutral-400">
+                <p className="mt-2 text-[12px] text-lumina-text-muted">
                   Used for sign-in and account recovery.
                 </p>
 
                 {!showEmailChange ? (
                   <button
                     onClick={() => setShowEmailChange(true)}
-                    className="mt-3 text-[13px] font-medium underline decoration-neutral-300 underline-offset-4"
+                    className="mt-3 text-[13px] font-medium underline decoration-lumina-border underline-offset-4"
                   >
                     Change email
                   </button>
                 ) : (
-                  <div className="mt-4 rounded-[16px] bg-[#faf9f7] p-4">
+                  <div className="mt-4 rounded-[16px] bg-lumina-surface-soft p-4">
                     <input
                       type="email"
                       value={newEmail}
                       onChange={(event) => setNewEmail(event.target.value)}
                       placeholder="New email address"
-                      className="w-full rounded-[12px] border border-neutral-200 bg-white px-4 py-3 text-[14px] outline-none focus:border-neutral-400"
+                      className="w-full rounded-[14px] border border-lumina-border bg-lumina-surface px-4 py-3 text-[14px] outline-none transition placeholder:text-lumina-text-muted/75 focus:border-lumina-text-muted/60"
                     />
-                    <p className="mt-2 text-[11px] text-neutral-400">
+                    <p className="mt-2 text-[11px] text-lumina-text-muted">
                       Your current email remains active until verification.
                     </p>
                     <div className="mt-4 flex justify-end gap-2">
@@ -205,14 +331,14 @@ export default function ArtistSettingsPage() {
                           setNewEmail("");
                         }}
                         disabled={changingEmail}
-                        className="rounded-full border border-neutral-200 px-4 py-2 text-[12px] text-neutral-600"
+                        className="rounded-full border border-lumina-border px-4 py-2 text-[12px] text-lumina-text-muted"
                       >
                         Cancel
                       </button>
                       <button
                         onClick={() => void requestEmailChange()}
                         disabled={changingEmail}
-                        className="rounded-full bg-black px-5 py-2 text-[12px] text-white disabled:bg-neutral-300"
+                        className="rounded-full bg-lumina-black px-5 py-2 text-[12px] text-white disabled:bg-lumina-pearl disabled:text-lumina-text-muted"
                       >
                         {changingEmail ? "Sending…" : "Send verification"}
                       </button>
@@ -221,35 +347,189 @@ export default function ArtistSettingsPage() {
                 )}
               </div>
 
-              <div className="mt-6 border-t border-neutral-100 pt-5">
+              <div className="mt-6 border-t border-lumina-border pt-5">
                 <p className="text-[13px] font-medium">Password</p>
-                <p className="mt-1 text-[12px] text-neutral-500">
+                <p className="mt-1 text-[12px] text-lumina-text-muted">
                   Receive a secure link at your verified email.
                 </p>
                 <button
                   onClick={() => void sendPasswordReset()}
                   disabled={sendingPasswordReset}
-                  className="mt-3 rounded-full border border-neutral-200 px-4 py-2 text-[12px] text-neutral-600 disabled:opacity-50"
+                  className="mt-3 rounded-full border border-lumina-border px-4 py-2 text-[12px] text-lumina-text-muted disabled:opacity-50"
                 >
                   {sendingPasswordReset ? "Sending…" : "Change password"}
                 </button>
               </div>
 
-              <div className="mt-6 border-t border-neutral-100 pt-5">
+              <div className="mt-6 border-t border-lumina-border pt-5">
                 <p className="text-[13px] font-medium">Other devices</p>
-                <p className="mt-1 text-[12px] leading-[1.5] text-neutral-500">End every other Lumina session while keeping this device signed in.</p>
+                <p className="mt-1 text-[12px] leading-[1.5] text-lumina-text-muted">End every other Lumina session while keeping this device signed in.</p>
                 <button
                   onClick={() => void signOutOtherDevices()}
                   disabled={signingOutOthers}
-                  className="mt-3 rounded-full border border-neutral-200 px-4 py-2 text-[12px] text-neutral-600 disabled:opacity-50"
+                  className="mt-3 rounded-full border border-lumina-border px-4 py-2 text-[12px] text-lumina-text-muted disabled:opacity-50"
                 >
                   {signingOutOthers ? "Signing out…" : "Sign out of other devices"}
                 </button>
               </div>
             </section>
 
-            <section className="rounded-[24px] border border-neutral-200 p-5">
-              <p className="text-[12px] uppercase tracking-[0.14em] text-neutral-400">
+            <section
+              id="license-verification"
+              className="scroll-mt-24 rounded-[24px] border border-lumina-border p-5"
+            >
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                <div>
+                  <p className="text-[12px] uppercase tracking-[0.14em] text-lumina-text-muted">
+                    Professional license verification
+                  </p>
+                  <p className="mt-2 max-w-[520px] text-[12px] leading-[1.6] text-lumina-text-muted">
+                    Submit your professional-license details for manual Lumina
+                    review. This does not verify identity, insurance, background,
+                    or service quality.
+                  </p>
+                </div>
+                <span
+                  className={`w-fit rounded-full border px-3 py-1.5 text-[11px] font-medium ${
+                    verification?.status === "verified"
+                      ? "border-lumina-success/25 bg-lumina-success-soft text-lumina-success"
+                      : verification?.status === "rejected"
+                        ? "border-lumina-attention/35 bg-lumina-attention-soft text-lumina-attention"
+                        : "border-lumina-border bg-lumina-surface-soft text-lumina-text-muted"
+                  }`}
+                >
+                  {verification
+                    ? professionalVerificationStatusLabels[verification.status]
+                    : "Not submitted"}
+                </span>
+              </div>
+
+              {verification?.status === "rejected" &&
+                verification.decision_message && (
+                  <div className="mt-5 rounded-[16px] border border-lumina-attention/30 bg-lumina-attention-soft p-4">
+                    <p className="text-[12px] font-medium text-lumina-attention">
+                      Needs correction
+                    </p>
+                    <p className="mt-2 whitespace-pre-line text-[12px] leading-[1.6] text-lumina-text-muted">
+                      {verification.decision_message}
+                    </p>
+                  </div>
+                )}
+
+              <div className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <label className="sm:col-span-2">
+                  <span className="mb-2 block text-[12px] text-lumina-text-muted">
+                    Legal / professional name
+                  </span>
+                  <input
+                    value={verificationForm.legal_professional_name}
+                    maxLength={160}
+                    onChange={(event) =>
+                      setVerificationForm((current) => ({
+                        ...current,
+                        legal_professional_name: event.target.value,
+                      }))
+                    }
+                    className="w-full rounded-[14px] border border-lumina-border px-4 py-3 text-[14px] outline-none transition focus:border-lumina-text-muted/50"
+                  />
+                </label>
+
+                <label>
+                  <span className="mb-2 block text-[12px] text-lumina-text-muted">
+                    License number
+                  </span>
+                  <input
+                    value={verificationForm.license_number}
+                    maxLength={100}
+                    autoComplete="off"
+                    onChange={(event) =>
+                      setVerificationForm((current) => ({
+                        ...current,
+                        license_number: event.target.value,
+                      }))
+                    }
+                    className="w-full rounded-[14px] border border-lumina-border px-4 py-3 text-[14px] outline-none transition focus:border-lumina-text-muted/50"
+                  />
+                </label>
+
+                <label>
+                  <span className="mb-2 block text-[12px] text-lumina-text-muted">
+                    License jurisdiction / state
+                  </span>
+                  <input
+                    value={verificationForm.license_jurisdiction}
+                    maxLength={100}
+                    onChange={(event) =>
+                      setVerificationForm((current) => ({
+                        ...current,
+                        license_jurisdiction: event.target.value,
+                      }))
+                    }
+                    placeholder="For example, Illinois"
+                    className="w-full rounded-[14px] border border-lumina-border px-4 py-3 text-[14px] outline-none transition focus:border-lumina-text-muted/50"
+                  />
+                </label>
+
+                <label>
+                  <span className="mb-2 block text-[12px] text-lumina-text-muted">
+                    License type
+                  </span>
+                  <input
+                    value={verificationForm.license_type}
+                    maxLength={120}
+                    onChange={(event) =>
+                      setVerificationForm((current) => ({
+                        ...current,
+                        license_type: event.target.value,
+                      }))
+                    }
+                    placeholder="For example, Cosmetologist"
+                    className="w-full rounded-[14px] border border-lumina-border px-4 py-3 text-[14px] outline-none transition focus:border-lumina-text-muted/50"
+                  />
+                </label>
+
+                <label>
+                  <span className="mb-2 block text-[12px] text-lumina-text-muted">
+                    Business name <span className="text-lumina-text-muted">(optional)</span>
+                  </span>
+                  <input
+                    value={verificationForm.business_name}
+                    maxLength={160}
+                    onChange={(event) =>
+                      setVerificationForm((current) => ({
+                        ...current,
+                        business_name: event.target.value,
+                      }))
+                    }
+                    className="w-full rounded-[14px] border border-lumina-border px-4 py-3 text-[14px] outline-none transition focus:border-lumina-text-muted/50"
+                  />
+                </label>
+              </div>
+
+              {verification?.submitted_at && (
+                <p className="mt-4 text-[11px] text-lumina-text-muted">
+                  Last submitted {new Date(verification.submitted_at).toLocaleString()}
+                </p>
+              )}
+
+              <button
+                type="button"
+                onClick={() => void submitLicenseVerification()}
+                disabled={submittingVerification}
+                className="mt-5 rounded-full bg-lumina-black px-5 py-2.5 text-[12px] text-white transition hover:bg-lumina-text disabled:opacity-50"
+              >
+                {submittingVerification
+                  ? "Submitting…"
+                  : onboardingMode
+                    ? "Submit and continue"
+                  : verification
+                    ? "Resubmit for review"
+                    : "Submit for review"}
+              </button>
+            </section>
+
+            <section className="rounded-[24px] border border-lumina-border p-5">
+              <p className="text-[12px] uppercase tracking-[0.14em] text-lumina-text-muted">
                 Privacy &amp; visibility
               </p>
               <div className="mt-5 flex items-center justify-between gap-5">
@@ -257,40 +537,53 @@ export default function ArtistSettingsPage() {
                   <p className="text-[14px] font-medium">
                     Professional profile visibility
                   </p>
-                  <p className="mt-1 text-[12px] leading-[1.5] text-neutral-500">
+                  <p className="mt-1 text-[12px] leading-[1.5] text-lumina-text-muted">
                     {isVisible
                       ? "Clients can find your profile in browse, search, and map."
-                      : "Your profile is hidden from browse, search, and map."}
+                      : activationStatus?.activation_ready
+                        ? "Your profile is ready. Turn visibility on when you want clients to discover it."
+                        : "Your profile is hidden until every activation requirement is complete, including license verification."}
                   </p>
                 </div>
                 <button
                   type="button"
                   onClick={() => void updateVisibility()}
-                  disabled={visibilityLoading}
+                  disabled={
+                    visibilityLoading ||
+                    (!isVisible && !activationStatus?.activation_ready)
+                  }
                   aria-pressed={isVisible}
                   className={`relative h-7 w-12 shrink-0 rounded-full transition disabled:opacity-50 ${
-                    isVisible ? "bg-black" : "bg-neutral-300"
+                    isVisible ? "bg-lumina-black" : "bg-lumina-pearl"
                   }`}
                 >
                   <span
-                    className={`absolute top-1 h-5 w-5 rounded-full bg-white transition ${
+                    className={`absolute top-1 h-5 w-5 rounded-full bg-lumina-surface transition ${
                       isVisible ? "left-6" : "left-1"
                     }`}
                   />
                 </button>
               </div>
+              {!isVisible && !activationStatus?.activation_ready && (
+                <Link
+                  href="/dashboard/onboarding"
+                  className="mt-4 inline-flex text-[12px] font-medium underline decoration-lumina-border underline-offset-4"
+                >
+                  Continue profile setup
+                </Link>
+              )}
             </section>
 
-            <section className="rounded-[24px] border border-neutral-200 p-5">
-              <p className="text-[12px] uppercase tracking-[0.14em] text-neutral-400">
+            <section className="rounded-[24px] border border-lumina-border p-5">
+              <p className="text-[12px] uppercase tracking-[0.14em] text-lumina-text-muted">
                 Professional profile
               </p>
-              <p className="mt-3 text-[13px] leading-[1.6] text-neutral-500">
+              <p className="mt-3 text-[13px] leading-[1.6] text-lumina-text-muted">
                 Public business details, services, photos, pricing, and booking links are managed separately.
               </p>
               <Link
                 href="/dashboard/profile"
-                className="mt-4 inline-block rounded-full bg-black px-5 py-2.5 text-[12px] text-white"
+                className="mt-4 inline-block rounded-full bg-lumina-black px-5 py-2.5 text-[12px] text-white"
               >
                 Edit professional profile
               </Link>
@@ -298,13 +591,13 @@ export default function ArtistSettingsPage() {
 
             <button
               onClick={() => void signOut()}
-              className="w-full rounded-[18px] border border-neutral-200 px-5 py-4 text-left text-[13px] text-neutral-500 transition hover:bg-[#faf6f5] hover:text-black"
+              className="w-full rounded-[18px] border border-lumina-border px-5 py-4 text-left text-[13px] text-lumina-text-muted transition hover:bg-lumina-surface-soft hover:text-lumina-text"
             >
               Sign out
             </button>
           </div>
         )}
       </section>
-    </main>
+    </div>
   );
 }

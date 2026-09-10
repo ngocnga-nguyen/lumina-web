@@ -5,6 +5,7 @@ type MessageBubbleProps = {
   message: string | null;
   imageUrl?: string | null;
   createdAt: string;
+  otherParticipantLabel?: string;
 };
 
 export default function MessageBubble({
@@ -12,14 +13,15 @@ export default function MessageBubble({
 message,
 imageUrl,
 createdAt,
+otherParticipantLabel = "Professional",
 }: MessageBubbleProps) {
 
   return (
     <div
       className={`inline-block max-w-[320px] rounded-[22px] px-4 py-2.5 text-[14px] leading-[1.45] ${
         isMe
-          ? "rounded-br-[6px] bg-black text-white"
-          : "rounded-bl-[6px] bg-white text-black shadow-sm"
+          ? "rounded-br-[6px] bg-lumina-black text-white"
+          : "rounded-bl-[6px] bg-lumina-surface text-lumina-text shadow-sm"
       }`}
     >
 {imageUrl && (
@@ -35,10 +37,10 @@ createdAt,
 )}
       <p
         className={`mt-2 text-[11px] ${
-          isMe ? "text-white/50" : "text-neutral-400"
+          isMe ? "text-white/50" : "text-lumina-text-muted"
         }`}
       >
-        {isMe ? "You" : "Artist"} ·{" "}
+        {isMe ? "You" : otherParticipantLabel} ·{" "}
         {new Date(createdAt).toLocaleDateString()}
       </p>
     </div>

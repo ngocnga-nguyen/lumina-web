@@ -5,12 +5,39 @@ import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { Bell, MessageCircle, CalendarDays, Star } from "lucide-react";
 import ChatModal from "@/components/ChatModal";
-import AccountMenu from "@/components/AccountMenu";
+import ClientWorkspaceShell from "@/components/ClientWorkspaceShell";
+import ConsultationSnapshot from "@/components/ConsultationSnapshot";
+import ClientGuidanceTip from "@/components/ClientGuidanceTip";
+import { useClientOnboarding } from "@/lib/use-client-onboarding";
+import {
+  formatDurationMinutes,
+  getRequestServiceNames,
+} from "@/lib/request-services";
+import { createConsultationSignedUrls } from "@/lib/consultation-snapshot";
+import {
+  canSubmitCompletionResponse,
+  getAppointmentDurationMinutes,
+  getAppointmentExceptionLabel,
+  getClientRequestActionState,
+  getCompletionState,
+  getCompletionStateLabel,
+  getNextRequestStateTransitionAt,
+  type AppointmentExceptionReason,
+  type CompletionResponse,
+} from "@/lib/request-completion";
+import {
+  getLatestRequestConversationUpdate,
+  getRequestConversationUnreadCount,
+  markConversationUpdatesRead,
+  markRequestConversationRead,
+} from "@/lib/request-conversations";
 
 type ClientRequest = {
   id: string;
   artist_id: string;
   service_requested: string | null;
+  requested_services?: unknown;
+  consultation_snapshot?: unknown;
   preferred_date: string | null;
   preferred_time: string | null;
   status: string | null;
@@ -21,6 +48,17 @@ type ClientRequest = {
   proposed_price: number | null;
   image_url: string | null;
   booking_status: string | null;
+  scheduled_for: string | null;
+  expected_end_at: string | null;
+  completion_protocol_version: number | null;
+  appointment_confirmed_at: string | null;
+  appointment_exception_reason: AppointmentExceptionReason | null;
+  appointment_exception_note: string | null;
+  client_exception_note: string | null;
+  artist_completion_response: CompletionResponse | null;
+  artist_completion_responded_at: string | null;
+  client_completion_response: CompletionResponse | null;
+  client_completion_responded_at: string | null;
   created_at: string;
   client_response_note: string | null;
   artist_name: string | null;
@@ -39,6 +77,7 @@ type RequestUpdate = {
   proposed_date: string | null;
   proposed_time: string | null;
   proposed_price: number | null;
+  expected_end_at: string | null;
   created_at: string;
   is_read_by_client: boolean | null;
 is_read_by_artist: boolean | null;
@@ -56,22 +95,56 @@ type Notification = {
 };
 export default function MyRequestsPage() {
   const [requests, setRequests] = useState<ClientRequest[]>([]);
+  const [reviewedRequestIds, setReviewedRequestIds] = useState<Set<string>>(
+    () => new Set()
+  );
+  const [requestStateNow, setRequestStateNow] = useState(() => new Date());
   const [responseNotes, setResponseNotes] = useState<Record<string, string>>({});
   const [messageDrafts, setMessageDrafts] = useState<Record<string, string>>({});
   const [selectedImage, setSelectedImage] = useState<File | null>(null);
   const [selectedAction, setSelectedAction] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
+  const [completionSavingId, setCompletionSavingId] = useState<string | null>(null);
   const [replyingToId, setReplyingToId] = useState<string | null>(null);
   const [openHistoryId, setOpenHistoryId] = useState<string | null>(null);
   const [expandedRequestId, setExpandedRequestId] = useState<string | null>(null);
   const [highlightedRequestId, setHighlightedRequestId] = useState<string | null>(null);
   const requestRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const openChatRequestIdRef = useRef<string | null>(null);
+  const handledDeepLinkRef = useRef<string | null>(null);
   const [requestTab, setRequestTab] = useState<"active" | "archived">("active");
   const [updates, setUpdates] = useState<Record<string, RequestUpdate[]>>({});
   const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [consultationImageUrls, setConsultationImageUrls] = useState<
+    Record<string, string[]>
+  >({});
 const [showNotifications, setShowNotifications] = useState(false);
 const unreadCount = notifications.filter((n) => !n.is_read).length;
+const clientOnboarding = useClientOnboarding();
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("view") !== "archived") return;
+    const frame = window.requestAnimationFrame(() => setRequestTab("archived"));
+    return () => window.cancelAnimationFrame(frame);
+  }, []);
+
+  useEffect(() => {
+    const requestId = new URLSearchParams(window.location.search).get("request");
+    if (!requestId || handledDeepLinkRef.current === requestId) return;
+    if (!requests.some((request) => request.id === requestId)) return;
+
+    handledDeepLinkRef.current = requestId;
+    const frame = requestAnimationFrame(() => {
+      setExpandedRequestId(requestId);
+      setHighlightedRequestId(requestId);
+      requestRefs.current[requestId]?.scrollIntoView({
+        behavior: "smooth",
+        block: "center",
+      });
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [requests]);
 
 
   const loadRequests = async () => {
@@ -90,6 +163,23 @@ const unreadCount = notifications.filter((n) => !n.is_read).length;
   .order("created_at", { ascending: false });
 
 setNotifications(notificationData || []);
+
+    const { data: submittedReviews, error: submittedReviewsError } =
+      await supabase
+        .from("reviews")
+        .select("request_id")
+        .eq("client_id", user.id)
+        .not("request_id", "is", null);
+
+    if (!submittedReviewsError) {
+      setReviewedRequestIds(
+        new Set(
+          (submittedReviews || [])
+            .map((review) => review.request_id)
+            .filter((requestId): requestId is string => Boolean(requestId))
+        )
+      );
+    }
 
     const { data, error } = await supabase
     .from("client_requests")
@@ -123,6 +213,13 @@ console.log("bookingMap", bookingMap);
 console.log("requestsWithSocialLinks", requestsWithSocialLinks);
 
     setRequests(requestsWithSocialLinks);
+    const consultationEntries = await Promise.all(
+      requestsWithSocialLinks.map(async (request) => [
+        request.id,
+        await createConsultationSignedUrls(request.consultation_snapshot),
+      ] as const)
+    );
+    setConsultationImageUrls(Object.fromEntries(consultationEntries));
     const { data: updateData } = await supabase
 
   .from("request_updates")
@@ -154,12 +251,51 @@ setLoading(false);
   };
 
 useEffect(() => {
-  loadRequests();
+  const refreshTimer = window.setTimeout(() => void loadRequests(), 0);
+  return () => window.clearTimeout(refreshTimer);
 }, [requestTab]);
 
 useEffect(() => {
   openChatRequestIdRef.current = openHistoryId;
 }, [openHistoryId]);
+
+useEffect(() => {
+  let timer: number | null = null;
+
+  const scheduleNextTransition = () => {
+    if (timer !== null) window.clearTimeout(timer);
+
+    const now = new Date();
+    setRequestStateNow(now);
+
+    const nextTransition = requests
+      .map((request) => getNextRequestStateTransitionAt(request, now))
+      .filter((value): value is Date => value !== null)
+      .sort((first, second) => first.getTime() - second.getTime())[0];
+
+    if (!nextTransition) return;
+
+    const delay = Math.min(
+      Math.max(nextTransition.getTime() - now.getTime() + 100, 100),
+      2_147_000_000
+    );
+    timer = window.setTimeout(scheduleNextTransition, delay);
+  };
+
+  const handleVisibilityChange = () => {
+    if (document.visibilityState === "visible") scheduleNextTransition();
+  };
+
+  scheduleNextTransition();
+  window.addEventListener("focus", scheduleNextTransition);
+  document.addEventListener("visibilitychange", handleVisibilityChange);
+
+  return () => {
+    if (timer !== null) window.clearTimeout(timer);
+    window.removeEventListener("focus", scheduleNextTransition);
+    document.removeEventListener("visibilitychange", handleVisibilityChange);
+  };
+}, [requests]);
 
 useEffect(() => {
   let channel: ReturnType<typeof supabase.channel> | null = null;
@@ -174,6 +310,25 @@ useEffect(() => {
 
     channel = supabase
       .channel(`client-realtime-${user.id}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "reviews",
+          filter: `client_id=eq.${user.id}`,
+        },
+        (payload) => {
+          const requestId = (payload.new as { request_id?: string | null })
+            .request_id;
+          if (!requestId) return;
+          setReviewedRequestIds((current) => {
+            const next = new Set(current);
+            next.add(requestId);
+            return next;
+          });
+        }
+      )
       .on(
         "postgres_changes",
         {
@@ -201,23 +356,28 @@ useEffect(() => {
           const isOpenIncomingMessage =
             openChatRequestIdRef.current === update.request_id &&
             update.sender_type !== "client";
-          const visibleUpdate = isOpenIncomingMessage
-            ? { ...update, is_read_by_client: true }
-            : update;
 
           setUpdates((prev) => ({
             ...prev,
             [update.request_id]: [
               ...(prev[update.request_id] || []),
-              visibleUpdate,
+              update,
             ],
           }));
 
           if (isOpenIncomingMessage) {
-            void supabase
-              .from("request_updates")
-              .update({ is_read_by_client: true })
-              .eq("id", update.id);
+            void markRequestConversationRead(update.request_id, "client").then(
+              ({ error }) => {
+                if (error) return;
+                setUpdates((current) => ({
+                  ...current,
+                  [update.request_id]: markConversationUpdatesRead(
+                    current[update.request_id] || [],
+                    "client"
+                  ),
+                }));
+              }
+            );
           }
         }
       )
@@ -265,27 +425,33 @@ useEffect(() => {
 
   if (!confirmed) return;
 
-  const { error } = await supabase
-    .from("client_requests")
-    .update({
-      client_status: clientStatus,
-      booking_status:
-        clientStatus === "confirmed"
-          ? "booked"
-          : clientStatus === "declined"
-          ? "client_declined"
-          : "client_requested_changes",
-      client_confirmed: clientStatus === "confirmed",
-      updated_at: new Date().toISOString(),
-    })
-    .eq("id", id);
+  const request = requests.find((r) => r.id === id);
+  const isBookingLiteConfirmation =
+    clientStatus === "confirmed" && request?.completion_protocol_version === 3;
+
+  const { error } = isBookingLiteConfirmation
+    ? await supabase.rpc("confirm_booking_lite_appointment", {
+        p_request_id: id,
+      })
+    : await supabase
+        .from("client_requests")
+        .update({
+          client_status: clientStatus,
+          booking_status:
+            clientStatus === "confirmed"
+              ? "booked"
+              : clientStatus === "declined"
+              ? "client_declined"
+              : "client_requested_changes",
+          client_confirmed: clientStatus === "confirmed",
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", id);
 
   if (error) {
     alert(error.message);
     return;
   }
-const request = requests.find((r) => r.id === id);
-
 if (request?.artist_id) {
   let title = "";
   let message = "";
@@ -312,11 +478,39 @@ if (request?.artist_id) {
 
   alert(
     clientStatus === "confirmed"
-      ? "Request accepted."
+      ? "Appointment confirmed in Lumina."
       : clientStatus === "declined"
       ? "Appointment declined."
       : "Your request for a different time was sent."
   );
+};
+const respondToBookingLiteException = async (request: ClientRequest) => {
+  const note = window.prompt(
+    "Share your side for Lumina's record. This does not decide the outcome or publish a review automatically.",
+    request.client_exception_note || ""
+  );
+  if (note === null) return;
+
+  setCompletionSavingId(request.id);
+  const { error } = await supabase.rpc("respond_to_booking_lite_exception", {
+    p_request_id: request.id,
+    p_note: note,
+  });
+  setCompletionSavingId(null);
+
+  if (error) {
+    alert(error.message);
+    return;
+  }
+
+  await supabase.from("notifications").insert({
+    user_id: request.artist_id,
+    request_id: request.id,
+    title: "Client Responded to Appointment Report",
+    message: "Your client disagreed with or responded to the reported appointment exception.",
+  });
+
+  await loadRequests();
 };
 const sendDifferentTimeNote = async (id: string) => {
   const note = responseNotes[id]?.trim();
@@ -451,6 +645,76 @@ const setRequestHidden = async (id: string, hidden: boolean) => {
 
   await loadRequests();
 };
+const submitClientCompletionResponse = async (
+  request: ClientRequest,
+  response: CompletionResponse
+) => {
+  const confirmed = window.confirm(
+    response === "confirmed"
+      ? "Confirm that this service took place? This response cannot be changed."
+      : "Report an issue with this completion? The request will be marked as needing attention, and this response cannot be changed."
+  );
+
+  if (!confirmed) return;
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    alert("Please log in again.");
+    return;
+  }
+
+  setCompletionSavingId(request.id);
+
+  const { data: updatedRequest, error } = await supabase
+    .from("client_requests")
+    .update({
+      client_completion_response: response,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", request.id)
+    .eq("client_id", user.id)
+    .select("id, booking_status")
+    .maybeSingle();
+
+  setCompletionSavingId(null);
+
+  if (error) {
+    alert(error.message);
+    return;
+  }
+
+  if (!updatedRequest) {
+    alert("This completion response could not be saved. Refresh and check the appointment status.");
+    await loadRequests();
+    return;
+  }
+
+  const { error: notificationError } = await supabase
+    .from("notifications")
+    .insert({
+      user_id: request.artist_id,
+      request_id: request.id,
+      title:
+        response === "disputed"
+          ? "Completion Needs Attention"
+          : updatedRequest.booking_status === "completed"
+          ? "Appointment Completed"
+          : "Client Confirmed Service",
+      message:
+        response === "disputed"
+          ? "Your client reported an issue with this completion. The request now needs attention."
+          : updatedRequest.booking_status === "completed"
+          ? "Both you and your client confirmed the service. The appointment is complete."
+          : "Your client confirmed the service took place. Your completion response is still required.",
+    });
+
+  if (notificationError) console.log(notificationError);
+
+  await loadRequests();
+};
   const labelStatus = (status: string | null) => {
     if (!status || status === "new") return "Waiting for artist";
     if (status === "accepted") return "Artist sent proposal";
@@ -550,69 +814,62 @@ const clearNotifications = async () => {
 const markMessagesRead = async (requestId: string) => {
   setUpdates((prev) => ({
     ...prev,
-    [requestId]: (prev[requestId] || []).map((update) =>
-      update.sender_type !== "client"
-        ? { ...update, is_read_by_client: true }
-        : update
+    [requestId]: markConversationUpdatesRead(
+      prev[requestId] || [],
+      "client"
     ),
   }));
 
-  const { error } = await supabase
-    .from("request_updates")
-    .update({ is_read_by_client: true })
-    .eq("request_id", requestId)
-    .neq("sender_type", "client");
+  const { error } = await markRequestConversationRead(requestId, "client");
 
   if (error) {
     alert(error.message);
+    await loadRequests();
   }
 };
 const getUnreadCount = (requestId: string) => {
-  return (updates[requestId] || []).filter(
-    (update) =>
-      !update.is_deleted &&
-      update.sender_type !== "client" &&
-      update.is_read_by_client === false
-  ).length;
+  return getRequestConversationUnreadCount(updates[requestId] || [], "client");
 };
 const getLatestUpdate = (requestId: string) => {
-  const history = updates[requestId] || [];
-
-  return history[history.length - 1];
+  return getLatestRequestConversationUpdate(updates[requestId] || []);
 };
+const currentActionKeys = requests.map(
+  (request) =>
+    getClientRequestActionState(
+      request,
+      reviewedRequestIds.has(request.id),
+      requestStateNow
+    )?.key
+);
+const hasReviewReadyAction = currentActionKeys.includes("review_ready");
+const hasProposalConfirmationAction = currentActionKeys.some(
+  (key) => key === "review_proposal" || key === "confirm_appointment"
+);
   return (
-    <main className="min-h-screen bg-white text-black">
-      <header className="flex items-center justify-between bg-[#faf6f5] px-5 py-5 text-[15px]">
-        <Link href="/browse">← Browse</Link>
-        <Link href="/" className="font-medium">
-          Lumina
-        </Link>
-        <div className="flex items-center gap-2">
+    <ClientWorkspaceShell
+      topBarActions={
+        <>
         <button
   onClick={() => setShowNotifications(!showNotifications)}
-  className="relative flex h-9 w-9 items-center justify-center rounded-full border border-neutral-200 bg-white transition hover:bg-[#faf6f5]"
+  className="relative flex h-9 w-9 items-center justify-center rounded-full border border-lumina-border bg-lumina-surface transition hover:bg-lumina-blush/60"
   aria-label="Notifications"
 >
 <Bell size={18} strokeWidth={1.7} />
 
   {unreadCount > 0 && (
-    <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-black px-1 text-[10px] text-white">
+    <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-lumina-black px-1 text-[10px] text-white">
 {unreadCount}
     </span>
   )}
 </button>
-
-<AccountMenu />
-</div>
-      </header>
       {showNotifications && (
-  <div className="absolute right-5 top-[72px] z-40 w-[320px] rounded-[22px] border border-neutral-200 bg-white p-4 shadow-xl">
+  <div className="absolute right-0 top-12 z-40 w-[min(320px,calc(100vw-32px))] rounded-[22px] border border-lumina-border bg-lumina-surface p-4 shadow-xl">
     <div className="flex items-center justify-between gap-4">
       <p className="text-[15px] font-medium">Notifications</p>
       {notifications.length > 0 && (
         <button
           onClick={() => void clearNotifications()}
-          className="text-[12px] text-neutral-500 transition hover:text-black"
+          className="text-[12px] text-lumina-text-muted transition hover:text-lumina-black"
         >
           Clear all
         </button>
@@ -621,7 +878,7 @@ const getLatestUpdate = (requestId: string) => {
 
     <div className="mt-4 max-h-[70vh] space-y-3 overflow-y-auto pr-1">
       {notifications.length === 0 ? (
-        <p className="text-[14px] text-neutral-500">
+        <p className="text-[14px] text-lumina-text-muted">
           No notifications yet.
         </p>
       ) : (
@@ -639,19 +896,19 @@ const getLatestUpdate = (requestId: string) => {
               : notification.title === "Proposal Updated"
               ? `${senderName} updated your proposal.`
               : notification.title === "Appointment Completed"
-              ? `${senderName} marked your appointment completed. You can now leave a verified review.`
+              ? `You and ${senderName} confirmed the service. You can now leave a verified review.`
               : notification.message;
 
           return (
           <div
   key={notification.id}
   onClick={() => openNotification(notification)}
-  className={`cursor-pointer rounded-[16px] p-3 transition hover:bg-[#f3eeee] ${
-    notification.is_read ? "bg-white" : "bg-[#faf6f5]"
+  className={`cursor-pointer rounded-[16px] p-3 transition hover:bg-lumina-blush/70 ${
+    notification.is_read ? "bg-lumina-surface" : "bg-lumina-blush/60"
   }`}
 >
             <div className="flex items-start gap-3">
-              <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full bg-neutral-100 text-[12px] font-medium text-neutral-600">
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full bg-lumina-pearl text-[12px] font-medium text-lumina-text-muted">
                 {senderImage ? (
                   <img
                     src={senderImage}
@@ -664,7 +921,7 @@ const getLatestUpdate = (requestId: string) => {
               </div>
 
               <div className="min-w-0">
-                <p className="truncate text-[13px] font-medium text-neutral-800">
+                <p className="truncate text-[13px] font-medium text-lumina-text">
                   {senderName}
                 </p>
                 <p className="text-[14px] font-medium">
@@ -672,11 +929,11 @@ const getLatestUpdate = (requestId: string) => {
                 </p>
 
                 {notificationMessage && (
-                  <p className="mt-1 text-[13px] text-neutral-600">
+                  <p className="mt-1 text-[13px] text-lumina-text-muted">
                     {notificationMessage}
                   </p>
                 )}
-                <p className="mt-2 text-[11px] text-neutral-400">
+                <p className="mt-2 text-[11px] text-lumina-text-muted">
                   {new Date(notification.created_at).toLocaleDateString()}
                 </p>
               </div>
@@ -688,21 +945,25 @@ const getLatestUpdate = (requestId: string) => {
     </div>
   </div>
 )}
+        </>
+      }
+    >
+      <div className="min-h-screen bg-lumina-surface text-lumina-text">
 
-      <section className="px-5 py-10 md:px-10">
+      <section className="mx-auto w-full max-w-[1600px] px-5 py-10 md:px-10 md:py-14">
         <h1
-          className="text-[44px] leading-[1.02] font-semibold md:text-[64px]"
+          className="text-[42px] leading-[1.02] font-semibold md:text-[56px]"
           style={{ fontFamily: "Georgia, Times New Roman, serif" }}
         >
           My requests
         </h1>
 
-        <p className="mt-4 max-w-[680px] text-[16px] leading-[1.6] text-neutral-600">
+        <p className="mt-4 max-w-[680px] text-[16px] leading-[1.6] text-lumina-text-muted">
           Track your booking requests and confirm artist suggestions.
         </p>
        {!loading && (
   <div>
-    <p className="mt-2 text-[14px] text-neutral-500">
+    <p className="mt-2 text-[14px] text-lumina-text-muted">
       {requests.length} {requestTab} request
       {requests.length !== 1 ? "s" : ""}
     </p>
@@ -712,8 +973,8 @@ const getLatestUpdate = (requestId: string) => {
         onClick={() => setRequestTab("active")}
         className={`rounded-full px-4 py-2 text-[13px] ${
           requestTab === "active"
-            ? "bg-black text-white"
-            : "border border-neutral-200 bg-white text-neutral-600"
+            ? "bg-lumina-black text-white"
+            : "border border-lumina-border bg-lumina-surface text-lumina-text-muted"
         }`}
       >
         Active
@@ -723,8 +984,8 @@ const getLatestUpdate = (requestId: string) => {
         onClick={() => setRequestTab("archived")}
         className={`rounded-full px-4 py-2 text-[13px] ${
           requestTab === "archived"
-            ? "bg-black text-white"
-            : "border border-neutral-200 bg-white text-neutral-600"
+            ? "bg-lumina-black text-white"
+            : "border border-lumina-border bg-lumina-surface text-lumina-text-muted"
         }`}
       >
         Archived
@@ -733,18 +994,65 @@ const getLatestUpdate = (requestId: string) => {
   </div>
 )}
 
+        {!loading &&
+          requestTab === "active" &&
+          clientOnboarding.ready &&
+          clientOnboarding.isClient &&
+          hasReviewReadyAction &&
+          !clientOnboarding.hasDismissedTip("review_ready") && (
+            <div className="mt-6 max-w-[860px]">
+              <ClientGuidanceTip
+                title="Your verified review is ready"
+                onDismiss={() => clientOnboarding.dismissTip("review_ready")}
+                tone="review-ready"
+                icon={<Star size={14} className="fill-lumina-blush" />}
+              >
+                Review ready appears after an eligible appointment&apos;s expected
+                service end. Your review will be tied to that Lumina appointment.
+              </ClientGuidanceTip>
+            </div>
+          )}
+
+        {!loading &&
+          requestTab === "active" &&
+          clientOnboarding.ready &&
+          clientOnboarding.isClient &&
+          !hasReviewReadyAction &&
+          hasProposalConfirmationAction &&
+          !clientOnboarding.hasDismissedTip("proposal_confirmation") && (
+            <div className="mt-6 max-w-[860px]">
+              <ClientGuidanceTip
+                title="Confirm appointments in Lumina"
+                onDismiss={() =>
+                  clientOnboarding.dismissTip("proposal_confirmation")
+                }
+              >
+                Review the services, date, time, duration, and final price first.
+                Confirm appointment records your acceptance in Lumina; an external
+                booking or payment link is secondary logistics only.
+              </ClientGuidanceTip>
+            </div>
+          )}
+
         <div className="mt-10 space-y-5">
           {loading ? (
-            <div className="rounded-[24px] bg-[#fbf4f4] p-6 text-neutral-600">
+            <div className="rounded-[24px] bg-lumina-surface-soft p-6 text-lumina-text-muted">
               Loading requests...
             </div>
           ) : requests.length === 0 ? (
-            <div className="rounded-[24px] bg-[#fbf4f4] p-6 text-neutral-600">
-              You have not sent any requests yet.
+            <div className="rounded-[24px] border border-lumina-border bg-lumina-surface p-6">
+              <h2 className="text-[16px] font-medium text-lumina-text">No requests yet</h2>
+              <p className="mt-1 text-[14px] leading-[1.55] text-lumina-text-muted">
+                Requests you send to professionals will appear here.
+              </p>
+              <Link href="/browse" className="mt-4 inline-flex rounded-full bg-lumina-black px-5 py-2.5 text-[13px] font-medium text-white transition hover:opacity-85">
+                Browse professionals
+              </Link>
             </div>
           ) : (
 requests.map((request) => {
   const latestUpdate = getLatestUpdate(request.id);
+  const requestedServiceNames = getRequestServiceNames(request);
     const proposedDate =
     latestUpdate?.proposed_date ?? request.proposed_date;
 
@@ -753,10 +1061,33 @@ requests.map((request) => {
 
   const proposedPrice =
     latestUpdate?.proposed_price ?? request.proposed_price;
+  const proposedExpectedEndAt =
+    latestUpdate?.expected_end_at ?? request.expected_end_at;
+  const appointmentDurationMinutes = getAppointmentDurationMinutes({
+    scheduled_for: request.scheduled_for,
+    expected_end_at: proposedExpectedEndAt,
+  });
 
   const latestMessage =
     latestUpdate?.message ?? request.artist_response;
     const unreadCount = getUnreadCount(request.id);
+    const completionState = getCompletionState(request, requestStateNow);
+    const showCompletionState = completionState !== "scheduled";
+    const canRespondToCompletion = canSubmitCompletionResponse(
+      request,
+      "client",
+      requestStateNow
+    );
+    const actionState = getClientRequestActionState(
+      request,
+      reviewedRequestIds.has(request.id),
+      requestStateNow
+    );
+    const canConfirmAppointment = actionState?.key === "confirm_appointment";
+    const canReview = actionState?.key === "review_ready";
+    const exceptionLabel = getAppointmentExceptionLabel(
+      request.appointment_exception_reason
+    );
 
   return (
                 <div
@@ -765,9 +1096,15 @@ requests.map((request) => {
   ref={(el) => {
     requestRefs.current[request.id] = el;
   }}
-  className={`rounded-[24px] border border-neutral-200 bg-white p-6 shadow-sm transition-all duration-700 ${
+  className={`rounded-[24px] border p-6 transition-all duration-700 ${
+    actionState?.key === "review_ready"
+      ? "border-lumina-blush bg-lumina-surface shadow-sm ring-1 ring-lumina-blush/70 hover:bg-lumina-blush/15 focus-within:bg-lumina-blush/15"
+      : actionState
+      ? "border-lumina-border/70 bg-lumina-surface shadow-sm"
+      : "border-lumina-border/70 bg-lumina-surface shadow-sm"
+  } ${
     highlightedRequestId === request.id
-      ? "bg-[#fdf9f4] ring-2 ring-[#e9ddcf]"
+      ? "bg-lumina-surface-soft ring-2 ring-lumina-border"
       : ""
   }`}
 >
@@ -785,7 +1122,7 @@ requests.map((request) => {
     href={`/artist/${request.artist_slug || ""}`}
     className="flex items-center gap-3 hover:opacity-80"
   >
-    <div className="h-10 w-10 overflow-hidden rounded-full bg-neutral-100">
+    <div className="h-10 w-10 overflow-hidden rounded-full bg-lumina-pearl">
       {request.artist_image_url && (
         <img
           src={request.artist_image_url}
@@ -808,22 +1145,35 @@ requests.map((request) => {
 
   <div className="flex flex-wrap items-center gap-3">
     <h2 className="text-[22px] font-medium">
-      {request.service_requested || "Service Request"}
+      {requestedServiceNames.join(", ") || "Service Request"}
     </h2>
 
                       <span
   className={`rounded-full px-3 py-1 text-[13px] ${
-    request.booking_status === "completed"
-      ? "bg-neutral-100 text-neutral-500"
+    actionState?.key === "review_ready"
+      ? "border border-lumina-blush bg-lumina-blush text-lumina-text"
+      : actionState
+      ? "border border-lumina-glass-border bg-lumina-surface text-lumina-text"
+      : completionState === "completed"
+      ? "bg-lumina-pearl text-lumina-text-muted"
+      : completionState === "needs_attention"
+      ? "bg-lumina-attention-soft text-lumina-attention"
+      : completionState === "completion_pending" ||
+        completionState === "awaiting_confirmation" ||
+        completionState === "booked" ||
+        completionState === "review_ready"
+      ? "bg-lumina-pearl text-lumina-text"
       : request.status === "needs_changes"
-      ? "bg-[#f7e8e7] text-[#8f5d5a]"
+      ? "bg-lumina-attention-soft text-lumina-attention"
       : request.status === "accepted"
-      ? "bg-[#e9f6ec] text-[#3b6b4a]"
-      : "bg-neutral-100 text-neutral-600"
+      ? "bg-lumina-success-soft text-lumina-success"
+      : "bg-lumina-pearl text-lumina-text-muted"
   }`}
 >
-  {request.booking_status === "completed"
-  ? "Service completed"
+  {actionState
+  ? actionState.label
+  : showCompletionState
+  ? getCompletionStateLabel(completionState)
   : request.client_status === "confirmed"
   ? "Accepted"
   : request.status === "accepted" || request.status === "needs_changes"
@@ -833,7 +1183,7 @@ requests.map((request) => {
                     </div>
 
                       
-<p className="mt-2 text-[14px] text-neutral-500">
+<p className="mt-2 text-[14px] text-lumina-text-muted">
   Sent{" "}
   {new Date(request.created_at).toLocaleDateString("en-US", {
     month: "short",
@@ -842,7 +1192,7 @@ requests.map((request) => {
   })}
   {" • "}
   Requested:{" "}
-  <span className="text-neutral-700">
+  <span className="text-lumina-text">
     {request.preferred_date || "Flexible"}
     {request.preferred_time && ` · ${request.preferred_time}`}
   </span>
@@ -850,17 +1200,34 @@ requests.map((request) => {
                   </div>
 
   <div className="flex items-center gap-3">
-  {request.booking_status === "completed" && (
+  {actionState?.key === "review_ready" ? (
     <Link
       href={`/artist/${request.artist_id}?tab=reviews&request=${request.id}`}
       onClick={(e) => e.stopPropagation()}
-      className="flex h-10 w-10 items-center justify-center rounded-full bg-[#fff0f5] text-[#d86f91] shadow-sm transition hover:-translate-y-0.5 hover:bg-[#ffe4ee] hover:shadow-md"
-      aria-label="Leave a review"
-      title="Leave a review"
+      className="inline-flex items-center gap-2 rounded-full bg-lumina-black px-4 py-2.5 text-[12px] font-medium text-white transition hover:opacity-85"
     >
-      <Star size={18} fill="currentColor" strokeWidth={1.5} />
+      <Star size={14} fill="currentColor" strokeWidth={1.5} />
+      {actionState.cta}
     </Link>
-  )}
+  ) : actionState ? (
+    <button
+      type="button"
+      onClick={(event) => {
+        event.stopPropagation();
+        setExpandedRequestId(request.id);
+      }}
+      aria-expanded={expandedRequestId === request.id}
+      aria-controls={`request-details-${request.id}`}
+      className={`rounded-full px-4 py-2.5 text-[12px] font-medium transition ${
+        actionState.key === "confirm_appointment" ||
+        actionState.key === "completion_confirmation"
+          ? "bg-lumina-black text-white hover:opacity-85"
+          : "border border-lumina-glass-border bg-lumina-surface/75 text-lumina-text hover:border-lumina-text-muted/40"
+      }`}
+    >
+      {actionState.cta}
+    </button>
+  ) : null}
   <button
   onClick={async (e) => {
   e.stopPropagation();
@@ -868,12 +1235,12 @@ requests.map((request) => {
   await markMessagesRead(request.id);
   setOpenHistoryId(request.id);
 }}
-className="relative flex h-10 w-10 items-center justify-center rounded-full border border-neutral-200 bg-white text-neutral-600 transition hover:bg-[#faf6f5] hover:text-black"
+className="relative flex h-10 w-10 items-center justify-center rounded-full border border-lumina-border bg-lumina-surface text-lumina-text-muted transition hover:bg-lumina-blush/60 hover:text-lumina-black"
   aria-label="Message artist"
 >
   <MessageCircle size={18} strokeWidth={1.7} />
   {unreadCount > 0 && (
-  <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-black px-1 text-[10px] text-white">
+  <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-lumina-black px-1 text-[10px] text-white">
     {unreadCount}
   </span>
 )}
@@ -884,43 +1251,69 @@ className="relative flex h-10 w-10 items-center justify-center rounded-full bord
       e.stopPropagation();
       setRequestHidden(request.id, requestTab === "active");
     }}
-    className="rounded-full border border-neutral-200 px-3 py-1 text-[12px] text-neutral-500 transition hover:text-black"
+    className="rounded-full border border-lumina-border px-3 py-1 text-[12px] text-lumina-text-muted transition hover:text-lumina-black"
   >
     {requestTab === "active" ? "Hide" : "Unhide"}
   </button>
-  <span className="text-[15px] text-neutral-400">
+  <span className="text-[15px] text-lumina-text-muted">
     {expandedRequestId === request.id ? "⌃" : "⌄"}
   </span>
 </div>
 
                 </div>
 <div
+  id={`request-details-${request.id}`}
   className={`overflow-hidden transition-all duration-400 ${
     expandedRequestId === request.id
-      ? "max-h-[1500px] opacity-100"
+      ? "max-h-[4000px] opacity-100"
       : "max-h-0 opacity-0"
   }`}
 >
 
+                <ConsultationSnapshot
+                  snapshot={request.consultation_snapshot}
+                  imageUrls={consultationImageUrls[request.id] || []}
+                  compact
+                />
+
                 {(proposedDate ||
                 proposedTime ||
                 proposedPrice) && ( 
-<div className="mt-6 rounded-[24px] border border-neutral-200 bg-[#fcfbfa] p-5 shadow-[0_10px_30px_rgba(30,25,20,0.04)]">
+<div className="mt-5 border-t border-lumina-border/80 pt-4">
     <div>
-  <p className="text-[12px] uppercase tracking-[0.16em] text-neutral-400">
+  <p className="inline-flex rounded-full bg-lumina-pearl px-3 py-1.5 text-[11px] uppercase tracking-[0.16em] text-lumina-text-muted">
     Artist Proposal
   </p>
+  <div className="mt-2.5">
+    <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-lumina-text-muted">
+      Services included
+    </p>
+    <div className="mt-2 flex flex-wrap gap-2">
+      {requestedServiceNames.length > 0 ? (
+        requestedServiceNames.map((serviceName) => (
+          <span
+            key={serviceName}
+            className="rounded-full border border-lumina-border bg-lumina-surface px-3 py-1.5 text-[12px] text-lumina-text"
+          >
+            {serviceName}
+          </span>
+        ))
+      ) : (
+        <span className="text-[12px] text-lumina-text-muted">Service not specified</span>
+      )}
+    </div>
+  </div>
   
 </div>
 
-<div className="mt-4 rounded-[20px] border border-neutral-200 bg-white px-6 py-5 shadow-[0_6px_18px_rgba(30,25,20,0.025)]">
-<div className="flex items-center justify-between">
+<div className="mt-3 rounded-[20px] border border-lumina-border bg-lumina-surface px-4 py-4 shadow-sm sm:px-5">
+<div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
     
 <div className="flex items-center gap-3">
       <CalendarDays
     size={22}
     strokeWidth={1.7}
-    className="text-neutral-500"
+    className="text-lumina-text-muted"
   />
 
   <div>
@@ -937,7 +1330,7 @@ style={{ fontFamily: "Georgia, Times New Roman, serif" }}
         : "Flexible date"}
     </h3>
 
-    <p className="mt-0.5 text-[14px] text-neutral-500">
+    <p className="mt-0.5 text-[14px] text-lumina-text-muted">
       {proposedTime
         ? new Date(`2000-01-01T${proposedTime}`).toLocaleTimeString(
             "en-US",
@@ -948,15 +1341,25 @@ style={{ fontFamily: "Georgia, Times New Roman, serif" }}
           )
         : "Flexible time"}
     </p>
+    {proposedExpectedEndAt && (
+      <p className="mt-1 text-[12px] leading-[1.5] text-lumina-text-muted">
+        {formatDurationMinutes(appointmentDurationMinutes) || "Estimated duration"}
+        {" · Expected end "}
+        {new Date(proposedExpectedEndAt).toLocaleTimeString("en-US", {
+          hour: "numeric",
+          minute: "2-digit",
+        })}
+      </p>
+    )}
   </div>
 </div>
 
-<div className="min-w-[140px] pl-8 text-right">
-          <p className="text-[11px] uppercase tracking-[0.15em] text-neutral-400">
-        Estimated Price
+<div className="border-t border-lumina-border pt-3 text-left sm:min-w-[140px] sm:border-0 sm:pl-8 sm:pt-0 sm:text-right">
+          <p className="text-[11px] uppercase tracking-[0.15em] text-lumina-text-muted">
+        Final proposed total
       </p>
 
-<p className="mt-1 text-[24px] font-medium tracking-[-0.02em] text-black">
+<p className="mt-1 text-[24px] font-medium tracking-[-0.02em] text-lumina-text">
   {proposedPrice ? `$${proposedPrice}` : "—"}
 </p>
     </div>
@@ -967,19 +1370,13 @@ style={{ fontFamily: "Georgia, Times New Roman, serif" }}
 request.booking_status !== "completed" &&
 request.client_status !== "confirmed" &&
 request.client_status !== "declined" && (
-<div className="mt-5 flex flex-wrap items-center gap-4 border-t border-neutral-200 pt-5">
+<div className="mt-4 flex flex-wrap items-center gap-4 border-t border-lumina-border pt-4">
     <button
-  onClick={() => {
-  if (request.social_link) {
-  window.open(request.social_link, "_blank", "noopener,noreferrer");
-  return;
-}
+  onClick={() => void updateClientStatus(request.id, "confirmed")}
+  disabled={request.completion_protocol_version === 3 && !canConfirmAppointment}
 
-  alert("This artist has not added a booking link yet. Please message them to confirm.");
-}}
-
-className="group rounded-full bg-black px-6 py-2.5 text-[13px] font-medium text-white shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md">
-Continue to Booking <span className="ml-1 inline-block transition-transform duration-200 group-hover:translate-x-1">→</span></button>
+className="group rounded-full bg-lumina-black px-6 py-2.5 text-[13px] font-medium text-white shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md disabled:cursor-not-allowed disabled:opacity-45">
+Confirm appointment <span className="ml-1 inline-block transition-transform duration-200 group-hover:translate-x-1">→</span></button>
 
                       <button
   onClick={() => {
@@ -990,29 +1387,110 @@ Continue to Booking <span className="ml-1 inline-block transition-transform dura
 
     updateClientStatus(request.id, "declined");
   }}
-  className="px-2 py-2 text-[13px] text-neutral-500 hover:text-black"
+  className="px-2 py-2 text-[13px] text-lumina-text-muted hover:text-lumina-black"
 >
   Not Interested
 </button>
                     </div>
 )}
-{request.booking_status === "completed" && (
-  <div className="mt-5 flex flex-wrap items-center justify-between gap-4 border-t border-neutral-200 pt-5">
-    <div>
-      <p className="text-[13px] font-medium text-neutral-800">
-        Your service is complete
+{request.client_status === "confirmed" &&
+  request.booking_status === "booked" &&
+  !request.appointment_exception_reason &&
+  request.social_link && (
+    <div className="mt-4 border-t border-lumina-border pt-4">
+      <a
+        href={request.social_link}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="inline-flex rounded-full border border-lumina-border bg-lumina-surface px-5 py-2.5 text-[13px] text-lumina-text transition hover:border-lumina-text-muted/40 hover:text-lumina-black"
+      >
+        Continue to professional&apos;s booking/payment page →
+      </a>
+      <p className="mt-2 text-[11px] text-lumina-text-muted">
+        Optional logistics only — your appointment is already confirmed in Lumina.
       </p>
-      <p className="mt-1 text-[12px] text-neutral-500">
-        Share your experience to help other Lumina clients.
+    </div>
+  )}
+{showCompletionState && !canReview && (
+  <div className="mt-4 border-t border-lumina-border pt-4">
+    <p className="text-[13px] font-medium text-lumina-text">
+      {getCompletionStateLabel(completionState)}
+    </p>
+    <p className="mt-1 text-[12px] leading-[1.55] text-lumina-text-muted">
+      {completionState === "awaiting_confirmation"
+        ? "The appointment time has passed. Tell Lumina whether the service took place."
+        : completionState === "review_ready"
+        ? "How did your appointment go? You can now share your experience."
+        : completionState === "booked"
+        ? "Lumina has recorded your accepted appointment."
+        : completionState === "completion_pending"
+        ? "One participant has confirmed. The other response is still required."
+        : completionState === "needs_attention"
+        ? `${exceptionLabel || "An appointment issue was reported"}. Lumina has preserved both sides and paused public review publication until later review.`
+        : request.completion_protocol_version === 3
+        ? "Lumina has recorded this appointment as completed."
+        : "Both you and the professional confirmed that the service took place."}
+    </p>
+
+    {canRespondToCompletion && (
+      <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+        <button
+          onClick={() => void submitClientCompletionResponse(request, "confirmed")}
+          disabled={completionSavingId === request.id}
+          className="rounded-full bg-lumina-black px-5 py-2.5 text-[13px] font-medium text-white transition hover:opacity-85 disabled:opacity-50"
+        >
+          Confirm service took place
+        </button>
+        <button
+          onClick={() => void submitClientCompletionResponse(request, "disputed")}
+          disabled={completionSavingId === request.id}
+          className="rounded-full border border-lumina-border bg-lumina-surface px-5 py-2.5 text-[13px] text-lumina-text-muted transition hover:border-lumina-text-muted/40 hover:text-lumina-black disabled:opacity-50"
+        >
+          Report an issue / Dispute completion
+        </button>
+      </div>
+    )}
+    {request.completion_protocol_version === 3 &&
+      request.appointment_exception_reason &&
+      !request.client_completion_response && (
+        <button
+          onClick={() => void respondToBookingLiteException(request)}
+          disabled={completionSavingId === request.id}
+          className="mt-4 rounded-full border border-lumina-border bg-lumina-surface px-5 py-2.5 text-[13px] text-lumina-text transition hover:border-lumina-text-muted/40 hover:text-lumina-black disabled:opacity-50"
+        >
+          I disagree / Share my side
+        </button>
+      )}
+    {request.client_exception_note && (
+      <p className="mt-3 rounded-[14px] bg-lumina-attention-soft px-4 py-3 text-[12px] leading-5 text-lumina-text-muted">
+        Your response: {request.client_exception_note}
+      </p>
+    )}
+  </div>
+)}
+{canReview && (
+  <div className="mt-4 flex flex-wrap items-center justify-between gap-4 border-l-2 border-lumina-blush pl-4">
+    <div>
+      <p className="text-[13px] font-medium text-lumina-text">
+        {request.appointment_exception_reason
+          ? "Share your experience for review"
+          : request.booking_status === "completed"
+          ? "Your service is complete"
+          : "How did your appointment go?"}
+      </p>
+      <p className="mt-1 text-[12px] text-lumina-text-muted">
+        {request.appointment_exception_reason
+          ? "Because an exception was reported, your review will be saved as pending for future moderation."
+          : "Share your experience to help other Lumina clients."}
       </p>
     </div>
 
     <Link
       href={`/artist/${request.artist_id}?tab=reviews&request=${request.id}`}
-      className="group flex items-center gap-2 rounded-full bg-black px-6 py-2.5 text-[13px] font-medium text-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
+      className="group flex items-center gap-2 rounded-full bg-lumina-black px-6 py-2.5 text-[13px] font-medium text-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
     >
       <Star size={16} fill="currentColor" strokeWidth={1.5} />
-      Leave a review
+      {request.appointment_exception_reason ? "Submit pending review" : "Leave a review"}
       <span className="transition-transform group-hover:translate-x-1">→</span>
     </Link>
   </div>
@@ -1057,6 +1535,7 @@ onRequestDifferentTime={() => {
     onClose={() => setOpenHistoryId(null)}
   />
 )}
-    </main>
+      </div>
+    </ClientWorkspaceShell>
   );
 }

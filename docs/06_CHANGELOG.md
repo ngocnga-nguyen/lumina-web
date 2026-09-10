@@ -6,6 +6,16 @@ This file records meaningful shipped product and documentation changes. It is no
 
 ## Unreleased — August 29, 2026
 
+### Results and proof of work
+
+- Added structured Results to the existing professional portfolio workflow
+- Added Finished Work and Before & After entry types
+- Added optional service context, result date, and notes
+- Added client-facing Results cards and full-size result details
+- Labeled uploads as **Added by professional** so they are not confused with verified activity
+- Prepared evidence levels for future completed-service and client-confirmed results
+- Added a production database migration for the new result fields and constraints
+
 ### Documentation
 
 - Updated the database reference to reflect the current production architecture and trust protections
@@ -20,6 +30,13 @@ This file records meaningful shipped product and documentation changes. It is no
 - Reorganized the idea vault into current experiments, data-backed reputation
   signals, and future hypotheses
 - Added a unified UI system for journey, action, status, trust, and responsive patterns
+
+### Saved collections
+
+- Added client-created collections for organizing globally saved professionals
+- Kept `saved_artists` as the canonical one-click save state and `All saved` as the automatic default view
+- Added many-to-many collection membership with owner-bound database constraints and RLS
+- Added create, rename, delete, multi-collection assignment, and mobile-scrollable collection navigation
 
 ---
 

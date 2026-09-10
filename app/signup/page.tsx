@@ -88,48 +88,48 @@ export default function SignupPage() {
   };
 
   return (
-    <main className="min-h-screen bg-[#faf7f5] px-4 py-10 text-black md:px-10">
+    <main className="min-h-screen bg-lumina-bg px-4 py-10 text-lumina-text md:px-10">
       <Link href="/" className="text-[15px] hover:opacity-70">
         ← Back to Lumina
       </Link>
 
-      <div className="mx-auto mt-16 max-w-[460px] rounded-[28px] bg-white p-8 shadow-sm md:p-10">
+      <div className="mx-auto mt-10 max-w-[460px] rounded-[24px] bg-lumina-surface p-6 shadow-sm sm:mt-16 sm:p-8 md:p-10">
         <h1
-          className="text-[42px] leading-[1.0] font-semibold"
+          className="text-[38px] leading-[1.02] font-semibold sm:text-[42px]"
           style={{ fontFamily: "Georgia, Times New Roman, serif" }}
         >
           Create your account
         </h1>
 
-        <p className="mt-4 text-[15px] text-neutral-600">
+        <p className="mt-4 text-[15px] text-lumina-text-muted">
           Save artists, compare profiles, and keep track of who you want to book.
         </p>
 
         {success ? (
-          <div className="mt-8 rounded-[22px] bg-[#faf6f5] p-5">
+          <div className="mt-8 rounded-[22px] border border-lumina-success/20 bg-lumina-success-soft p-5">
             <p className="text-[18px] font-medium">Check your email ✨</p>
 
-            <p className="mt-3 text-[14px] leading-[1.6] text-neutral-600">
+            <p className="mt-3 text-[14px] leading-[1.6] text-lumina-text-muted">
               We sent a confirmation link to{" "}
-              <span className="font-medium text-black">{submittedEmail}</span>.
+              <span className="font-medium text-lumina-text">{submittedEmail}</span>.
               Please confirm your email before logging in.
             </p>
 
-            <p className="mt-3 text-[13px] leading-[1.6] text-neutral-500">
+            <p className="mt-3 text-[13px] leading-[1.6] text-lumina-text-muted">
               If you don’t see it, check your spam or promotions folder.
             </p>
 
             <button
               onClick={resendConfirmation}
               disabled={resending}
-              className="mt-5 w-full rounded-full border border-black px-5 py-3 text-[14px] transition hover:bg-black hover:text-white disabled:opacity-50"
+              className="mt-5 w-full rounded-full border border-lumina-black px-5 py-3 text-[14px] transition hover:bg-lumina-black hover:text-white disabled:opacity-50"
             >
               {resending ? "Resending..." : "Resend confirmation email"}
             </button>
 
             <Link
               href="/login"
-              className="mt-4 block text-center text-[14px] text-black underline"
+              className="mt-4 block text-center text-[14px] text-lumina-text underline"
             >
               Go to login
             </Link>
@@ -148,7 +148,7 @@ export default function SignupPage() {
                 placeholder="Full name"
                 value={fullName}
                 onChange={(e) => setFullName(e.target.value)}
-                className="w-full rounded-[16px] border border-neutral-200 px-4 py-4 text-[15px] outline-none"
+                className="w-full rounded-[14px] border border-lumina-border bg-lumina-surface px-4 py-3 text-[15px] text-lumina-text outline-none transition placeholder:text-lumina-text-muted/75 focus:border-lumina-text-muted/60"
               />
 
               <input
@@ -156,7 +156,7 @@ export default function SignupPage() {
                 placeholder="Email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full rounded-[16px] border border-neutral-200 px-4 py-4 text-[15px] outline-none"
+                className="w-full rounded-[14px] border border-lumina-border bg-lumina-surface px-4 py-3 text-[15px] text-lumina-text outline-none transition placeholder:text-lumina-text-muted/75 focus:border-lumina-text-muted/60"
               />
 
               <input
@@ -164,30 +164,30 @@ export default function SignupPage() {
                 placeholder="Password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full rounded-[16px] border border-neutral-200 px-4 py-4 text-[15px] outline-none"
+                className="w-full rounded-[14px] border border-lumina-border bg-lumina-surface px-4 py-3 text-[15px] text-lumina-text outline-none transition placeholder:text-lumina-text-muted/75 focus:border-lumina-text-muted/60"
               />
 
 
             <button
               type="submit"
               disabled={loading}
-              className="mt-8 w-full rounded-full bg-black px-6 py-4 text-[15px] text-white transition hover:opacity-90 disabled:opacity-50"
+              className="mt-6 w-full rounded-full bg-lumina-black px-6 py-3 text-[14px] font-medium text-white transition hover:opacity-90 disabled:opacity-50"
             >
               {loading ? "Creating account..." : "Create account"}
             </button>
             </form>
 
-            <p className="mt-6 text-center text-[14px] text-neutral-500">
+            <p className="mt-6 text-center text-[14px] text-lumina-text-muted">
               Already have an account?{" "}
-              <Link href="/login" className="text-black underline">
+              <Link href="/login" className="text-lumina-text underline">
                 Login
               </Link>
             </p>
 
-            <p className="mt-4 text-center text-[14px] text-neutral-500">
+            <p className="mt-4 text-center text-[14px] text-lumina-text-muted">
               Are you a beauty professional?{" "}
-              <Link href="/join-as-artist" className="text-black underline">
-                Join as an Artist
+              <Link href="/join-as-artist" className="text-lumina-text underline">
+                Join as a professional
               </Link>
             </p>
           </>

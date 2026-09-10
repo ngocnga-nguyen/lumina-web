@@ -38,7 +38,7 @@ export default function ArtistCard({
       href={`/artist/${artist.id}`}
       className={`group block ${className}`}
     >
-      <div className="relative aspect-[4/3] w-full overflow-hidden rounded-[18px] bg-[#eeeeee]">
+      <div className="relative aspect-[4/3] w-full overflow-hidden rounded-[18px] bg-lumina-pearl">
         {artist.profile_image_url ? (
           <img
             src={artist.profile_image_url}
@@ -46,7 +46,7 @@ export default function ArtistCard({
             className="h-full w-full object-cover transition duration-500 group-hover:scale-[1.02]"
           />
         ) : (
-          <div className="flex h-full w-full items-center justify-center text-center text-neutral-400">
+          <div className="flex h-full w-full items-center justify-center text-center text-lumina-text-muted">
             <div>
               <p className="text-[15px]">Profile Image</p>
               <p className="mt-1 text-[12px]">Coming soon</p>
@@ -72,15 +72,15 @@ export default function ArtistCard({
         )}
 
         {isOwnProfile && (
-          <span className="absolute left-3 top-3 rounded-full bg-black px-3 py-1.5 text-[12px] font-medium text-white shadow-sm">
+          <span className="absolute left-3 top-3 rounded-full bg-lumina-black px-3 py-1.5 text-[12px] font-medium text-white shadow-sm">
             Your profile
           </span>
         )}
       </div>
 
       <div className="pt-4">
-        <p className="text-[13px] text-neutral-500">
-          <span className="text-black">★</span> New profile
+        <p className="text-[13px] text-lumina-text-muted">
+          <span className="text-lumina-black">★</span> New profile
         </p>
 
         <h3
@@ -90,26 +90,26 @@ export default function ArtistCard({
           {artist.name}
         </h3>
 
-        <p className="mt-1 text-[15px] text-neutral-500">
+        <p className="mt-1 text-[15px] text-lumina-text-muted">
           {artist.category}
         </p>
 
-        <div className="mt-4 flex items-start justify-between gap-4 border-t border-neutral-200 pt-4 text-[14px]">
+        <div className="mt-4 flex items-start justify-between gap-4 border-t border-lumina-border pt-4 text-[14px]">
           <div>
-            <p className="text-neutral-600">{artist.location}</p>
+            <p className="text-lumina-text-muted">{artist.location}</p>
 
             {distance !== null && (
-              <p className="mt-1 text-[12px] text-neutral-500">
+              <p className="mt-1 text-[12px] text-lumina-text-muted">
                 {distance.toFixed(1)} miles away
               </p>
             )}
 
-            <p className="mt-1 font-medium text-black">
+            <p className="mt-1 font-medium text-lumina-black">
               From ${artist.price_start}
             </p>
           </div>
 
-          <span className="text-neutral-500 transition group-hover:translate-x-1 group-hover:text-black">
+          <span className="text-lumina-text-muted transition group-hover:translate-x-1 group-hover:text-lumina-black">
             {isOwnProfile ? "View your profile →" : "View →"}
           </span>
           {showCompare && (
@@ -122,14 +122,14 @@ export default function ArtistCard({
     }}
     aria-pressed={isSelected}
     className={`mt-5 inline-flex items-center gap-2 text-[14px] font-medium transition ${
-      isSelected ? "text-black" : "text-neutral-500 hover:text-black"
+      isSelected ? "text-lumina-black" : "text-lumina-text-muted hover:text-lumina-black"
     }`}
   >
     <span
       className={`flex h-5 w-5 items-center justify-center rounded-[6px] border text-[12px] ${
         isSelected
-          ? "border-black bg-black text-white"
-          : "border-neutral-300 bg-white"
+          ? "border-lumina-black bg-lumina-black text-white"
+          : "border-lumina-border bg-lumina-surface"
       }`}
     >
       {isSelected ? "✓" : ""}

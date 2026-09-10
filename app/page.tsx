@@ -1,12 +1,18 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useRef, useState } from "react";
-import { supabase } from "@/lib/supabase";
-import ArtistCard from "@/components/ArtistCard";
-import SearchBar from "@/components/SearchBar";
-import LuminaBrand from "@/components/LuminaBrand";
 import { useRouter } from "next/navigation";
+import { useEffect, useMemo, useRef, useState } from "react";
+import type {
+  PointerEvent as ReactPointerEvent,
+  WheelEvent as ReactWheelEvent,
+} from "react";
+import { ArrowRight, Check, MapPin, MessageCircle, ShieldCheck, Sparkles } from "lucide-react";
+import ArtistCard from "@/components/ArtistCard";
+import LuminaBrand from "@/components/LuminaBrand";
+import SearchBar from "@/components/SearchBar";
+import { supabase } from "@/lib/supabase";
+import { useLuminaAdminAccess } from "@/lib/use-lumina-admin-access";
 
 type Artist = {
   id: string;
@@ -16,925 +22,577 @@ type Artist = {
   price_start: number;
   profile_image_url?: string | null;
 };
+
+const serif = { fontFamily: "Georgia, Times New Roman, serif" };
+const editorialContainer =
+  "mx-auto w-full max-w-[1280px] px-5 sm:px-8 lg:px-12";
+const wideVisualContainer =
+  "mx-auto w-full max-w-[clamp(1280px,92vw,1560px)] px-5 sm:px-8 lg:px-12";
+
 const categoryImages: Record<string, string> = {
   "Nail Technician": "/categories/nail.jpg",
-  "Facial Esthetician": "/categories/facial.jpg",
-  "Aesthetician": "/categories/facial.jpg",
-  "Lash Technician": "/categories/lash.jpg",
-  "Lash Artist": "/categories/lash.jpg",
   "Hair Stylist": "/categories/hair.jpg",
   "Makeup Artist": "/categories/makeup.jpg",
+  "Lash Technician": "/categories/lash.jpg",
   "Brow Artist": "/categories/brow.jpg",
+  "Facial Esthetician": "/categories/facial.jpg",
 };
+
 const heroServices = [
-  ["Nail Technician", "/categories/nail.jpg"],
-  ["Hair Stylist", "/categories/hair.jpg"],
-  ["Makeup Artist", "/categories/makeup.jpg"],
-  ["Lash Artist", "/categories/lash.jpg"],
-  ["Brow Artist", "/categories/brow.jpg"],
-  ["Facial Esthetician", "/categories/facial.jpg"],
-] as const;
-export default function Home() {
+  { label: "Nail Technician", image: "/categories/nail.jpg" },
+  { label: "Hair Stylist", image: "/categories/hair.jpg" },
+  { label: "Makeup Artist", image: "/categories/makeup.jpg" },
+  { label: "Lash Technician", image: "/categories/lash.jpg" },
+  { label: "Brow Artist", image: "/categories/brow.jpg" },
+  { label: "Facial Esthetician", image: "/categories/facial.jpg" },
+];
+
+const benefits = [
+  {
+    icon: Sparkles,
+    title: "Real work",
+    body: "See professional-uploaded portfolios and service results.",
+  },
+  {
+    icon: Check,
+    title: "Clear starting prices",
+    body: "Understand the starting point before you send a request.",
+  },
+  {
+    icon: ShieldCheck,
+    title: "Verified reviews",
+    body: "Reviews unlock after a completed Lumina appointment.",
+  },
+  {
+    icon: MessageCircle,
+    title: "Request first",
+    body: "Discuss details and availability before you commit.",
+  },
+];
+
+export default function HomePage() {
   const router = useRouter();
   const [artists, setArtists] = useState<Artist[]>([]);
+  const [artistsLoading, setArtistsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [user, setUser] = useState<any>(null);
-  const [artistId, setArtistId] = useState<string | null>(null);
   const [artistProfile, setArtistProfile] = useState<any>(null);
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
+  const isLuminaAdmin = useLuminaAdminAccess(user?.id);
   const [heroServiceIndex, setHeroServiceIndex] = useState(0);
-  const heroPointerStartX = useRef<number | null>(null);
-  const heroDidSwipe = useRef(false);
-  const heroWheelDistance = useRef(0);
-  const heroWheelResetTimer = useRef<number | null>(null);
-  const heroWheelLocked = useRef(false);
-  const accountName =
-  artistProfile?.name ||
-  user?.user_metadata?.full_name ||
-  user?.email ||
-  "User";
+  const dragStartX = useRef<number | null>(null);
+  const dragDistance = useRef(0);
+  const wheelLock = useRef(false);
 
-const accountInitial = accountName.charAt(0).toUpperCase();
+  const currentHeroService = heroServices[heroServiceIndex];
 
-const accountImage = artistProfile?.profile_image_url || null;
-
-  const showNextHeroService = () => {
+  const nextHeroService = () => {
     setHeroServiceIndex((current) => (current + 1) % heroServices.length);
   };
 
-  const showPreviousHeroService = () => {
+  const previousHeroService = () => {
     setHeroServiceIndex(
       (current) => (current - 1 + heroServices.length) % heroServices.length
     );
   };
 
-  const handleHeroPointerDown = (event: React.PointerEvent<HTMLAnchorElement>) => {
-    if (!event.isPrimary || event.button !== 0) return;
-
-    heroPointerStartX.current = event.clientX;
-    heroDidSwipe.current = false;
+  const handleHeroPointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
+    dragStartX.current = event.clientX;
+    dragDistance.current = 0;
     event.currentTarget.setPointerCapture(event.pointerId);
   };
 
-  const handleHeroPointerUp = (event: React.PointerEvent<HTMLAnchorElement>) => {
-    if (heroPointerStartX.current === null || !event.isPrimary) return;
-
-    const distance = event.clientX - heroPointerStartX.current;
-    heroPointerStartX.current = null;
-
-    if (Math.abs(distance) < 40) return;
-
-    heroDidSwipe.current = true;
-    if (distance < 0) {
-      showNextHeroService();
-    } else {
-      showPreviousHeroService();
-    }
+  const handleHeroPointerMove = (event: ReactPointerEvent<HTMLDivElement>) => {
+    if (dragStartX.current === null) return;
+    dragDistance.current = event.clientX - dragStartX.current;
   };
 
-  const cancelHeroPointer = () => {
-    heroPointerStartX.current = null;
+  const finishHeroPointer = () => {
+    if (dragStartX.current === null) return;
+    if (dragDistance.current < -45) nextHeroService();
+    if (dragDistance.current > 45) previousHeroService();
+    dragStartX.current = null;
+    dragDistance.current = 0;
   };
 
-  const handleHeroWheel = (event: React.WheelEvent<HTMLAnchorElement>) => {
-    if (Math.abs(event.deltaX) <= Math.abs(event.deltaY)) return;
-
-    event.preventDefault();
-    if (heroWheelLocked.current) return;
-
-    heroWheelDistance.current += event.deltaX;
-
-    if (heroWheelResetTimer.current) {
-      window.clearTimeout(heroWheelResetTimer.current);
-    }
-
-    heroWheelResetTimer.current = window.setTimeout(() => {
-      heroWheelDistance.current = 0;
-    }, 180);
-
-    if (Math.abs(heroWheelDistance.current) < 45) return;
-
-    heroWheelLocked.current = true;
-    heroDidSwipe.current = true;
-
-    if (heroWheelDistance.current > 0) {
-      showNextHeroService();
-    } else {
-      showPreviousHeroService();
-    }
-
-    heroWheelDistance.current = 0;
+  const handleHeroWheel = (event: ReactWheelEvent<HTMLDivElement>) => {
+    if (wheelLock.current || Math.abs(event.deltaX) < 16) return;
+    wheelLock.current = true;
+    if (event.deltaX > 0) nextHeroService();
+    else previousHeroService();
     window.setTimeout(() => {
-      heroWheelLocked.current = false;
+      wheelLock.current = false;
     }, 450);
   };
 
   useEffect(() => {
-    const recoveryLinkLandedOnHome =
-      window.location.hash.includes("type=recovery") ||
-      new URLSearchParams(window.location.search).get("type") === "recovery";
-
-    if (recoveryLinkLandedOnHome) {
-      router.replace(
-        `/account/reset-password${window.location.search}${window.location.hash}`
-      );
-      return;
+    const hash = window.location.hash;
+    if (hash.includes("type=recovery")) {
+      router.replace(`/account/reset-password${hash}`);
     }
-
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((event) => {
-      if (event === "PASSWORD_RECOVERY") {
-        router.replace("/account/reset-password");
-      }
-    });
-
-    return () => subscription.unsubscribe();
   }, [router]);
 
   useEffect(() => {
-    const fetchArtists = async () => {
-      const { data, error } = await supabase
+    const loadArtists = async () => {
+      try {
+        const { data, error } = await supabase
+          .from("artists")
+          .select("id, name, category, location, price_start, profile_image_url")
+          .eq("is_active", true)
+          .order("created_at", { ascending: false });
+
+        if (error) throw error;
+        setArtists((data as Artist[]) || []);
+      } catch (error) {
+        console.error("Unable to load homepage artists:", error);
+        setArtists([]);
+      } finally {
+        setArtistsLoading(false);
+      }
+    };
+
+    loadArtists();
+  }, []);
+
+  useEffect(() => {
+    const interval = window.setInterval(nextHeroService, 5000);
+    return () => window.clearInterval(interval);
+  }, []);
+
+  useEffect(() => {
+    const loadAccount = async () => {
+      const { data } = await supabase.auth.getUser();
+      const signedInUser = data.user;
+      setUser(signedInUser);
+      if (!signedInUser) return;
+
+      const { data: profile } = await supabase
         .from("artists")
-        .select("*")
-        .eq("is_active", true)
-        .order("name", { ascending: true });
+        .select("id, name, profile_image_url")
+        .eq("id", signedInUser.id)
+        .maybeSingle();
 
-      if (error) {
-        console.log(error);
-        return;
-      }
-
-      setArtists(data || []);
+      setArtistProfile(profile || null);
     };
 
-    fetchArtists();
-  }, []);
+    loadAccount();
 
-  useEffect(() => {
-    const desktop = window.matchMedia("(min-width: 768px)");
-    const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
-    if (!desktop.matches || reducedMotion.matches) return;
-
-    const timer = window.setInterval(() => {
-      setHeroServiceIndex((current) => (current + 1) % heroServices.length);
-    }, 5000);
-
-    return () => window.clearInterval(timer);
-  }, []);
-
-  useEffect(() => {
-    const getUser = async () => {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-
-      setUser(user);
-
-      if (!user) {
-        setArtistId(null);
-        return;
-      }
-
-      const { data: artist } = await supabase
-  .from("artists")
-  .select("*")
-  .eq("id", user.id)
-  .maybeSingle();
-
-setArtistId(artist?.id || null);
-setArtistProfile(artist);
-    };
-
-    getUser();
+    const { data: listener } = supabase.auth.onAuthStateChange(() => loadAccount());
+    return () => listener.subscription.unsubscribe();
   }, []);
 
   const categories = useMemo(() => {
-    return Array.from(new Set(artists.map((artist) => artist.category))).filter(
-      Boolean
-    );
+    const counts = artists.reduce<Record<string, number>>((result, artist) => {
+      result[artist.category] = (result[artist.category] || 0) + 1;
+      return result;
+    }, {});
+
+    return Object.entries(counts).map(([name, count]) => ({ name, count }));
   }, [artists]);
 
-  const filteredArtists = useMemo(() => {
-    if (!searchQuery.trim()) return artists.slice(0, 12);
-
-    const query = searchQuery.toLowerCase();
-
-    return artists.filter(
-      (artist) =>
-        artist.name.toLowerCase().includes(query) ||
-        artist.category.toLowerCase().includes(query) ||
-        artist.location.toLowerCase().includes(query)
-    );
+  const searchSuggestions = useMemo(() => {
+    const query = searchQuery.trim().toLowerCase();
+    if (!query) return [];
+    const values = new Set<string>();
+    artists.forEach((artist) => {
+      [artist.name, artist.category, artist.location].forEach((value) => {
+        if (value?.toLowerCase().includes(query)) values.add(value);
+      });
+    });
+    return Array.from(values).slice(0, 5);
   }, [artists, searchQuery]);
 
   const handleSearch = () => {
-  const query = searchQuery.trim();
-
-  router.push(
-    query
-      ? `/browse?search=${encodeURIComponent(query)}`
-      : "/browse"
-  );
-};
-  const handleLogout = async () => {
-    await supabase.auth.signOut({ scope: "local" });
-    window.location.reload();
+    const query = searchQuery.trim();
+    router.push(query ? `/browse?search=${encodeURIComponent(query)}` : "/browse");
   };
 
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    setAccountMenuOpen(false);
+    setUser(null);
+    setArtistProfile(null);
+    router.refresh();
+  };
+
+  const avatar =
+    artistProfile?.profile_image_url || user?.user_metadata?.avatar_url || null;
+  const displayName =
+    artistProfile?.name || user?.user_metadata?.full_name || user?.email || "Account";
+
   return (
-    <main className="min-h-screen bg-white text-black">
-      <header className="flex items-center justify-between bg-[#faf6f5] px-4 py-5 text-[15px] md:px-10 md:py-6">
-        <Link
-          href="/"
-          aria-label="Lumina home"
-          className="transition hover:opacity-70"
-        >
-          <LuminaBrand
-            priority
-            className="h-auto w-[88px] sm:w-[104px]"
-          />
-        </Link>
+    <main data-lumina-public-page className="min-h-screen overflow-x-hidden bg-lumina-surface text-lumina-text">
+      <header className="border-b border-lumina-border bg-lumina-bg-soft">
+        <div className="grid h-[76px] w-full grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center px-3 sm:px-4 lg:px-5 xl:px-6">
+          <Link href="/" aria-label="Lumina home" className="block w-[116px] justify-self-start sm:w-[132px]">
+            <LuminaBrand variant="wordmark" priority className="h-auto w-full" />
+          </Link>
 
-        <nav className="relative flex items-center gap-3 whitespace-nowrap text-[12px] sm:gap-5 sm:text-sm md:text-[15px]">
-  <Link href="/browse" className="transition hover:opacity-70">
-    Browse Artists
-  </Link>
+          <nav className="hidden items-center gap-7 justify-self-center text-[14px] md:flex">
+            <Link href="/browse" className="transition hover:text-lumina-attention">Browse</Link>
+            <Link href="/browse/map" className="transition hover:text-lumina-attention">Map</Link>
+            <Link href="/how-it-works" className="transition hover:text-lumina-attention">How it works</Link>
+          </nav>
 
-  {!user ? (
-    <>
-      <Link href="/login" className="transition hover:opacity-70">
-        Login
-      </Link>
-
-      <Link href="/join-as-artist" className="transition hover:opacity-70">
-        Join as Artist
-      </Link>
-    </>
-  ) : (
-    <>
-      <button
-        onClick={() => setAccountMenuOpen((current) => !current)}
-        className="flex h-10 w-10 items-center justify-center rounded-full transition hover:opacity-80"
-        aria-label="Account menu"
-      >
-        {accountImage ? (
-  <img
-    src={accountImage}
-    alt={accountName}
-    className="h-9 w-9 rounded-full object-cover"
-  />
-) : (
-  <span className="flex h-9 w-9 items-center justify-center rounded-full bg-black text-[13px] font-medium text-white">
-    {accountInitial}
-  </span>
-)}
-      </button>
-
-      {accountMenuOpen && (
-        <div className="absolute right-0 top-12 z-50 w-[220px] rounded-[20px] border border-neutral-200 bg-white p-2 shadow-xl">
-          {artistId ? (
-            <>
-              <Link
-                href="/dashboard"
-                className="block rounded-[14px] px-4 py-3 hover:bg-[#faf6f5]"
+          {user ? (
+            <div className="relative justify-self-end">
+              <button
+                type="button"
+                aria-expanded={accountMenuOpen}
+                aria-label="Open account menu"
+                onClick={() => setAccountMenuOpen((open) => !open)}
+                className="flex h-11 w-11 items-center justify-center overflow-hidden rounded-full border border-lumina-border bg-lumina-surface text-sm font-medium shadow-sm"
               >
-                Dashboard
-              </Link>
+                {avatar ? (
+                  <img src={avatar} alt="" className="h-full w-full object-cover" />
+                ) : (
+                  displayName.charAt(0).toUpperCase()
+                )}
+              </button>
 
-              <Link
-                href="/dashboard/profile"
-                className="block rounded-[14px] px-4 py-3 hover:bg-[#faf6f5]"
-              >
-                Edit Profile
-              </Link>
-
-              <Link
-                href="/dashboard/settings"
-                className="block rounded-[14px] px-4 py-3 hover:bg-[#faf6f5]"
-              >
-                Settings &amp; Privacy
-              </Link>
-            </>
+              {accountMenuOpen && (
+                <div className="absolute right-0 top-14 z-40 w-[260px] rounded-[22px] border border-lumina-glass-border bg-lumina-surface/95 p-3 text-lumina-text shadow-xl backdrop-blur-[14px]">
+                  <div className="border-b border-lumina-border px-3 py-3">
+                    <p className="truncate text-[14px] font-medium">{displayName}</p>
+                    <p className="mt-1 truncate text-[12px] text-lumina-text-muted">{user.email}</p>
+                  </div>
+                  <div className="py-2 text-[14px]">
+                    {artistProfile ? (
+                      <>
+                        <Link href="/dashboard" className="block rounded-xl px-3 py-2.5 font-medium hover:bg-lumina-blush/70">Open dashboard</Link>
+                        <Link href={`/artist/${artistProfile.id}`} className="block rounded-xl px-3 py-2.5 hover:bg-lumina-blush/70">View public profile</Link>
+                        <Link href="/dashboard/settings" className="block rounded-xl px-3 py-2.5 hover:bg-lumina-blush/70">Settings &amp; privacy</Link>
+                      </>
+                    ) : (
+                      <>
+                        <Link href="/client" className="block rounded-xl px-3 py-2.5 font-medium hover:bg-lumina-blush/70">Open my account</Link>
+                        <Link href="/account" className="block rounded-xl px-3 py-2.5 hover:bg-lumina-blush/70">Profile / Settings</Link>
+                      </>
+                    )}
+                    {isLuminaAdmin && (
+                      <Link href="/admin/reviews" className="flex items-center gap-2 rounded-xl px-3 py-2.5 hover:bg-lumina-blush/70">
+                        <ShieldCheck size={15} strokeWidth={1.6} aria-hidden="true" />
+                        Admin / Moderation
+                      </Link>
+                    )}
+                    <button type="button" onClick={handleLogout} className="w-full rounded-xl px-3 py-2.5 text-left text-lumina-text-muted hover:bg-lumina-blush/70 hover:text-lumina-black">Sign out</button>
+                  </div>
+                </div>
+              )}
+            </div>
           ) : (
-            <>
-              <Link
-                href="/saved"
-                className="block rounded-[14px] px-4 py-3 hover:bg-[#faf6f5]"
-              >
-                Saved Artists
-              </Link>
-
-              <Link
-                href="/my-requests"
-                className="block rounded-[14px] px-4 py-3 hover:bg-[#faf6f5]"
-              >
-                My Requests
-              </Link>
-
-              <Link
-                href="/account"
-                className="block rounded-[14px] px-4 py-3 hover:bg-[#faf6f5]"
-              >
-                Account
-              </Link>
-            </>
+            <div className="flex items-center justify-self-end gap-2 sm:gap-3">
+              <Link href="/login" className="rounded-full bg-lumina-black px-4 py-2.5 text-[13px] text-white transition hover:opacity-80 sm:px-5">Log in</Link>
+              <Link href="/join-as-artist" className="hidden rounded-full border border-lumina-border bg-lumina-surface px-5 py-2.5 text-[13px] transition hover:border-lumina-black sm:block">Join as Artist</Link>
+            </div>
           )}
-          <div className="my-1 border-t border-neutral-100" />
-          <button
-            onClick={handleLogout}
-            className="block w-full rounded-[14px] px-4 py-3 text-left text-neutral-500 hover:bg-[#faf6f5] hover:text-black"
-          >
-            Sign Out
-          </button>
         </div>
-      )}
-    </>
-  )}
-</nav>
       </header>
-<section className="bg-white px-6 pb-6 pt-10 md:px-10 md:pb-8 md:pt-16 lg:px-14 lg:pt-20">
-  <div className="mx-auto grid w-full max-w-[1580px] grid-cols-1 items-center gap-12 md:grid-cols-[minmax(0,1.18fr)_minmax(0,0.82fr)] md:gap-10 lg:gap-16 xl:grid-cols-[minmax(620px,1.16fr)_minmax(440px,0.84fr)] xl:gap-20 2xl:gap-24">
-  <div className="w-full max-w-[680px] md:mx-0 md:pr-1 md:text-left xl:pr-2">
-    <h1
-      className="max-w-[680px] text-[38px] font-semibold leading-[0.95] tracking-[-0.03em] md:mx-0 md:text-[48px] lg:text-[60px] xl:text-[70px] 2xl:text-[74px]"
-      style={{ fontFamily: "Georgia, Times New Roman, serif" }}
-    >
-      Find beauty
-      <br />
-      professionals
-      <br />
-      you can trust
-    </h1>
 
-    <p
-      className="mt-8 max-w-[680px] text-[20px] leading-[1.35] text-neutral-700 md:mx-0 md:mt-7 md:text-[20px] lg:text-[23px] xl:text-[27px]"
-      style={{ fontFamily: "Georgia, Times New Roman, serif" }}
-    >
-      Compare portfolios, pricing, reviews, and verified results before you
-      book.
-    </p>
-
-    <div className="mt-6">
-      <div className="relative w-full max-w-[610px] md:mx-0">
-
-    <SearchBar
-
-      value={searchQuery}
-
-      onChange={setSearchQuery}
-
-      placeholder="City, artist, or service"
-
-      showButton={true}
-
-      onSearch={handleSearch}
-
-    />
-
-        {searchQuery.trim() && (
-          <div className="absolute left-0 top-[52px] z-20 w-full rounded-[18px] bg-white p-3 shadow-lg">
-            {filteredArtists.length > 0 ? (
-              filteredArtists.slice(0, 5).map((artist) => (
-                <Link
-                  key={artist.id}
-                  href={`/artist/${artist.id}`}
-                  className="block rounded-[14px] px-3 py-3 transition hover:bg-[#fbf7f6]"
-                >
-                  <p className="text-[15px] font-medium">{artist.name}</p>
-
-                  <p className="text-[13px] text-neutral-500">
-                    {artist.category} • {artist.location}
-                  </p>
-                </Link>
-              ))
-            ) : (
-              <p className="px-3 py-3 text-[14px] text-neutral-500">
-                No artists found.
-              </p>
-            )}
-
-            <Link
-              href={`/browse?search=${encodeURIComponent(searchQuery)}`}
-              className="mt-2 block rounded-full bg-black px-4 py-2 text-center text-[13px] text-white"
-            >
-              Search all artists
+      <div className="bg-lumina-surface">
+      <section className={`${wideVisualContainer} grid gap-10 pb-14 pt-12 md:pt-16 lg:grid-cols-[0.92fr_1.08fr] lg:items-center lg:gap-16 lg:pb-20 lg:pt-20 xl:grid-cols-[minmax(500px,0.9fr)_minmax(0,1.1fr)]`}>
+        <div className="max-w-[660px]">
+          <p className="mb-5 text-[12px] uppercase tracking-[0.24em] text-lumina-attention">Beauty. Trust. Care.</p>
+          <h1 className="text-[52px] leading-[0.93] tracking-[-0.045em] sm:text-[68px] lg:text-[82px]" style={serif}>
+              Clarity before<br />you commit<span className="text-lumina-text">.</span>
+          </h1>
+          <p className="mt-7 max-w-[540px] text-[18px] leading-[1.65] text-lumina-text-muted sm:text-[20px]">
+            Discover beauty professionals through clear services, starting prices,
+            portfolios, and verified client reviews before you decide.
+          </p>
+          <div className="mt-8 flex flex-wrap gap-3">
+            <Link href="/browse" className="inline-flex items-center gap-2 rounded-full bg-lumina-black px-6 py-3.5 text-[14px] text-white transition hover:opacity-80">
+              Explore artists <ArrowRight size={16} />
+            </Link>
+            <Link href="/how-it-works" className="inline-flex items-center gap-2 rounded-full border border-lumina-border bg-lumina-surface px-6 py-3.5 text-[14px] transition hover:border-lumina-black">
+              How it works <span className="flex h-5 w-5 items-center justify-center rounded-full border border-current text-[10px]">▶</span>
             </Link>
           </div>
-        )}
-      </div>
-    </div>
+          <p className="mt-5 text-[13px] text-lumina-text-muted">
+            Beauty professional? <Link href="/join-as-artist" className="text-lumina-black underline underline-offset-4">Create a professional account</Link>
+          </p>
+        </div>
 
-    <div className="mt-7 flex flex-col gap-2.5 sm:flex-row sm:justify-center md:mt-6 md:justify-start md:gap-2">
-      <Link
-        href="/browse"
-        className="rounded-full bg-black px-6 py-2.5 text-center text-[14px] font-medium text-white transition hover:opacity-90"
-      >
-        Browse Artists
-      </Link>
-
-      {!user && (
-        <Link
-          href="/signup"
-          className="rounded-full border border-neutral-300 bg-white px-6 py-2.5 text-center text-[14px] font-medium text-black transition hover:bg-neutral-50"
+        <div
+          className="group relative mx-auto w-full max-w-[740px] cursor-grab select-none overflow-hidden rounded-[28px] border border-lumina-border bg-lumina-surface shadow-[0_24px_70px_rgba(39,36,40,0.09)] active:cursor-grabbing xl:mx-0 xl:max-w-[780px] xl:justify-self-end"
+          onPointerDown={handleHeroPointerDown}
+          onPointerMove={handleHeroPointerMove}
+          onPointerUp={finishHeroPointer}
+          onPointerCancel={finishHeroPointer}
+          onWheel={handleHeroWheel}
         >
-          Create Client Account
-        </Link>
-      )}
-
-      {user && artistId && (
-        <Link
-          href="/dashboard"
-          className="rounded-full border border-black px-6 py-2.5 text-center text-[14px] transition hover:bg-black hover:text-white"
-        >
-          Go to Dashboard
-        </Link>
-      )}
-    </div>
-
-    {!user && (
-      <p className="mt-4 text-center text-[13px] text-neutral-500 md:text-left">
-        Beauty professional?{" "}
-        <Link href="/join-as-artist" className="text-black underline">
-          Create a professional account
-        </Link>
-      </p>
-    )}
-  </div>
-  <div className="hidden md:block md:pl-1 xl:pl-2">
-    <div className="relative ml-auto w-full max-w-[520px] overflow-hidden rounded-[26px] bg-[#f5f1ef] shadow-[0_16px_48px_rgba(45,35,30,0.08)] lg:rounded-[30px]">
-      <Link
-        href={`/browse?categories=${encodeURIComponent(heroServices[heroServiceIndex][0])}`}
-        className="group block cursor-grab touch-pan-y select-none active:cursor-grabbing"
-        onPointerDown={handleHeroPointerDown}
-        onPointerUp={handleHeroPointerUp}
-        onPointerCancel={cancelHeroPointer}
-        onWheel={handleHeroWheel}
-        onClick={(event) => {
-          if (heroDidSwipe.current) {
-            event.preventDefault();
-            heroDidSwipe.current = false;
-          }
-        }}
-        aria-label={`Featured service: ${heroServices[heroServiceIndex][0]}. Swipe or drag to explore other services.`}
-      >
-        <div className="relative aspect-[4/3] overflow-hidden bg-neutral-100">
-          <img
-            key={heroServices[heroServiceIndex][1]}
-            src={heroServices[heroServiceIndex][1]}
-            alt={heroServices[heroServiceIndex][0]}
-            draggable={false}
-            className="h-full w-full object-cover transition duration-1000 group-hover:scale-[1.035]"
-          />
-          <div className="absolute inset-0 bg-gradient-to-tr from-black/60 via-black/5 to-white/10" />
-          <div className="absolute left-5 top-5 rounded-full border border-white/35 bg-white/15 px-3 py-1.5 text-[9px] font-medium uppercase tracking-[0.16em] text-white backdrop-blur-md lg:left-7 lg:top-7 lg:px-4 lg:py-2 lg:text-[11px]">
-            Featured service
+          <div className="relative aspect-[4/3] overflow-hidden">
+            <img key={currentHeroService.image} src={currentHeroService.image} alt={`${currentHeroService.label} service`} className="h-full w-full animate-[fadeIn_450ms_ease] object-cover" />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/55 via-transparent to-black/5" />
+            <span className="absolute left-6 top-6 rounded-full border border-white/50 bg-black/10 px-4 py-2 text-[11px] uppercase tracking-[0.18em] text-white backdrop-blur-sm">Featured service</span>
+            <div className="absolute bottom-7 left-7 right-7 text-white">
+              <p className="text-[11px] uppercase tracking-[0.22em] text-white/75">This moment in beauty</p>
+              <h2 className="mt-2 text-[34px] sm:text-[46px]" style={serif}>{currentHeroService.label}</h2>
+              <Link href={`/browse?search=${encodeURIComponent(currentHeroService.label)}`} className="mt-3 inline-flex items-center gap-2 text-[14px]" onPointerDown={(event) => event.stopPropagation()}>
+                View matching professionals <ArrowRight size={15} />
+              </Link>
+            </div>
           </div>
-          <div className="absolute inset-x-0 bottom-0 px-5 pb-5 pt-20 text-white lg:px-8 lg:pb-8 xl:px-10 xl:pb-10">
-            <p className="text-[9px] font-medium uppercase tracking-[0.18em] text-white/70 lg:text-[11px] xl:text-[12px]">This moment in beauty</p>
-            <p className="mt-2 text-[25px] leading-none lg:mt-3 lg:text-[32px] xl:text-[40px]" style={{ fontFamily: "Georgia, Times New Roman, serif" }}>{heroServices[heroServiceIndex][0]}</p>
-            <div className="mt-3 inline-flex items-center gap-2 text-[11px] font-medium text-white/90 lg:mt-5 lg:text-[13px]">
-              View matching professionals <span className="transition group-hover:translate-x-1">→</span>
+          <div className="flex items-center justify-between px-6 py-4">
+            <p className="text-[12px] text-lumina-text-muted">Swipe, drag, or use your trackpad</p>
+            <div className="flex items-center gap-2">
+              {heroServices.map((service, index) => (
+                <button key={service.label} type="button" aria-label={`Show ${service.label}`} onClick={() => setHeroServiceIndex(index)} className={`h-2 rounded-full transition-all ${index === heroServiceIndex ? "w-7 bg-lumina-black" : "w-2 bg-lumina-border hover:bg-lumina-text-muted"}`} />
+              ))}
             </div>
           </div>
         </div>
-      </Link>
-      <div className="flex items-center justify-center px-7 py-3.5">
-        <div className="flex gap-2" aria-label="Choose a service">
-          {heroServices.map(([service], index) => (
-            <button
-              key={service}
-              type="button"
-              onClick={() => setHeroServiceIndex(index)}
-              aria-label={`Show ${service}`}
-              aria-pressed={heroServiceIndex === index}
-              className={`h-2 rounded-full transition ${heroServiceIndex === index ? "w-6 bg-black" : "w-2 bg-neutral-300 hover:bg-neutral-500"}`}
-            />
+      </section>
+      </div>
+
+      <section className={wideVisualContainer}>
+        <div className="grid overflow-hidden rounded-[22px] border border-lumina-glass-border bg-lumina-glass backdrop-blur-[12px] sm:grid-cols-2 lg:grid-cols-4">
+          {[
+            [artists.length || "New", "active professional profiles"],
+            [categories.length || heroServices.length, "beauty categories to explore"],
+            ["No charge", "to send a request"],
+            ["Completed", "appointments unlock verified reviews"],
+          ].map(([value, label], index) => (
+            <div key={String(label)} className={`px-6 py-6 text-center ${index ? "border-t border-lumina-border sm:border-l sm:border-t-0" : ""} ${index === 2 ? "sm:border-l-0 lg:border-l" : ""}`}>
+              <p className="text-[20px]" style={serif}>{value}</p>
+              <p className="mt-1 text-[12px] text-lumina-text-muted">{label}</p>
+            </div>
           ))}
         </div>
-      </div>
-    </div>
-  </div>
-  </div>
-</section>
-      <section className="px-6 pt-4 pb-10 md:px-14 md:pt-5 md:pb-16 lg:pt-6 lg:pb-20">
-        <div className="mx-auto w-full max-w-[1580px]">
-        <div className="max-w-[760px]">
-  <p className="text-[12px] font-semibold uppercase tracking-[0.18em] text-neutral-500">
-    Browse by category
-  </p>
-
-  <h2
-    className="mt-3 text-[30px] leading-[1.12] md:text-[40px]"
-    style={{ fontFamily: "Georgia, Times New Roman, serif" }}
-  >
-    Start with the service you’re looking for.
-  </h2>
-</div>
-
-        {categories.length === 0 ? (
-          <div className="mx-auto mt-10 max-w-[520px] rounded-[22px] bg-[#fbf7f6] p-6 text-center">
-            <p className="text-[15px] text-neutral-600">
-              No categories are live yet. Artists will appear here once profiles
-              are added.
-            </p>
-          </div>
-        ) : (
-          <div className="mt-8 grid grid-cols-2 gap-5 md:mt-10 md:grid-cols-3 lg:grid-cols-5 lg:gap-8">
-            {categories.map((category) => {
-              const count = artists.filter(
-                (artist) => artist.category === category
-              ).length;
-
-              return (
-  <Link
-    key={category}
-    href={`/browse?categories=${encodeURIComponent(category)}`}
-    className="group overflow-hidden rounded-[22px] border border-[#eee6e2] bg-white transition duration-300 hover:-translate-y-1 hover:shadow-lg"
-  >
-    <div className="aspect-[4/3] overflow-hidden bg-[#f8f5f3]">
-      <img
-        src={categoryImages[category] || "/categories/default.jpg"}
-        alt={category}
-        className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
-      />
-    </div>
-
-    <div className="p-4 text-center">
-      <p
-        className="text-[18px] md:text-[20px]"
-        style={{ fontFamily: "Georgia, Times New Roman, serif" }}
-      >
-        {category}
-      </p>
-
-      <p className="mt-1 text-[14px] text-neutral-500">
-        {count} {count === 1 ? "Artist" : "Artists"}
-      </p>
-
-      <div className="mt-3 text-[22px] text-neutral-400 transition group-hover:translate-x-1">
-        →
-      </div>
-    </div>
-  </Link>
-);
-            })}
-          </div>
-        )}
-        </div>
       </section>
 
-      <section className="bg-[#faf6f5] px-4 py-14 md:px-14 md:py-20 lg:py-24">
-        <div className="grid grid-cols-1 gap-8 md:grid-cols-2 md:gap-14">
-          <div>
-            <h2
-              className="text-[42px] leading-[1.05] font-semibold md:text-[54px] lg:text-[64px]"
-              style={{ fontFamily: "Georgia, Times New Roman, serif" }}
-            >
-              How
-              <br />
-              Lumina
-              <br />
-              works
-            </h2>
-
-            <p className="mt-6 max-w-[360px] text-[18px] text-neutral-700 md:mt-8 md:text-[22px]">
-              Beauty discovery should feel clearer before you spend money or
-              trust someone with your look.
-            </p>
+      <section className={`${editorialContainer} py-20 lg:py-24`}>
+        <div>
+          <div className="text-center">
+            <p className="text-[12px] uppercase tracking-[0.24em] text-lumina-attention">Find the right match</p>
+            <h2 className="mt-3 text-[38px] sm:text-[50px]" style={serif}>Search with more clarity.</h2>
+            <p className="mx-auto mt-3 max-w-[560px] text-[16px] leading-7 text-lumina-text-muted">Start with a service, artist, or city—then refine the results that matter to you.</p>
           </div>
 
-          <div className="grid grid-cols-1 gap-8 pt-2 md:grid-cols-3 md:gap-10 lg:pt-6 lg:gap-12">
-            <div>
-              <div className="mb-3 text-xl md:mb-4">✨</div>
-
-              <h3 className="text-[18px] font-medium md:text-[20px]">
-                1. Discover
-              </h3>
-
-              <p className="mt-2 text-[14px] text-neutral-600 md:text-[15px]">
-                Browse real professionals by service, city, and style.
-              </p>
+          <div className="mx-auto mt-8 w-full max-w-[1100px]">
+            <div className="relative text-left">
+              <SearchBar value={searchQuery} onChange={setSearchQuery} placeholder="Search by city, artist, or service" showButton onSearch={handleSearch} />
+              {searchSuggestions.length > 0 && (
+                <div className="absolute left-0 right-0 top-[calc(100%+8px)] z-30 overflow-hidden rounded-[20px] border border-lumina-glass-border bg-lumina-surface/95 p-2 shadow-xl backdrop-blur-[14px]">
+                  {searchSuggestions.map((suggestion) => (
+                    <button key={suggestion} type="button" onClick={() => { setSearchQuery(suggestion); router.push(`/browse?search=${encodeURIComponent(suggestion)}`); }} className="block w-full rounded-[14px] px-4 py-3 text-left text-[14px] hover:bg-lumina-blush/70">{suggestion}</button>
+                  ))}
+                </div>
+              )}
             </div>
-
-            <div>
-              <div className="mb-3 text-xl md:mb-4">♡</div>
-
-              <h3 className="text-[18px] font-medium md:text-[20px]">
-                2. Save & compare
-              </h3>
-
-              <p className="mt-2 text-[14px] text-neutral-600 md:text-[15px]">
-                Create a client account to save favorites and compare artists
-                across devices.
-              </p>
-            </div>
-
-            <div>
-              <div className="mb-3 text-xl md:mb-4">📅</div>
-
-              <h3 className="text-[18px] font-medium md:text-[20px]">
-                3. Request
-              </h3>
-
-              <p className="mt-2 text-[14px] text-neutral-600 md:text-[15px]">
-                Send a request with your service, date, and contact details.
-              </p>
+            <div className="mt-5 flex flex-wrap justify-center gap-2.5">
+              <Link href="/browse?panel=category" className="rounded-full border border-lumina-border bg-lumina-surface px-5 py-2.5 text-[13px] hover:border-lumina-black">Category</Link>
+              <Link href="/browse?panel=price" className="rounded-full border border-lumina-border bg-lumina-surface px-5 py-2.5 text-[13px] hover:border-lumina-black">Starting price</Link>
+              <Link href="/browse?nearby=1" className="rounded-full border border-lumina-border bg-lumina-surface px-5 py-2.5 text-[13px] hover:border-lumina-black">Nearby</Link>
+              <Link href="/browse/map" className="inline-flex items-center gap-2 rounded-full border border-lumina-border bg-lumina-surface px-5 py-2.5 text-[13px] hover:border-lumina-black"><MapPin size={14} /> Map view</Link>
+              <Link href="/browse?panel=filters" className="rounded-full border border-lumina-border bg-lumina-surface px-5 py-2.5 text-[13px] hover:border-lumina-black">More filters</Link>
             </div>
           </div>
         </div>
       </section>
 
-      <section className="px-4 pb-16 pt-14 md:px-14 md:pb-24 md:pt-20 lg:pb-28 lg:pt-24">
-        <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
-  <div>
-    <p className="text-[12px] font-semibold uppercase tracking-[0.18em] text-neutral-500">
-      Artists on Lumina
-    </p>
-
-    <h2
-      className="mt-3 text-[30px] leading-[1.12] md:text-[40px]"
-      style={{ fontFamily: "Georgia, Times New Roman, serif" }}
-    >
-      Discover professionals worth exploring.
-    </h2>
-  </div>
-
-  <p className="text-[13px] text-neutral-500">
-    <span className="md:hidden">Swipe to explore →</span>
-    <span className="hidden md:inline">Scroll to explore →</span>
-  </p>
-</div>
-
-        {filteredArtists.length === 0 ? (
-          <div className="mx-auto mt-10 max-w-[520px] rounded-[22px] bg-[#fbf7f6] p-6 text-center">
-            <p className="text-[15px] text-neutral-600">
-              No artists found. Try a different search or check back as more
-              artists join.
-            </p>
-          </div>
-        ) : (
-          <div className="-mx-4 mt-8 flex snap-x snap-mandatory gap-4 overflow-x-auto px-4 pb-5 md:-mx-14 md:mt-14 md:gap-7 md:px-14">
-            {filteredArtists.map((artist) => (
-    <ArtistCard
-      key={artist.id}
-      artist={artist}
-      className="w-[72vw] max-w-[300px] shrink-0 snap-start sm:w-[340px] sm:max-w-none md:w-[390px] lg:w-[410px]"
-    />
-  ))}
-          </div>
-        )}
-
-        <div className="mt-7 text-center md:mt-10">
-          <Link
-            href="/browse"
-            className="rounded-full border border-black px-7 py-3 text-[14px] transition hover:bg-black hover:text-white"
-          >
-            View all artists
-          </Link>
-        </div>
-      </section>
-
-      <section className="px-4 pb-16 md:px-14 md:pb-24 lg:pb-28">
-        <div className="grid grid-cols-1 gap-10 md:grid-cols-2 lg:grid-cols-4 lg:gap-14">
-          <div>
-            <h2
-              className="text-[42px] leading-[1.02] font-semibold md:text-[56px] lg:text-[72px]"
-              style={{ fontFamily: "Georgia, Times New Roman, serif" }}
-            >
-              Why
-              <br />
-              Choose
-              <br />
-              Lumina?
-            </h2>
-
-            <p
-              className="mt-8 max-w-[300px] text-[18px] leading-[1.35] md:mt-12 md:text-[22px] lg:text-[24px]"
-              style={{ fontFamily: "Georgia, Times New Roman, serif" }}
-            >
-              A trust-first beauty platform built for clarity before you
-              commit.
-            </p>
-          </div>
-
-          <div className="pt-2 md:pt-4 lg:pt-8">
-            <h3 className="text-[18px] font-semibold md:text-[20px]">
-              Real Trust Signals
-            </h3>
-
-            <p className="mt-4 text-[15px] leading-[1.5] text-neutral-700 md:mt-5 md:text-[16px]">
-              Profiles focus on real work, transparent services, and booking
-              confidence.
-            </p>
-          </div>
-
-          <div className="pt-2 md:pt-4 lg:pt-8">
-            <h3 className="text-[18px] font-semibold md:text-[20px]">
-              Clarity before you commit
-            </h3>
-
-            <p className="mt-4 text-[15px] leading-[1.5] text-neutral-700 md:mt-5 md:text-[16px]">
-              See pricing, availability, portfolio images, and service details
-              before reaching out.
-            </p>
-          </div>
-
-          <div className="pt-2 md:pt-4 lg:pt-8">
-            <h3 className="text-[18px] font-semibold md:text-[20px]">
-              Built for comparison
-            </h3>
-
-            <p className="mt-4 text-[15px] leading-[1.5] text-neutral-700 md:mt-5 md:text-[16px]">
-              Save favorites, compare options, and choose the artist who fits
-              your style and needs.
-            </p>
-          </div>
-        </div>
-      </section>
-
-      <section className="px-4 pb-20 text-center md:px-14 md:pb-28 lg:pb-32">
-        <h2
-          className="text-[36px] leading-[1.08] font-semibold md:text-[52px] lg:text-[64px]"
-          style={{ fontFamily: "Georgia, Times New Roman, serif" }}
-        >
-          Build confidence before you book
-        </h2>
-
-        <p className="mt-6 text-[16px] text-neutral-700 md:mt-8 md:text-[18px]">
-          Discover, compare, and request beauty professionals with more clarity.
-        </p>
-
-        <div className="mx-auto mt-10 grid max-w-[720px] grid-cols-1 gap-4 md:mt-14 md:grid-cols-2">
-          <div className="rounded-[24px] bg-[#fbf7f6] p-6">
-            <p className="text-[13px] uppercase tracking-[0.14em] text-neutral-400">
-              For Clients
-            </p>
-
-            <h3
-              className="mt-3 text-[28px] font-semibold"
-              style={{ fontFamily: "Georgia, Times New Roman, serif" }}
-            >
-              Save and compare artists
-            </h3>
-
-            <p className="mt-3 text-[14px] leading-[1.6] text-neutral-600">
-              Create a client account to save favorites, compare profiles, and
-              keep track of who you want to book.
-            </p>
-
-            <Link
-              href={user ? "/saved" : "/signup"}
-              className="mt-6 inline-block rounded-full bg-black px-7 py-3 text-[14px] text-white"
-            >
-              {user ? "View Saved Artists" : "Create Client Account"}
+      <section className="border-y border-lumina-border bg-lumina-surface py-16 lg:py-20">
+        <div className={wideVisualContainer}>
+          <div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <p className="text-[12px] uppercase tracking-[0.24em] text-lumina-attention">
+                Explore Lumina professionals
+              </p>
+              <h2 className="mt-3 text-[36px] sm:text-[48px]" style={serif}>
+                Professionals to explore.
+              </h2>
+              <p className="mt-3 max-w-[620px] text-[15px] leading-7 text-lumina-text-muted">
+                Browse real profiles, compare services and starting prices, and open a profile to learn more.
+              </p>
+            </div>
+            <Link href="/browse" className="inline-flex items-center gap-2 text-[14px]">
+              Explore all artists <ArrowRight size={15} />
             </Link>
           </div>
 
-          <div className="rounded-[24px] border border-neutral-200 p-6">
-            <p className="text-[13px] uppercase tracking-[0.14em] text-neutral-400">
-              For Artists
-            </p>
-
-            <h3
-              className="mt-3 text-[28px] font-semibold"
-              style={{ fontFamily: "Georgia, Times New Roman, serif" }}
-            >
-              Build your professional profile
-            </h3>
-
-            <p className="mt-3 text-[14px] leading-[1.6] text-neutral-600">
-              Join as a beauty professional to upload your work, list services,
-              and receive client requests.
-            </p>
-
-            <Link
-              href={artistId ? "/dashboard" : "/join-as-artist"}
-              className="mt-6 inline-block rounded-full border border-black px-7 py-3 text-[14px] transition hover:bg-black hover:text-white"
-            >
-              {artistId ? "Go to Dashboard" : "Join as an Artist"}
-            </Link>
-          </div>
-        </div>
-      </section>
-
-      <footer className="bg-[#f4f4f4] px-6 py-16 md:px-14 md:py-24">
-        <div className="grid grid-cols-1 gap-12 md:grid-cols-2 lg:grid-cols-4 lg:gap-20">
-          <div>
-            <Link
-              href="/"
-              aria-label="Lumina home"
-              className="inline-block rounded-[28px] bg-[radial-gradient(circle_at_50%_42%,#fffdfc_0%,#faf6f5_52%,#f7d9e0_100%)] p-4 shadow-[0_14px_36px_rgba(70,50,50,0.07)] transition hover:opacity-80"
-            >
-              <LuminaBrand
-                variant="primary"
-                className="h-auto w-[170px] sm:w-[190px]"
+          {artistsLoading ? (
+            <div className="-mx-5 mt-9 flex snap-x snap-mandatory gap-5 overflow-x-auto px-5 pb-3 sm:-mx-8 sm:px-8 lg:mx-0 lg:grid lg:grid-cols-4 lg:overflow-visible lg:px-0">
+              {Array.from({ length: 4 }).map((_, index) => (
+                <div key={index} className="w-[78vw] max-w-[315px] shrink-0 snap-start overflow-hidden rounded-[22px] border border-lumina-border bg-lumina-surface lg:w-auto lg:max-w-none">
+                  <div className="aspect-[4/3] animate-pulse bg-lumina-pearl" />
+                  <div className="space-y-3 p-5">
+                    <div className="h-4 w-2/3 animate-pulse rounded-full bg-lumina-pearl" />
+                    <div className="h-3 w-1/2 animate-pulse rounded-full bg-lumina-surface-soft" />
+                    <div className="h-3 w-3/4 animate-pulse rounded-full bg-lumina-surface-soft" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : artists.length === 1 ? (
+            <div className="mt-9 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
+              <ArtistCard
+                artist={artists[0]}
+                className="w-full max-w-[360px]"
+                viewerIsArtist={Boolean(artistProfile)}
+                isOwnProfile={artists[0].id === artistProfile?.id}
               />
+            </div>
+          ) : artists.length > 1 ? (
+            <div className="-mx-5 mt-9 flex snap-x snap-mandatory gap-5 overflow-x-auto px-5 pb-3 sm:-mx-8 sm:px-8 lg:mx-0 lg:grid lg:grid-cols-4 lg:overflow-visible lg:px-0">
+              {artists.slice(0, 8).map((artist) => (
+                <ArtistCard key={artist.id} artist={artist} className="w-[78vw] max-w-[315px] shrink-0 snap-start lg:w-auto lg:max-w-none" viewerIsArtist={Boolean(artistProfile)} isOwnProfile={artist.id === artistProfile?.id} />
+              ))}
+            </div>
+          ) : (
+            <div className="mt-9 flex flex-col gap-4 rounded-[24px] border border-lumina-glass-border bg-lumina-glass p-7 backdrop-blur-[12px] sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <h3 className="text-[22px]" style={serif}>New professionals are joining Lumina.</h3>
+                <p className="mt-2 text-[14px] text-lumina-text-muted">
+                  Explore the marketplace to see every available profile and service.
+                </p>
+              </div>
+              <Link href="/browse" className="inline-flex shrink-0 items-center gap-2 rounded-full bg-lumina-black px-5 py-3 text-[13px] text-white">
+                Browse artists <ArrowRight size={14} />
+              </Link>
+            </div>
+          )}
+        </div>
+      </section>
+
+      <section className="border-b border-lumina-border bg-lumina-surface py-16 lg:py-20">
+        <div className={wideVisualContainer}>
+          <div className="rounded-[24px] border border-lumina-glass-border bg-lumina-glass p-7 backdrop-blur-[12px] sm:p-9 lg:flex lg:flex-col lg:justify-between">
+            <div>
+              <p className="text-[11px] uppercase tracking-[0.22em] text-lumina-attention">Compare with clarity</p>
+              <h2 className="mt-3 max-w-[560px] text-[30px] sm:text-[38px]" style={serif}>Look beyond the first impression.</h2>
+              <p className="mt-3 max-w-[640px] text-[15px] leading-7 text-lumina-text-muted">Open a profile to compare the details that shape a confident decision.</p>
+              <div className="mt-7 divide-y divide-lumina-border border-y border-lumina-border">
+                {[
+                  ["01", "Services", "Review what is offered and the starting price."],
+                  ["02", "Work", "Explore portfolio examples and profile details."],
+                  ["03", "Trust", "Read reviews tied to completed Lumina appointments."],
+                ].map(([number, title, description]) => (
+                  <div key={number} className="grid gap-2 py-4 sm:grid-cols-[42px_110px_1fr] sm:items-baseline">
+                    <span className="text-[11px] tracking-[0.16em] text-lumina-text-muted">{number}</span>
+                    <span className="text-[14px] font-medium">{title}</span>
+                    <span className="text-[14px] leading-6 text-lumina-text-muted">{description}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <Link href="/browse" className="mt-7 inline-flex items-center gap-2 text-[14px] font-medium">
+              Browse professionals <ArrowRight size={15} />
             </Link>
-
-            <p className="mt-8 max-w-[280px] text-[16px] leading-[1.35] text-neutral-800">
-              Discover trusted beauty professionals and showcase your artistry
-              without social media pressure.
-            </p>
           </div>
+        </div>
+      </section>
 
-          <div>
-            <h3
-              className="text-[20px] font-semibold"
-              style={{ fontFamily: "Georgia, Times New Roman, serif" }}
-            >
-              For Clients
-            </h3>
+      <section className={`${wideVisualContainer} py-16 lg:py-20`}>
+        <p className="text-[12px] uppercase tracking-[0.24em] text-lumina-attention">Browse by category</p>
+        <h2 className="mt-3 max-w-[800px] text-[36px] leading-tight sm:text-[50px]" style={serif}>Start with the service you’re looking for.</h2>
+        <div className="mt-9 grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-6">
+          {(categories.length ? categories : heroServices.map((service) => ({ name: service.label, count: 0 }))).map((category) => (
+            <Link key={category.name} href={`/browse?search=${encodeURIComponent(category.name)}`} className="group overflow-hidden rounded-[20px] border border-lumina-border bg-lumina-surface">
+              <div className="aspect-[4/3] overflow-hidden bg-lumina-pearl"><img src={categoryImages[category.name] || "/categories/nail.jpg"} alt="" className="h-full w-full object-cover transition duration-500 group-hover:scale-[1.03]" /></div>
+              <div className="p-4">
+                <h3 className="text-[17px]" style={serif}>{category.name}</h3>
+                <p className="mt-1 text-[11px] text-lumina-text-muted">{category.count ? `${category.count} ${category.count === 1 ? "professional" : "professionals"}` : "Explore professionals"}</p>
+              </div>
+            </Link>
+          ))}
+        </div>
+      </section>
 
-            <div className="mt-8 space-y-2 text-[16px]">
-              <Link href="/browse" className="block transition hover:opacity-60">
-                Find Professionals
-              </Link>
+      <section className={`${wideVisualContainer} pb-20`}>
+        <div className="grid overflow-hidden rounded-[28px] border border-lumina-glass-border bg-lumina-glass backdrop-blur-[12px] lg:grid-cols-[0.85fr_1.15fr]">
+          <div className="flex flex-col justify-center p-8 sm:p-12 lg:p-14">
+            <p className="text-[12px] uppercase tracking-[0.22em] text-lumina-attention">Compare with confidence</p>
+            <h2 className="mt-4 text-[38px] leading-tight sm:text-[48px]" style={serif}>Save before you decide.</h2>
+            <p className="mt-4 max-w-[460px] text-[16px] leading-7 text-lumina-text-muted">Keep promising professionals together and compare their services, starting prices, work, and reviews.</p>
+            <div className="mt-7"><Link href={user && !artistProfile ? "/saved" : "/browse"} className="inline-flex items-center gap-2 rounded-full bg-lumina-black px-6 py-3.5 text-[14px] text-white">Start comparing <ArrowRight size={15} /></Link></div>
+          </div>
+          <div className="grid min-h-[330px] grid-cols-3 gap-2 p-3 sm:gap-3 sm:p-5">
+            {["/categories/hair.jpg", "/categories/makeup.jpg", "/categories/nail.jpg"].map((image, index) => (
+              <div key={image} className={`overflow-hidden rounded-[20px] ${index === 1 ? "translate-y-6" : ""}`}><img src={image} alt="Beauty service inspiration" className="h-full w-full object-cover" /></div>
+            ))}
+          </div>
+        </div>
+      </section>
 
-              <Link href="/signup" className="block transition hover:opacity-60">
-                Create Account
-              </Link>
+      <section className="bg-lumina-bg-soft py-20">
+        <div className={wideVisualContainer}>
+          <div className="flex flex-col justify-between gap-5 sm:flex-row sm:items-end">
+            <div>
+              <p className="text-[12px] uppercase tracking-[0.24em] text-lumina-attention">How Lumina works</p>
+              <h2 className="mt-3 text-[38px] sm:text-[50px]" style={serif}>From discovery to a verified review.</h2>
+            </div>
+            <Link href="/how-it-works" className="inline-flex items-center gap-2 text-[14px]">See the complete guide <ArrowRight size={15} /></Link>
+          </div>
+          <div className="mt-10 grid gap-3 md:grid-cols-3 lg:grid-cols-6">
+            {[
+              ["01", "Discover", "Search profiles and work."],
+              ["02", "Choose", "Review services and prices."],
+              ["03", "Request", "Share details and availability."],
+              ["04", "Confirm", "Review the proposal."],
+              ["05", "Complete", "The artist records completion."],
+              ["06", "Review", "Share a verified experience."],
+            ].map(([number, title, body]) => (
+              <div key={number} className="rounded-[20px] border border-lumina-border bg-lumina-surface p-5">
+                <p className="text-[11px] text-lumina-attention">{number}</p>
+                <h3 className="mt-6 text-[18px]" style={serif}>{title}</h3>
+                <p className="mt-2 text-[12px] leading-5 text-lumina-text-muted">{body}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
 
-              <Link href="/my-requests" className="block transition hover:opacity-60">
-              My Requests
-              </Link>
+      <section className={`${editorialContainer} py-20`}>
+        <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
+          {benefits.map(({ icon: Icon, title, body }) => (
+            <div key={title}>
+              <div className="flex h-11 w-11 items-center justify-center rounded-full bg-lumina-pearl text-lumina-text"><Icon size={19} strokeWidth={1.6} /></div>
+              <h3 className="mt-5 text-[21px]" style={serif}>{title}</h3>
+              <p className="mt-2 max-w-[260px] text-[14px] leading-6 text-lumina-text-muted">{body}</p>
+            </div>
+          ))}
+        </div>
+      </section>
 
-              <Link href="/saved" className="block transition hover:opacity-60">
-                Saved Artists
-              </Link>
-
-              <Link
-                href="/browse/map"
-                className="block transition hover:opacity-60"
-              >
-                Map View
-              </Link>
+      <section className="border-t border-lumina-border bg-lumina-surface py-20">
+        <div className={`${wideVisualContainer} grid gap-5 lg:grid-cols-2`}>
+          <div className="flex h-full flex-col rounded-[28px] border border-lumina-border bg-lumina-surface p-8 sm:p-11">
+            <div className="lg:flex-1">
+              <p className="text-[12px] uppercase tracking-[0.22em] text-lumina-attention">For clients</p>
+              <h2 className="mt-4 text-[36px] leading-tight" style={serif}>Find someone you feel good choosing.</h2>
+              <p className="mt-4 max-w-[470px] text-[15px] leading-7 text-lumina-text-muted">Save professionals, send requests, keep conversations organized, and leave reviews after completed services.</p>
+            </div>
+            <div className="mt-7 lg:mt-0 lg:pt-7">
+              <Link href="/signup" className="inline-flex items-center gap-2 rounded-full border border-lumina-border bg-lumina-surface px-6 py-3.5 text-[14px] text-lumina-text transition-colors duration-200 hover:border-lumina-black hover:bg-lumina-black hover:text-white focus-visible:border-lumina-black focus-visible:bg-lumina-black focus-visible:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lumina-black focus-visible:ring-offset-2">Create client account <ArrowRight size={15} /></Link>
             </div>
           </div>
-
-          <div>
-            <h3
-              className="text-[20px] font-semibold"
-              style={{ fontFamily: "Georgia, Times New Roman, serif" }}
-            >
-              For Artists
-            </h3>
-
-            <div className="mt-8 space-y-2 text-[16px]">
-              <Link
-                href="/join-as-artist"
-                className="block transition hover:opacity-60"
-              >
-                Join as an Artist
-              </Link>
-
-              <Link href="/login" className="block transition hover:opacity-60">
-                Professional Login
-              </Link>
-
-              <Link
-                href="/dashboard/portfolio"
-                className="block transition hover:opacity-60"
-              >
-                Portfolio
-              </Link>
-
-              <Link
-                href="/dashboard/requests"
-                className="block transition hover:opacity-60"
-              >
-                Requests
-              </Link>
+          <div className="flex h-full flex-col rounded-[28px] border border-lumina-border bg-lumina-surface p-8 sm:p-11">
+            <div className="lg:flex-1">
+              <p className="text-[12px] uppercase tracking-[0.22em] text-lumina-text-muted">For professionals</p>
+              <h2 className="mt-4 text-[36px] leading-tight" style={serif}>Let your work build lasting trust.</h2>
+              <p className="mt-4 max-w-[470px] text-[15px] leading-7 text-lumina-text-muted">Present your services, pricing, portfolio, requests, completed appointments, and client feedback in one place.</p>
+              <p className="mt-3 max-w-[500px] text-[14px] leading-6 text-lumina-text-muted">Organize client history, consultations, results, private notes, service preferences, reminders, and conversations in one workspace.</p>
             </div>
-          </div>
-
-          <div>
-            <h3
-              className="text-[20px] font-semibold"
-              style={{ fontFamily: "Georgia, Times New Roman, serif" }}
-            >
-              Company
-            </h3>
-
-            <div className="mt-8 space-y-2 text-[16px]">
-              <Link href="/about" className="block transition hover:opacity-60">
-                About
-              </Link>
-
-              <Link href="/contact" className="block transition hover:opacity-60">
-                Contact
-              </Link>
-
-              <Link href="/privacy" className="block transition hover:opacity-60">
-                Privacy
-              </Link>
+            <div className="mt-7 lg:mt-0 lg:pt-7">
+              <Link href="/join-as-artist" className="inline-flex items-center gap-2 rounded-full border border-lumina-border bg-lumina-surface px-6 py-3.5 text-[14px] text-lumina-text transition-colors duration-200 hover:border-lumina-black hover:bg-lumina-black hover:text-white focus-visible:border-lumina-black focus-visible:bg-lumina-black focus-visible:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lumina-black focus-visible:ring-offset-2">Join as Artist <ArrowRight size={15} /></Link>
             </div>
           </div>
         </div>
+      </section>
 
-        <p className="mt-16 text-center text-[15px] text-neutral-500">
-          © 2026 Lumina. All rights reserved.
-        </p>
+      <footer className="border-t border-lumina-border bg-lumina-bg-soft">
+        <div className="flex w-full flex-col gap-8 px-3 py-10 sm:px-4 md:grid md:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] md:items-center lg:px-5 xl:px-6">
+          <Link href="/" className="w-[120px] md:justify-self-start"><LuminaBrand variant="wordmark" className="h-auto w-full" /></Link>
+          <div className="flex flex-wrap gap-x-6 gap-y-3 text-[13px] text-lumina-text-muted md:justify-self-center">
+            <Link href="/browse">Browse</Link>
+            <Link href="/browse/map">Map</Link>
+            <Link href="/how-it-works">How it works</Link>
+            <Link href="/about">About</Link>
+            <Link href="/contact">Contact</Link>
+            <Link href="/privacy">Privacy</Link>
+          </div>
+          <p className="text-[12px] text-lumina-text-muted md:justify-self-end">© 2026 Lumina</p>
+        </div>
       </footer>
     </main>
   );

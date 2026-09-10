@@ -29,6 +29,7 @@ export default function ArtistSignupPage() {
       email,
       password,
       options: {
+        emailRedirectTo: `${window.location.origin}/login?redirect=${encodeURIComponent("/dashboard/onboarding")}`,
         data: {
           full_name: fullName,
           business_name: businessName,
@@ -54,6 +55,7 @@ export default function ArtistSignupPage() {
           location: "Location coming soon",
           price_start: 0,
           email,
+          is_active: false,
         },
       ]);
 
@@ -74,24 +76,26 @@ export default function ArtistSignupPage() {
     setFullName("");
     setBusinessName("");
 
-    router.push("/login");
+    router.push(
+      `/login?redirect=${encodeURIComponent("/dashboard/onboarding")}`
+    );
   };
 
   return (
-    <main className="min-h-screen bg-[#faf7f5] px-4 py-10 text-black md:px-10">
+    <main className="min-h-screen bg-lumina-bg px-4 py-10 text-lumina-text md:px-10">
       <Link href="/join-as-artist" className="text-[15px] hover:opacity-70">
         ← Back to artist info
       </Link>
 
-      <div className="mx-auto mt-16 max-w-[460px] rounded-[28px] bg-white p-8 shadow-sm md:p-10">
+      <div className="mx-auto mt-10 max-w-[460px] rounded-[24px] bg-lumina-surface p-6 shadow-sm sm:mt-16 sm:p-8 md:p-10">
         <h1
-          className="text-[42px] leading-[1.0] font-semibold"
+          className="text-[38px] leading-[1.02] font-semibold sm:text-[42px]"
           style={{ fontFamily: "Georgia, Times New Roman, serif" }}
         >
           Create professional account
         </h1>
 
-        <p className="mt-4 text-[15px] text-neutral-600">
+        <p className="mt-4 text-[15px] text-lumina-text-muted">
           This account is for beauty professionals who want to manage a public Lumina profile.
         </p>
 
@@ -107,7 +111,7 @@ export default function ArtistSignupPage() {
             placeholder="Full name"
             value={fullName}
             onChange={(e) => setFullName(e.target.value)}
-            className="w-full rounded-[16px] border border-neutral-200 px-4 py-4 text-[15px] outline-none"
+            className="w-full rounded-[14px] border border-lumina-border bg-lumina-surface px-4 py-3 text-[15px] text-lumina-text outline-none transition placeholder:text-lumina-text-muted/75 focus:border-lumina-text-muted/60"
           />
 
           <input
@@ -115,7 +119,7 @@ export default function ArtistSignupPage() {
             placeholder="Business or artist name, optional"
             value={businessName}
             onChange={(e) => setBusinessName(e.target.value)}
-            className="w-full rounded-[16px] border border-neutral-200 px-4 py-4 text-[15px] outline-none"
+            className="w-full rounded-[14px] border border-lumina-border bg-lumina-surface px-4 py-3 text-[15px] text-lumina-text outline-none transition placeholder:text-lumina-text-muted/75 focus:border-lumina-text-muted/60"
           />
 
           <input
@@ -123,7 +127,7 @@ export default function ArtistSignupPage() {
             placeholder="Professional email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            className="w-full rounded-[16px] border border-neutral-200 px-4 py-4 text-[15px] outline-none"
+            className="w-full rounded-[14px] border border-lumina-border bg-lumina-surface px-4 py-3 text-[15px] text-lumina-text outline-none transition placeholder:text-lumina-text-muted/75 focus:border-lumina-text-muted/60"
           />
 
           <input
@@ -131,29 +135,29 @@ export default function ArtistSignupPage() {
             placeholder="Password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            className="w-full rounded-[16px] border border-neutral-200 px-4 py-4 text-[15px] outline-none"
+            className="w-full rounded-[14px] border border-lumina-border bg-lumina-surface px-4 py-3 text-[15px] text-lumina-text outline-none transition placeholder:text-lumina-text-muted/75 focus:border-lumina-text-muted/60"
           />
 
 
         <button
           type="submit"
           disabled={loading}
-          className="mt-8 w-full rounded-full bg-black px-6 py-4 text-[15px] text-white transition hover:opacity-90 disabled:opacity-50"
+          className="mt-6 w-full rounded-full bg-lumina-black px-6 py-3 text-[14px] font-medium text-white transition hover:opacity-90 disabled:opacity-50"
         >
-          {loading ? "Creating professional account..." : "Create Professional Account"}
+          {loading ? "Creating professional account..." : "Create professional account"}
         </button>
         </form>
 
-        <p className="mt-6 text-center text-[14px] text-neutral-500">
+        <p className="mt-6 text-center text-[14px] text-lumina-text-muted">
           Already have a professional account?{" "}
-          <Link href="/login" className="text-black underline">
-            Professional Login
+          <Link href="/login" className="text-lumina-text underline">
+            Professional login
           </Link>
         </p>
 
-        <p className="mt-4 text-center text-[14px] text-neutral-500">
+        <p className="mt-4 text-center text-[14px] text-lumina-text-muted">
           Looking for beauty services?{" "}
-          <Link href="/signup" className="text-black underline">
+          <Link href="/signup" className="text-lumina-text underline">
             Create a client account
           </Link>
         </p>

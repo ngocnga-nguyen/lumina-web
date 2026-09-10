@@ -4,7 +4,7 @@ import Link from "next/link";
 import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { useSearchParams } from "next/navigation";
-import AccountMenu from "@/components/AccountMenu";
+import PublicPageHeader from "@/components/PublicPageHeader";
 import SaveArtistButton from "@/components/SaveArtistButton";
 import ArtistCard from "@/components/ArtistCard";
 import SearchBar from "@/components/SearchBar";
@@ -51,6 +51,8 @@ function BrowseContent() {
   const [openSort, setOpenSort] = useState(false);
   const [openFilter, setOpenFilter] = useState(false);
   const browseControlsRef = useRef<HTMLDivElement>(null);
+  const minPriceInputRef = useRef<HTMLInputElement>(null);
+  const nearbyRequestedRef = useRef(false);
   const [sortBy, setSortBy] = useState("newest");
   const [artists, setArtists] = useState<Artist[]>([]);
   const [searchQuery, setSearchQuery] = useState(
@@ -148,10 +150,41 @@ if (sort) {
   setSortBy(sort);
 }
 
-const categories = searchParams.get("categories");
-if (categories) {
-  setSelectedCategories(categories.split(","));
-}
+    const categories = searchParams.get("categories");
+    if (categories) {
+      setSelectedCategories(categories.split(","));
+    }
+
+    const panel = searchParams.get("panel");
+    if (panel === "category" || panel === "price" || panel === "filters") {
+      setOpenFilter(true);
+      setOpenSort(false);
+    }
+
+    if (panel === "price") {
+      window.setTimeout(() => minPriceInputRef.current?.focus(), 50);
+    }
+
+    if (searchParams.get("nearby") === "1" && !nearbyRequestedRef.current) {
+      nearbyRequestedRef.current = true;
+
+      if (!navigator.geolocation) {
+        setLocationStatus("Location is not supported on this browser.");
+      } else {
+        setLocationStatus("Getting your location...");
+        navigator.geolocation.getCurrentPosition(
+          (position) => {
+            setUserLocation({
+              latitude: position.coords.latitude,
+              longitude: position.coords.longitude,
+            });
+            setSortBy("nearest");
+            setLocationStatus("Using your current location.");
+          },
+          () => setLocationStatus("Location permission was denied.")
+        );
+      }
+    }
   }, []);
 
   const useMyLocation = () => {
@@ -271,240 +304,244 @@ if (categories) {
     selectedCategories.length + (minPrice ? 1 : 0) + (maxPrice ? 1 : 0);
 
   return (
-    <main className="min-h-screen bg-white text-black">
-     <header className="grid grid-cols-3 items-center bg-[#faf6f5] px-4 py-5 md:px-10">
+    <main data-lumina-public-page className="min-h-screen overflow-x-clip bg-lumina-surface text-lumina-text">
+      <PublicPageHeader backHref="/" surface="white" />
 
-  <div className="justify-self-start">
-    <Link href="/" className="text-sm transition hover:opacity-70">
-      ← Home
-    </Link>
-  </div>
+      <section className="mx-auto max-w-[1600px] px-4 pb-16 pt-8 md:px-10 md:pb-20 md:pt-12 lg:px-12 xl:px-16">
+        <div className="mx-auto w-full max-w-[1100px]">
+          <div className="w-full max-w-[900px] lg:mx-auto lg:text-center">
+            <div className="mb-6 inline-flex items-center rounded-full border border-lumina-border bg-lumina-surface p-1 text-sm shadow-[0_4px_14px_rgba(39,36,40,0.04)]">
+              <span className="rounded-full bg-lumina-black px-4 py-1.5 text-white">
+                List
+              </span>
 
-  <Link href="/" className="justify-self-center font-medium transition hover:opacity-70">
-    Lumina
-  </Link>
-  <div className="justify-self-end">
+              <Link
+                href={buildViewLink("/browse/map")}
+                className="rounded-full px-4 py-1.5 text-lumina-text-muted transition hover:text-lumina-black"
+              >
+                Map
+              </Link>
+            </div>
 
-  <AccountMenu />
+            <p className="mb-3 text-[11px] uppercase tracking-[0.24em] text-lumina-attention">
+              Explore Lumina
+            </p>
 
-</div>
-
-</header>
-
-      <section className="px-4 pt-8 pb-16 md:px-10 md:pt-10 md:pb-20">
-        <div className="grid gap-8 md:grid-cols-[minmax(0,1fr)_560px] md:items-start">
-          <div>
-            <div className="mb-5 inline-flex items-center rounded-full border border-neutral-200 p-1 text-sm">
-  <span className="rounded-full bg-black px-4 py-1.5 text-white">
-    List
-  </span>
-
-  <Link
-    href={buildViewLink("/browse/map")}
-    className="rounded-full px-4 py-1.5 text-neutral-500 transition hover:text-black"
-  >
-    Map
-  </Link>
-</div>
             <h1
-              className="text-[32px] font-semibold leading-[1.02] md:text-[54px]"
+              className="max-w-[900px] text-[38px] font-normal leading-[1.02] md:text-[58px] lg:mx-auto"
               style={{ fontFamily: "Georgia, Times New Roman, serif" }}
             >
               Browse beauty professionals
             </h1>
 
-            <p className="mt-2 text-sm text-neutral-700 md:mt-3 md:text-[18px]">
-  Discover {filteredAndSortedArtists.length} trusted beauty professional
-  {filteredAndSortedArtists.length !== 1 ? "s" : ""}.
-</p>
+            <p className="mt-3 text-sm leading-7 text-lumina-text-muted md:text-[18px]">
+              Explore {filteredAndSortedArtists.length} beauty professional
+              {filteredAndSortedArtists.length !== 1 ? "s" : ""} on Lumina.
+            </p>
 
             <button
               onClick={useMyLocation}
-              className="mt-4 rounded-full border border-black px-5 py-2 text-[14px] transition hover:bg-black hover:text-white"
+              className="mt-5 rounded-full border border-lumina-black bg-lumina-surface px-5 py-2 text-[14px] transition hover:bg-lumina-black hover:text-white"
             >
               Use my location
             </button>
 
             {locationStatus && (
-              <p className="mt-2 text-[13px] text-neutral-500">
+              <p className="mt-2 text-[13px] text-lumina-text-muted">
                 {locationStatus}
               </p>
             )}
-
           </div>
 
-          <div className="w-full min-w-0">
+          <div className="mt-10 w-full min-w-0 max-w-[1000px] lg:mx-auto">
             <SearchBar
-  value={searchQuery}
-  onChange={setSearchQuery}
-  placeholder="Search by city, artist, or service"
-  showButton={false}
-/>
+              value={searchQuery}
+              onChange={setSearchQuery}
+              placeholder="Search by city, artist, or service"
+              showButton={false}
+            />
 
             {searchQuery && (
               <button
                 onClick={() => setSearchQuery("")}
-                className="mt-3 text-[13px] text-neutral-500 hover:text-black"
+                className="mt-3 text-[13px] text-lumina-text-muted transition hover:text-lumina-black"
               >
                 Clear search
               </button>
             )}
-          
-<div ref={browseControlsRef} className="mt-4 flex items-center gap-8 text-sm text-neutral-700 md:justify-end md:text-[15px]">
-          <div className="relative">
-            <button
-              onClick={() => {
-                setOpenFilter((current) => !current);
-                setOpenSort(false);
-              }}
-              className="transition hover:text-black"
+
+            <div
+              ref={browseControlsRef}
+              className="mt-4 flex flex-wrap items-center justify-start gap-3 text-sm lg:justify-center"
             >
-              ☷ Filter {activeFilterCount > 0 && `(${activeFilterCount})`}
-            </button>
+              <div className="relative">
+                <button
+                  onClick={() => {
+                    setOpenFilter((current) => !current);
+                    setOpenSort(false);
+                  }}
+                  className="rounded-full border border-lumina-border bg-lumina-surface px-4 py-2 text-lumina-text transition hover:border-lumina-glass-border hover:bg-lumina-surface-soft"
+                >
+                  ☷ Filter {activeFilterCount > 0 && `(${activeFilterCount})`}
+                </button>
 
-            {openFilter && (
-              <div className="absolute left-0 top-8 z-20 w-[280px] rounded-[18px] border border-neutral-200 bg-white p-4 shadow-lg">
-                <div className="mb-4 flex items-center justify-between">
-                  <p className="font-medium">Filters</p>
+                {openFilter && (
+                  <div className="absolute left-0 top-[calc(100%+10px)] z-30 max-h-[min(70vh,560px)] w-[min(320px,calc(100vw-32px))] overflow-y-auto rounded-[22px] border border-lumina-glass-border bg-lumina-surface/95 p-5 text-lumina-text shadow-[0_18px_50px_rgba(39,36,40,0.10)] backdrop-blur-[14px] sm:left-auto sm:right-0">
+                    <div className="mb-5 flex items-center justify-between gap-4">
+                      <p
+                        className="text-[22px] leading-none"
+                        style={{ fontFamily: "Georgia, Times New Roman, serif" }}
+                      >
+                        Filters
+                      </p>
 
-                  <button
-                    onClick={clearFilters}
-                    className="text-xs text-neutral-500 hover:text-black"
-                  >
-                    Clear all
-                  </button>
-                </div>
+                      <button
+                        onClick={clearFilters}
+                        className="text-xs text-lumina-text-muted transition hover:text-lumina-black"
+                      >
+                        Clear all
+                      </button>
+                    </div>
 
-                <p className="mb-2 font-medium">Category</p>
+                    <p className="mb-2 text-[11px] uppercase tracking-[0.18em] text-lumina-attention">
+                      Category
+                    </p>
 
-                {[
-                  "Hair Stylist",
-                  "Lash Artist",
-                  "Nail Technician",
-                  "Aesthetician",
-                  "Makeup Artist",
-                  "Brow Artist",
-                ].map((item) => (
-                  <button
-                    key={item}
-                    onClick={() => toggleCategory(item)}
-                    className={`block w-full rounded-[10px] px-2 py-2 text-left text-sm ${
-                      selectedCategories.includes(item)
-                        ? "bg-[#faf6f5] font-medium text-black"
-                        : "text-neutral-600 hover:bg-[#faf6f5]"
-                    }`}
-                  >
-                    {item}
-                  </button>
-                ))}
+                    {[
+                      "Hair Stylist",
+                      "Lash Artist",
+                      "Nail Technician",
+                      "Aesthetician",
+                      "Makeup Artist",
+                      "Brow Artist",
+                    ].map((item) => (
+                      <button
+                        key={item}
+                        onClick={() => toggleCategory(item)}
+                        className={`block w-full rounded-[12px] px-3 py-2.5 text-left text-sm transition ${
+                          selectedCategories.includes(item)
+                            ? "bg-lumina-pearl font-medium text-lumina-text"
+                            : "text-lumina-text-muted hover:bg-lumina-surface-soft"
+                        }`}
+                      >
+                        {item}
+                      </button>
+                    ))}
 
-                <p className="mb-2 mt-5 font-medium">Price range</p>
+                    <p className="mb-2 mt-5 text-[11px] uppercase tracking-[0.18em] text-lumina-attention">
+                      Starting price
+                    </p>
 
-                <div className="grid grid-cols-2 gap-3">
-                  <input
-                    type="number"
-                    placeholder="Min"
-                    value={minPrice}
-                    onChange={(e) => setMinPrice(e.target.value)}
-                    className="w-full rounded-[12px] border border-neutral-200 px-3 py-2 text-sm outline-none"
-                  />
+                    <div className="grid grid-cols-2 gap-3">
+                      <input
+                        ref={minPriceInputRef}
+                        type="number"
+                        placeholder="Min"
+                        value={minPrice}
+                        onChange={(e) => setMinPrice(e.target.value)}
+                        className="min-w-0 rounded-[12px] border border-lumina-border bg-lumina-surface px-3 py-2.5 text-sm outline-none transition focus:border-lumina-attention focus:ring-2 focus:ring-lumina-blush"
+                      />
 
-                  <input
-                    type="number"
-                    placeholder="Max"
-                    value={maxPrice}
-                    onChange={(e) => setMaxPrice(e.target.value)}
-                    className="w-full rounded-[12px] border border-neutral-200 px-3 py-2 text-sm outline-none"
-                  />
-                </div>
+                      <input
+                        type="number"
+                        placeholder="Max"
+                        value={maxPrice}
+                        onChange={(e) => setMaxPrice(e.target.value)}
+                        className="min-w-0 rounded-[12px] border border-lumina-border bg-lumina-surface px-3 py-2.5 text-sm outline-none transition focus:border-lumina-attention focus:ring-2 focus:ring-lumina-blush"
+                      />
+                    </div>
 
-                <p className="mt-3 text-[12px] text-neutral-500">
-                  Example: Min 30, Max 100
-                </p>
+                    <p className="mt-3 text-[12px] text-lumina-text-muted">
+                      Example: Min 30, Max 100
+                    </p>
+                  </div>
+                )}
               </div>
-            )}
-          </div>
 
-          <div className="relative">
-            <button
-              onClick={() => {
-                setOpenSort((current) => !current);
-                setOpenFilter(false);
-              }}
-              className="transition hover:text-black"
-            >
-              ☰ Sort
-            </button>
-
-            {openSort && (
-              <div className="absolute left-0 top-8 z-20 w-[220px] rounded-[18px] border border-neutral-200 bg-white p-3 shadow-lg">
+              <div className="relative">
                 <button
-                  className="block w-full rounded-[10px] px-3 py-2 text-left hover:bg-[#faf6f5]"
                   onClick={() => {
-                    setSortBy("newest");
-                    setOpenSort(false);
+                    setOpenSort((current) => !current);
+                    setOpenFilter(false);
                   }}
+                  className="rounded-full border border-lumina-border bg-lumina-surface px-4 py-2 text-lumina-text transition hover:border-lumina-glass-border hover:bg-lumina-surface-soft"
                 >
-                  Newest
+                  ☰ Sort
                 </button>
 
-                <button
-                  className="block w-full rounded-[10px] px-3 py-2 text-left hover:bg-[#faf6f5]"
-                  onClick={() => {
-                    setSortBy("nearest");
-                    setOpenSort(false);
-                  }}
-                >
-                  Nearest first
-                </button>
+                {openSort && (
+                  <div className="absolute right-0 top-[calc(100%+10px)] z-30 w-[min(240px,calc(100vw-32px))] rounded-[22px] border border-lumina-glass-border bg-lumina-surface/95 p-3 text-lumina-text shadow-[0_18px_50px_rgba(39,36,40,0.10)] backdrop-blur-[14px]">
+                    <p
+                      className="px-3 pb-2 pt-1 text-[20px]"
+                      style={{ fontFamily: "Georgia, Times New Roman, serif" }}
+                    >
+                      Sort by
+                    </p>
 
-                <button
-                  className="block w-full rounded-[10px] px-3 py-2 text-left hover:bg-[#faf6f5]"
-                  onClick={() => {
-                    setSortBy("low");
-                    setOpenSort(false);
-                  }}
-                >
-                  Price low → high
-                </button>
-
-                <button
-                  className="block w-full rounded-[10px] px-3 py-2 text-left hover:bg-[#faf6f5]"
-                  onClick={() => {
-                    setSortBy("high");
-                    setOpenSort(false);
-                  }}
-                >
-                  Price high → low
-                </button>
+                    {[
+                      ["newest", "Newest"],
+                      ["nearest", "Nearest first"],
+                      ["low", "Price low → high"],
+                      ["high", "Price high → low"],
+                    ].map(([value, label]) => (
+                      <button
+                        key={value}
+                        className={`block w-full rounded-[12px] px-3 py-2.5 text-left text-sm transition ${
+                          sortBy === value
+                            ? "bg-lumina-pearl font-medium text-lumina-text"
+                            : "text-lumina-text-muted hover:bg-lumina-surface-soft"
+                        }`}
+                        onClick={() => {
+                          setSortBy(value as "newest" | "nearest" | "low" | "high");
+                          setOpenSort(false);
+                        }}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
-            )}
+            </div>
           </div>
         </div>
-      </div>
-        </div>
 
-        
+        {filteredAndSortedArtists.length === 1 ? (
+          <div className="mt-10 md:mt-16">
+            <p className="max-w-[720px] text-[14px] leading-6 text-lumina-text-muted">
+              More professionals are joining Lumina. Explore by category, try Map view, or check back as more profiles go live.
+            </p>
+            <div className="mt-7 grid grid-cols-1">
+              <ArtistCard
+                artist={filteredAndSortedArtists[0]}
+                distance={getArtistDistance(filteredAndSortedArtists[0])}
+                className="w-full max-w-[400px]"
+                viewerIsArtist={isArtist}
+                isOwnProfile={isArtist && user?.id === filteredAndSortedArtists[0].id}
+              />
+            </div>
+          </div>
+        ) : filteredAndSortedArtists.length > 1 ? (
+          <div className="mt-10 grid grid-cols-1 gap-8 md:mt-16 md:grid-cols-2 lg:grid-cols-4 lg:gap-12">
+            {filteredAndSortedArtists.map((artist) => {
+              const distance = getArtistDistance(artist);
 
-        <div className="mt-10 grid grid-cols-1 gap-8 md:mt-16 md:grid-cols-2 lg:grid-cols-4 lg:gap-12">
-          {filteredAndSortedArtists.map((artist) => {
-  const distance = getArtistDistance(artist);
-
-  return (
-    <ArtistCard
-      key={artist.id}
-      artist={artist}
-      distance={distance}
-      viewerIsArtist={isArtist}
-      isOwnProfile={isArtist && user?.id === artist.id}
-    />
-  );
-})}
-        </div>
+              return (
+                <ArtistCard
+                  key={artist.id}
+                  artist={artist}
+                  distance={distance}
+                  viewerIsArtist={isArtist}
+                  isOwnProfile={isArtist && user?.id === artist.id}
+                />
+              );
+            })}
+          </div>
+        ) : null}
 
         {filteredAndSortedArtists.length === 0 && (
-          <div className="mt-12 rounded-[20px] bg-[#fbf7f6] p-6 text-center">
-            <p className="text-[15px] text-neutral-600">
+          <div className="mt-12 rounded-[22px] border border-lumina-glass-border bg-lumina-glass p-8 text-center backdrop-blur-[12px]">
+            <p className="text-[15px] text-lumina-text-muted">
               No artists found. Try searching another city, service, or name.
             </p>
           </div>
@@ -517,8 +554,8 @@ export default function BrowsePage() {
   return (
     <Suspense
       fallback={
-        <main className="min-h-screen bg-white px-4 py-10 text-black md:px-10">
-          <p className="text-neutral-500">Loading artists...</p>
+        <main className="min-h-screen bg-lumina-surface px-4 py-10 text-lumina-text md:px-10">
+          <p className="text-lumina-text-muted">Loading artists...</p>
         </main>
       }
     >

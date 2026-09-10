@@ -84,6 +84,23 @@ A small V1 may allow a professional to choose **Single Photo** or **Before &
 After**, select a service, add optional context, and publish it. That tests whether
 structured proof of work improves trust without claiming more than Lumina knows.
 
+### First Bridge Implemented — August 29, 2026
+
+The first production-safe part of this vision is now implemented in the current
+portfolio system:
+
+- Professionals choose **Finished Work** or **Before & After**.
+- Before & After requires both images and a selected service.
+- Professionals may add a result date and short context.
+- Public profiles present this work under **Results**.
+- Every entry is labeled **Added by professional**.
+- The data model reserves stronger evidence levels, but the interface does not
+  claim completion-linked or client-confirmed verification yet.
+
+The next bridge should be chosen from beta evidence. Likely candidates are
+linking a Result to a completed Lumina appointment or adding a lightweight
+consultation snapshot to the existing request flow.
+
 ## Beauty Intent and Outcome Intelligence
 
 Over time, Lumina may learn from consented, reliable signals such as:

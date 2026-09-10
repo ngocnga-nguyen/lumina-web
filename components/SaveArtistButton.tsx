@@ -85,7 +85,7 @@ export default function SaveArtistButton({
         onChange?.(true);
         setToast("Could not remove artist");
       } else {
-        setToast("Removed from Favorites");
+        setToast("Removed from saved");
       }
     } else {
       setIsSaved(true);
@@ -104,7 +104,7 @@ export default function SaveArtistButton({
         onChange?.(false);
         setToast("Could not save artist");
       } else {
-        setToast("Saved to Favorites");
+        setToast("Saved");
       }
     }
 
@@ -127,20 +127,20 @@ export default function SaveArtistButton({
         aria-pressed={isSaved}
         className={`flex h-10 w-10 items-center justify-center rounded-full border shadow-sm backdrop-blur transition hover:scale-105 disabled:opacity-50 ${
           isSaved
-            ? "border-neutral-200 bg-[#faf9f8]/95"
+            ? "border-lumina-border bg-lumina-bg-soft/95"
             : "border-white/60 bg-white/90"
         } ${className}`}
       >
         <Heart
           size={19}
           strokeWidth={1.8}
-          className={isSaved ? "fill-[#9a7f86] text-[#9a7f86]" : "text-neutral-700"}
+          className={isSaved ? "fill-lumina-attention text-lumina-attention" : "text-lumina-text"}
         />
       </button>
 
       {toast && (
         <div className="fixed bottom-6 left-6 z-[100]">
-          <div className="rounded-2xl bg-black px-5 py-4 text-[14px] font-medium text-white shadow-2xl">
+          <div className="rounded-2xl bg-lumina-black px-5 py-4 text-[14px] font-medium text-white shadow-2xl">
             {toast}
           </div>
         </div>
