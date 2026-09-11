@@ -1124,12 +1124,12 @@ setAverageRating(updatedAverage);
           ) : (
             <div className="h-full w-full bg-lumina-glass" />
           )}
-          <div className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-black/15 to-transparent" />
+          <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-lumina-bg via-lumina-bg/35 to-transparent" />
         </div>
 
-        <div className="relative mx-3 -mt-5 rounded-[24px] border border-lumina-glass-border bg-lumina-glass px-4 pb-4 shadow-[0_16px_40px_rgba(39,36,40,0.08)] backdrop-blur-[14px]">
+        <div className="relative mx-3 -mt-9 rounded-[24px] border border-lumina-glass-border bg-lumina-glass/80 px-4 pb-3.5 shadow-[0_10px_30px_rgba(39,36,40,0.055)] backdrop-blur-[12px]">
           <div className="-mt-12 flex items-end justify-between gap-4">
-            <div className="relative z-10 flex h-24 w-24 shrink-0 items-center justify-center overflow-hidden rounded-full border-4 border-lumina-surface bg-lumina-pearl shadow-[0_8px_24px_rgba(39,36,40,0.12)]">
+            <div className="relative z-10 flex h-24 w-24 shrink-0 items-center justify-center overflow-hidden rounded-full border-2 border-lumina-surface/90 bg-lumina-pearl shadow-[0_6px_18px_rgba(39,36,40,0.1)]">
               {artist.profile_image_url ? (
                 <img
                   src={artist.profile_image_url}
@@ -1146,7 +1146,7 @@ setAverageRating(updatedAverage);
               )}
             </div>
 
-            <div className="relative z-10 mb-1">
+            <div className="relative z-10 mb-2">
               <SaveArtistButton
                 artistId={artist.id}
                 artistName={artist.name}
@@ -1155,7 +1155,7 @@ setAverageRating(updatedAverage);
             </div>
           </div>
 
-          <div className="mt-3">
+          <div className="mt-2.5">
             <h1
               className="break-words text-[clamp(26px,7.4vw,30px)] font-semibold leading-[1.05] text-lumina-text"
               style={{ fontFamily: "'Playfair Display', serif" }}
@@ -1167,13 +1167,13 @@ setAverageRating(updatedAverage);
                 {artist.business_name}
               </p>
             )}
-            <p className="mt-2.5 text-[13px] leading-[1.5] text-lumina-text-muted">
+            <p className="mt-2 text-[13px] leading-[1.45] text-lumina-text-muted">
               {artist.category} · {compactLocation}
               {distanceMiles !== null && (
                 <> · {distanceMiles.toFixed(1)} mi away</>
               )}
             </p>
-            <p className="mt-1 text-[13px] font-medium text-lumina-text">
+            <p className="mt-0.5 text-[13px] font-medium text-lumina-text">
               Starting at ${artist.price_start}
             </p>
             {artist.location_type === "mobile_salon" && (
@@ -1202,7 +1202,7 @@ setAverageRating(updatedAverage);
 
           {(verifiedLicenseArtistId === artistId || reviews.length > 0 || publicWorkCount > 0) && (
             <div
-              className="mt-4 flex flex-wrap gap-x-4 gap-y-2"
+              className="mt-3 flex flex-wrap gap-x-3 gap-y-2"
               aria-label="Professional highlights"
             >
               {verifiedLicenseArtistId === artistId && (
@@ -1233,7 +1233,7 @@ setAverageRating(updatedAverage);
           )}
 
           {mobileServiceChips.length > 0 && (
-            <div className="mt-4 flex flex-wrap gap-1.5" aria-label="Services offered">
+            <div className="mt-3 flex flex-wrap gap-1.5" aria-label="Services offered">
               {mobileServiceChips.map((serviceName) => (
                 <span
                   key={serviceName}
@@ -1245,7 +1245,7 @@ setAverageRating(updatedAverage);
             </div>
           )}
 
-          <div className="mt-4">
+          <div className="mt-3">
             <p
               className={`whitespace-pre-line text-[14px] leading-[1.55] text-lumina-text ${
                 mobileBioExpanded ? "" : "line-clamp-3"
@@ -1265,7 +1265,7 @@ setAverageRating(updatedAverage);
             )}
           </div>
 
-          <div className="mt-4 rounded-[16px] border border-lumina-glass-border bg-lumina-surface/55 px-3 py-1 shadow-[0_8px_20px_rgba(39,36,40,0.04),inset_0_1px_0_rgba(255,255,255,0.5)] backdrop-blur-[10px]">
+          <div className="mt-3 rounded-[16px] border border-lumina-glass-border bg-lumina-surface/45 px-3 py-1 shadow-[0_5px_14px_rgba(39,36,40,0.03),inset_0_1px_0_rgba(255,255,255,0.45)] backdrop-blur-[8px]">
             <button
               type="button"
               onClick={() => setAvailabilityExpanded((expanded) => !expanded)}
