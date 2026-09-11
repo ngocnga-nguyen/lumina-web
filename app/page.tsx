@@ -17,6 +17,7 @@ import { useLuminaAdminAccess } from "@/lib/use-lumina-admin-access";
 type Artist = {
   id: string;
   name: string;
+  business_name?: string | null;
   category: string;
   location: string;
   price_start: number;
@@ -137,7 +138,7 @@ export default function HomePage() {
       try {
         const { data, error } = await supabase
           .from("artists")
-          .select("id, name, category, location, price_start, profile_image_url")
+          .select("id, name, business_name, category, location, price_start, profile_image_url")
           .eq("is_active", true)
           .order("created_at", { ascending: false });
 
@@ -195,7 +196,7 @@ export default function HomePage() {
     if (!query) return [];
     const values = new Set<string>();
     artists.forEach((artist) => {
-      [artist.name, artist.category, artist.location].forEach((value) => {
+      [artist.name, artist.business_name, artist.category, artist.location].forEach((value) => {
         if (value?.toLowerCase().includes(query)) values.add(value);
       });
     });

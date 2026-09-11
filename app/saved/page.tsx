@@ -16,6 +16,7 @@ import { useRouter } from "next/navigation";
 type Artist = {
   id: string;
   name: string;
+  business_name?: string | null;
   category: string;
   location: string;
   price_start: number;
@@ -552,7 +553,12 @@ export default function SavedPage() {
                             key={artist.id}
                             className="py-3 pr-4 font-medium"
                           >
-                            {artist.name}
+                            <span className="block">{artist.name}</span>
+                            {artist.business_name && (
+                              <span className="mt-0.5 block text-[12px] font-normal text-lumina-text-muted">
+                                {artist.business_name}
+                              </span>
+                            )}
                           </th>
                         ))}
                       </tr>

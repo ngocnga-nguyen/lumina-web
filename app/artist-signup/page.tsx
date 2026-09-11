@@ -23,7 +23,8 @@ export default function ArtistSignupPage() {
 
     setLoading(true);
 
-    const displayName = businessName.trim() || fullName;
+    const professionalName = fullName.trim();
+    const publicBusinessName = businessName.trim() || null;
 
     const { data, error } = await supabase.auth.signUp({
       email,
@@ -50,7 +51,8 @@ export default function ArtistSignupPage() {
       const { error: artistError } = await supabase.from("artists").insert([
         {
           id: user.id,
-          name: displayName,
+          name: professionalName,
+          business_name: publicBusinessName,
           category: "Beauty Professional",
           location: "Location coming soon",
           price_start: 0,
@@ -109,6 +111,7 @@ export default function ArtistSignupPage() {
           <input
             type="text"
             placeholder="Full name"
+            maxLength={160}
             value={fullName}
             onChange={(e) => setFullName(e.target.value)}
             className="w-full rounded-[14px] border border-lumina-border bg-lumina-surface px-4 py-3 text-[15px] text-lumina-text outline-none transition placeholder:text-lumina-text-muted/75 focus:border-lumina-text-muted/60"
@@ -117,6 +120,7 @@ export default function ArtistSignupPage() {
           <input
             type="text"
             placeholder="Business or artist name, optional"
+            maxLength={160}
             value={businessName}
             onChange={(e) => setBusinessName(e.target.value)}
             className="w-full rounded-[14px] border border-lumina-border bg-lumina-surface px-4 py-3 text-[15px] text-lumina-text outline-none transition placeholder:text-lumina-text-muted/75 focus:border-lumina-text-muted/60"

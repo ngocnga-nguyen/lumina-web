@@ -19,6 +19,7 @@ import {
 type Artist = {
   id: string;
   name: string;
+  business_name?: string | null;
   category: string;
   location: string;
   price_start: number;
@@ -230,6 +231,7 @@ const activeFilterCount = selectedCategories.length;
       result = result.filter(
         (artist) =>
           artist.name.toLowerCase().includes(query) ||
+          artist.business_name?.toLowerCase().includes(query) ||
           artist.category.toLowerCase().includes(query) ||
           artist.location.toLowerCase().includes(query)
       );
@@ -603,6 +605,12 @@ onMouseLeave={() => {
               >
                 {selectedArtist.name}
               </h3>
+
+              {selectedArtist.business_name && (
+                <p className="mt-1 text-[13px] text-lumina-text">
+                  {selectedArtist.business_name}
+                </p>
+              )}
 
               <p className="mt-2 text-[14px] text-lumina-text-muted">
                 {selectedArtist.category}

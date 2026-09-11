@@ -96,15 +96,14 @@ export default function DashboardProfilePage() {
 
       if (data) {
         const savedName = data.name || "";
-        const businessMatch = savedName.match(/^(.*?)\s*\((.+)\)\s*$/);
         const legacyAddressParts = (data.address || data.location || "")
           .split(",")
           .map((part: string) => part.trim());
         const legacyRegionParts = (legacyAddressParts[2] || "").split(/\s+/);
 
         setForm({
-          name: businessMatch?.[1]?.trim() || savedName,
-          business_name: businessMatch?.[2]?.trim() || "",
+          name: savedName,
+          business_name: data.business_name || "",
           category: data.category || "",
           address: data.address || data.location || "",
           address_line_1: data.address_line_1 || legacyAddressParts[0] || "",
@@ -176,9 +175,6 @@ export default function DashboardProfilePage() {
   const saveProfile = async () => {
     const cleanName = form.name.trim();
     const cleanBusinessName = form.business_name.trim();
-    const publicName = cleanBusinessName
-      ? `${cleanName} (${cleanBusinessName})`
-      : cleanName;
     const cleanCategory = form.category.trim();
     const startingPrice = Number(form.price_start);
     const experienceAmount = form.experience_amount
@@ -283,7 +279,8 @@ export default function DashboardProfilePage() {
     const { error } = await supabase
       .from("artists")
       .update({
-        name: publicName,
+        name: cleanName,
+        business_name: cleanBusinessName || null,
         category: cleanCategory,
         location: publicLocation,
         address: fullAddress,
@@ -396,15 +393,15 @@ export default function DashboardProfilePage() {
                 </div>
 
                 <label className="block">
-                  <span className="mb-2 block text-[13px] font-medium text-lumina-text">Your name</span>
-                  <input type="text" placeholder="Example: Maya Nguyen" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className={inputClass} />
+                  <span className="mb-2 block text-[13px] font-medium text-lumina-text">Professional name</span>
+                  <input type="text" maxLength={160} placeholder="Example: Maya Nguyen" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className={inputClass} />
                 </label>
 
                 <label className="block">
                   <span className="mb-2 block text-[13px] font-medium text-lumina-text">
-                    Business or salon name <span className="font-normal text-lumina-text-muted">(optional)</span>
+                    Business / studio name <span className="font-normal text-lumina-text-muted">(optional)</span>
                   </span>
-                  <input type="text" placeholder="Example: Rose Beauty Studio" value={form.business_name} onChange={(e) => setForm({ ...form, business_name: e.target.value })} className={inputClass} />
+                  <input type="text" maxLength={160} placeholder="Example: Rose Beauty Studio" value={form.business_name} onChange={(e) => setForm({ ...form, business_name: e.target.value })} className={inputClass} />
                 </label>
 
                 <label className="block">

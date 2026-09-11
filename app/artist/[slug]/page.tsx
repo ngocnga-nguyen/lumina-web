@@ -32,8 +32,11 @@ import {
 type Artist = {
   id: string;
   name: string;
+  business_name?: string | null;
   category: string;
   location: string;
+  city?: string | null;
+  region?: string | null;
   price_start: number;
   bio?: string;
   profile_image_url?: string;
@@ -61,6 +64,24 @@ function getProfileTab(value: string | null): ProfileTab {
   return value === "portfolio" || value === "results" || value === "reviews"
     ? value
     : "service";
+}
+
+function getCompactArtistLocation(artist: Artist) {
+  if (artist.city?.trim() && artist.region?.trim()) {
+    return `${artist.city.trim()}, ${artist.region.trim()}`;
+  }
+
+  const parts = artist.location
+    .split(",")
+    .map((part) => part.trim())
+    .filter(Boolean);
+
+  if (parts.length < 3) {
+    return artist.location.replace(/\s+\d{5}(?:-\d{4})?$/, "").trim();
+  }
+
+  const region = parts.at(-1)?.replace(/\s+\d{5}(?:-\d{4})?$/, "").trim();
+  return [parts.at(-2), region].filter(Boolean).join(", ");
 }
 
 type PortfolioImage = {
@@ -969,6 +990,14 @@ setAverageRating(updatedAverage);
       : null;
   const publicWorkCount = portfolioPhotos.length + results.length;
   const mobileBioNeedsToggle = profileBio.length > 170;
+  const compactLocation = getCompactArtistLocation(artist);
+  const mobileServiceChips = Array.from(
+    new Set(
+      services
+        .map((service) => service.service_name.trim())
+        .filter(Boolean)
+    )
+  ).slice(0, 3);
 
   return (
     <main data-lumina-public-page className="min-h-screen bg-lumina-surface text-lumina-text">
@@ -1128,24 +1157,23 @@ setAverageRating(updatedAverage);
 
           <div className="mt-3">
             <h1
-              className="text-[30px] font-semibold leading-[1.04] text-lumina-text"
+              className="break-words text-[clamp(26px,7.4vw,30px)] font-semibold leading-[1.05] text-lumina-text"
               style={{ fontFamily: "'Playfair Display', serif" }}
             >
               {artist.name}
             </h1>
-            <p
-              className="mt-1 text-[17px] leading-tight text-lumina-text"
-              style={{ fontFamily: "Georgia, Times New Roman, serif" }}
-            >
-              {artist.category}
-            </p>
-            <p className="mt-2 text-[13px] leading-[1.45] text-lumina-text-muted">
-              {artist.location}
+            {artist.business_name && (
+              <p className="mt-1 text-[15px] leading-[1.35] text-lumina-text-muted">
+                {artist.business_name}
+              </p>
+            )}
+            <p className="mt-2.5 text-[13px] leading-[1.5] text-lumina-text-muted">
+              {artist.category} · {compactLocation}
               {distanceMiles !== null && (
                 <> · {distanceMiles.toFixed(1)} mi away</>
               )}
             </p>
-            <p className="mt-0.5 text-[13px] font-medium text-lumina-text">
+            <p className="mt-1 text-[13px] font-medium text-lumina-text">
               Starting at ${artist.price_start}
             </p>
             {artist.location_type === "mobile_salon" && (
@@ -1172,11 +1200,9 @@ setAverageRating(updatedAverage);
             </p>
           )}
 
-          {(verifiedLicenseArtistId === artistId ||
-            reviews.length > 0 ||
-            publicWorkCount > 0) && (
+          {(verifiedLicenseArtistId === artistId || reviews.length > 0 || publicWorkCount > 0) && (
             <div
-              className="mt-4 flex flex-wrap gap-x-4 gap-y-2 border-y border-lumina-border py-3"
+              className="mt-4 flex flex-wrap gap-x-4 gap-y-2"
               aria-label="Professional highlights"
             >
               {verifiedLicenseArtistId === artistId && (
@@ -1186,10 +1212,10 @@ setAverageRating(updatedAverage);
                 </span>
               )}
               {reviews.length > 0 && (
-                <span className="inline-flex items-center gap-1.5 text-[12px] text-lumina-text">
+                <span className="inline-flex items-center gap-1 text-[12px] text-lumina-text">
                   <Star size={14} strokeWidth={1.7} aria-hidden="true" />
-                  {averageRating.toFixed(1)} · {reviews.length}{" "}
-                  {reviews.length === 1 ? "review" : "reviews"}
+                  {averageRating.toFixed(1)} ({reviews.length}{" "}
+                  {reviews.length === 1 ? "review" : "reviews"})
                 </span>
               )}
               {publicWorkCount > 0 && (
@@ -1206,15 +1232,22 @@ setAverageRating(updatedAverage);
             </div>
           )}
 
+          {mobileServiceChips.length > 0 && (
+            <div className="mt-4 flex flex-wrap gap-1.5" aria-label="Services offered">
+              {mobileServiceChips.map((serviceName) => (
+                <span
+                  key={serviceName}
+                  className="rounded-full border border-lumina-border bg-lumina-surface/75 px-2.5 py-1 text-[11px] text-lumina-text"
+                >
+                  {serviceName}
+                </span>
+              ))}
+            </div>
+          )}
+
           <div className="mt-4">
-            <h2
-              className="text-[20px] font-semibold text-lumina-text"
-              style={{ fontFamily: "Georgia, Times New Roman, serif" }}
-            >
-              About
-            </h2>
             <p
-              className={`mt-2 whitespace-pre-line text-[14px] leading-[1.55] text-lumina-text ${
+              className={`whitespace-pre-line text-[14px] leading-[1.55] text-lumina-text ${
                 mobileBioExpanded ? "" : "line-clamp-3"
               }`}
             >
@@ -1364,6 +1397,12 @@ setAverageRating(updatedAverage);
       viewerIsArtist={viewerIsArtist}
     />
 </div>
+
+            {artist.business_name && (
+              <p className="mt-2 text-[15px] text-lumina-text-muted md:text-[17px]">
+                {artist.business_name}
+              </p>
+            )}
 
             {isOwnProfile && (
               <p className="mt-2 inline-flex rounded-full border border-lumina-border bg-lumina-surface-soft px-3 py-1.5 text-[11px] font-medium text-lumina-text-muted md:mt-3 md:text-[12px]">

@@ -7,6 +7,7 @@ type ArtistCardProps = {
   artist: {
     id: string;
     name: string;
+    business_name?: string | null;
     category: string;
     location: string;
     price_start: number;
@@ -127,6 +128,18 @@ export default function ArtistCard({
         >
           {artist.name}
         </h3>
+
+        {artist.business_name && (
+          <p
+            className={`truncate text-lumina-text ${
+              compactMobile
+                ? "mt-0.5 text-[11px] leading-4 lg:text-[13px]"
+                : "mt-1 text-[13px] leading-5 sm:text-[14px]"
+            }`}
+          >
+            {artist.business_name}
+          </p>
+        )}
 
         <p
           className={`text-lumina-text-muted ${

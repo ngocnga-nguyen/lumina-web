@@ -18,6 +18,7 @@ import {
 type Artist = {
   id: string;
   name: string;
+  business_name?: string | null;
   category: string;
   location: string;
   price_start: number;
@@ -197,6 +198,7 @@ if (sort) {
       result = result.filter(
         (artist) =>
           artist.name.toLowerCase().includes(query) ||
+          artist.business_name?.toLowerCase().includes(query) ||
           artist.category.toLowerCase().includes(query) ||
           artist.location.toLowerCase().includes(query)
       );
