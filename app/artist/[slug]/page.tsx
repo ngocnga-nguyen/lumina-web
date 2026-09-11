@@ -1127,7 +1127,7 @@ setAverageRating(updatedAverage);
           <div className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-black/15 to-transparent" />
         </div>
 
-        <div className="px-4 pb-2">
+        <div className="relative mx-3 -mt-5 rounded-[24px] border border-lumina-glass-border bg-lumina-glass px-4 pb-4 shadow-[0_16px_40px_rgba(39,36,40,0.08)] backdrop-blur-[14px]">
           <div className="-mt-12 flex items-end justify-between gap-4">
             <div className="relative z-10 flex h-24 w-24 shrink-0 items-center justify-center overflow-hidden rounded-full border-4 border-lumina-surface bg-lumina-pearl shadow-[0_8px_24px_rgba(39,36,40,0.12)]">
               {artist.profile_image_url ? (
@@ -1206,20 +1206,20 @@ setAverageRating(updatedAverage);
               aria-label="Professional highlights"
             >
               {verifiedLicenseArtistId === artistId && (
-                <span className="inline-flex items-center gap-1.5 text-[12px] text-lumina-text">
+                <span className="inline-flex items-center gap-1.5 rounded-full border border-lumina-glass-border bg-lumina-surface/65 px-2.5 py-1.5 text-[12px] text-lumina-text shadow-[inset_0_1px_0_rgba(255,255,255,0.55)] backdrop-blur-[8px]">
                   <ShieldCheck size={15} strokeWidth={1.7} aria-hidden="true" />
                   License verified
                 </span>
               )}
               {reviews.length > 0 && (
-                <span className="inline-flex items-center gap-1 text-[12px] text-lumina-text">
+                <span className="inline-flex items-center gap-1 rounded-full border border-lumina-glass-border bg-lumina-surface/65 px-2.5 py-1.5 text-[12px] text-lumina-text shadow-[inset_0_1px_0_rgba(255,255,255,0.55)] backdrop-blur-[8px]">
                   <Star size={14} strokeWidth={1.7} aria-hidden="true" />
                   {averageRating.toFixed(1)} ({reviews.length}{" "}
                   {reviews.length === 1 ? "review" : "reviews"})
                 </span>
               )}
               {publicWorkCount > 0 && (
-                <span className="inline-flex items-center gap-1.5 text-[12px] text-lumina-text">
+                <span className="inline-flex items-center gap-1.5 rounded-full border border-lumina-glass-border bg-lumina-surface/65 px-2.5 py-1.5 text-[12px] text-lumina-text shadow-[inset_0_1px_0_rgba(255,255,255,0.55)] backdrop-blur-[8px]">
                   {results.length > 0 ? (
                     <Layers3 size={14} strokeWidth={1.7} aria-hidden="true" />
                   ) : (
@@ -1265,7 +1265,7 @@ setAverageRating(updatedAverage);
             )}
           </div>
 
-          <div className="mt-4 border-y border-lumina-border py-1">
+          <div className="mt-4 rounded-[16px] border border-lumina-glass-border bg-lumina-surface/55 px-3 py-1 shadow-[0_8px_20px_rgba(39,36,40,0.04),inset_0_1px_0_rgba(255,255,255,0.5)] backdrop-blur-[10px]">
             <button
               type="button"
               onClick={() => setAvailabilityExpanded((expanded) => !expanded)}
@@ -1570,7 +1570,7 @@ setAverageRating(updatedAverage);
       </div>
 
         <section className="pb-12 md:mt-6 md:pb-16">
-          <div className="sticky top-0 z-30 -mx-4 grid grid-cols-4 gap-1 border-y border-lumina-border bg-lumina-surface/95 px-4 py-1 text-[12px] backdrop-blur-[12px] sm:flex sm:flex-wrap sm:justify-center sm:gap-6 sm:text-[15px] md:static md:mx-0 md:border-0 md:bg-transparent md:px-0 md:py-0 md:text-[16px] md:backdrop-blur-none">
+          <div className="sticky top-0 z-30 -mx-4 grid grid-cols-4 gap-1 border-y border-lumina-glass-border bg-lumina-glass px-4 py-1 text-[12px] shadow-[0_8px_20px_rgba(39,36,40,0.05)] backdrop-blur-[14px] sm:flex sm:flex-wrap sm:justify-center sm:gap-6 sm:text-[15px] md:static md:mx-0 md:border-0 md:bg-transparent md:px-0 md:py-0 md:text-[16px] md:shadow-none md:backdrop-blur-none">
             {[
               { key: "service", label: "Services" },
               { key: "portfolio", label: "Portfolio" },
