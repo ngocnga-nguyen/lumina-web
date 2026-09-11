@@ -5,6 +5,10 @@ import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import ProfessionalOnboardingContext from "@/components/ProfessionalOnboardingContext";
 import ProfessionalCoverImageEditor from "@/components/ProfessionalCoverImageEditor";
+import {
+  normalizeArtistCoverStyle,
+  type ArtistCoverStyle,
+} from "@/lib/artist-cover-style";
 
 type ProfileForm = {
   name: string;
@@ -28,6 +32,7 @@ type ProfileForm = {
   bio: string;
   availability: string;
   cover_image_url: string;
+  cover_style: ArtistCoverStyle;
   profile_image_url: string;
   years_experience: string;
   experience_unit: "new" | "months" | "years";
@@ -66,6 +71,7 @@ export default function DashboardProfilePage() {
     bio: "",
     availability: "",
     cover_image_url: "",
+    cover_style: "natural",
     profile_image_url: "",
     years_experience: "",
     experience_unit: "new",
@@ -129,6 +135,7 @@ export default function DashboardProfilePage() {
           bio: data.bio || "",
           availability: data.availability || "",
           cover_image_url: data.cover_image_url || "",
+          cover_style: normalizeArtistCoverStyle(data.cover_style),
           profile_image_url: data.profile_image_url || "",
           years_experience: data.years_experience?.toString() || "",
           experience_unit:
@@ -317,6 +324,7 @@ export default function DashboardProfilePage() {
         bio: form.bio,
         availability: form.availability,
         cover_image_url: form.cover_image_url || null,
+        cover_style: form.cover_style,
         profile_image_url: form.profile_image_url,
         years_experience: yearsExperience,
         experience_unit: form.experience_unit,
@@ -564,10 +572,17 @@ export default function DashboardProfilePage() {
                   fallbackImageUrl={
                     portfolioCoverFallback || form.profile_image_url || null
                   }
+                  coverStyle={form.cover_style}
                   onCoverImageChange={(coverImageUrl) =>
                     setForm((current) => ({
                       ...current,
                       cover_image_url: coverImageUrl || "",
+                    }))
+                  }
+                  onCoverStyleChange={(coverStyle) =>
+                    setForm((current) => ({
+                      ...current,
+                      cover_style: coverStyle,
                     }))
                   }
                 />

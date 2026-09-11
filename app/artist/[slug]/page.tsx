@@ -28,6 +28,12 @@ import {
   getBrowseDistanceMiles,
   useBrowseGeolocation,
 } from "@/lib/use-browse-geolocation";
+import {
+  getArtistCoverImageClass,
+  getArtistCoverOverlayClass,
+  normalizeArtistCoverStyle,
+  type ArtistCoverStyle,
+} from "@/lib/artist-cover-style";
 
 type Artist = {
   id: string;
@@ -40,6 +46,7 @@ type Artist = {
   price_start: number;
   bio?: string;
   cover_image_url?: string | null;
+  cover_style?: ArtistCoverStyle | null;
   profile_image_url?: string;
   social_link?: string;
   availability?: string;
@@ -982,6 +989,10 @@ setAverageRating(updatedAverage);
     portfolioPhotos[0]?.image_url ||
     artist.profile_image_url ||
     null;
+  const mobileCoverStyle = normalizeArtistCoverStyle(artist.cover_style);
+  const mobileCoverImageClass = getArtistCoverImageClass(mobileCoverStyle);
+  const mobileCoverOverlayClass =
+    getArtistCoverOverlayClass(mobileCoverStyle);
   const distanceMiles =
     userLocation &&
     typeof artist.latitude === "number" &&
@@ -1123,17 +1134,24 @@ setAverageRating(updatedAverage);
               src={mobileCoverImage}
               alt=""
               aria-hidden="true"
-              className="h-full w-full object-cover"
+              className={mobileCoverImageClass}
             />
           ) : (
             <div className="h-full w-full bg-lumina-glass" />
+          )}
+          {mobileCoverImage && mobileCoverOverlayClass && (
+            <span className={mobileCoverOverlayClass} aria-hidden="true" />
           )}
         </div>
 
         <div className="relative -mt-16 rounded-b-[24px] border-x border-b border-lumina-glass-border/45 bg-lumina-glass/85 px-4 pb-4 shadow-[0_10px_24px_rgba(39,36,40,0.035)] backdrop-blur-[12px]">
           <div className="relative z-10">
           <div className="-mt-12 flex items-end justify-between gap-4">
-            <div className="relative z-10 flex h-24 w-24 shrink-0 items-center justify-center overflow-hidden rounded-full border-2 border-lumina-surface/90 bg-lumina-pearl shadow-[0_6px_18px_rgba(39,36,40,0.1)]">
+            <div
+              className={`relative z-10 flex h-24 w-24 shrink-0 items-center justify-center overflow-hidden rounded-full border border-lumina-surface/65 shadow-[0_3px_10px_rgba(39,36,40,0.07)] ${
+                artist.profile_image_url ? "bg-transparent" : "bg-lumina-pearl"
+              }`}
+            >
               {artist.profile_image_url ? (
                 <img
                   src={artist.profile_image_url}

@@ -44,7 +44,7 @@ Important fields include:
 - Identity: `id`, `name`, `email`, `category`
 - Business details: `phone`, `social_link`, `bio`, `availability`
 - Pricing and experience: `price_start`, `years_experience`, `experience_unit`, `experience_amount`
-- Profile display: `profile_image_url`, `is_active`, `is_verified`
+- Profile display: `profile_image_url`, `cover_image_url`, `cover_style`, `is_active`, `is_verified`
 - Location: `address`, `address_line_1`, `city`, `region`, `postal_code`, `latitude`, `longitude`
 - Work style: `location_type`, `travels_to_clients`, `service_area`, `hide_street_address`, `mobile_location_details`
 

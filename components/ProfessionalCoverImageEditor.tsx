@@ -3,6 +3,12 @@
 import { useRef, useState, type ChangeEvent } from "react";
 import { ImageIcon, LoaderCircle, Pencil, Trash2 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
+import {
+  ARTIST_COVER_STYLES,
+  getArtistCoverImageClass,
+  getArtistCoverOverlayClass,
+  type ArtistCoverStyle,
+} from "@/lib/artist-cover-style";
 
 const COVER_IMAGE_BUCKET = "artist-cover-images";
 const COVER_IMAGE_MAX_BYTES = 5 * 1024 * 1024;
@@ -15,7 +21,9 @@ const COVER_IMAGE_TYPES = new Map([
 type ProfessionalCoverImageEditorProps = {
   coverImageUrl: string | null;
   fallbackImageUrl?: string | null;
+  coverStyle: ArtistCoverStyle;
   onCoverImageChange: (url: string | null) => void;
+  onCoverStyleChange: (style: ArtistCoverStyle) => void;
 };
 
 function getOwnedCoverPath(url: string, artistId: string) {
@@ -39,7 +47,9 @@ function getOwnedCoverPath(url: string, artistId: string) {
 export default function ProfessionalCoverImageEditor({
   coverImageUrl,
   fallbackImageUrl = null,
+  coverStyle,
   onCoverImageChange,
+  onCoverStyleChange,
 }: ProfessionalCoverImageEditorProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [busyAction, setBusyAction] = useState<"upload" | "remove" | null>(
@@ -48,6 +58,8 @@ export default function ProfessionalCoverImageEditor({
   const [feedback, setFeedback] = useState("");
 
   const displayImageUrl = coverImageUrl || fallbackImageUrl;
+  const coverImageClass = getArtistCoverImageClass(coverStyle);
+  const coverOverlayClass = getArtistCoverOverlayClass(coverStyle);
 
   const removeStoredCover = async (url: string, artistId: string) => {
     const storagePath = getOwnedCoverPath(url, artistId);
@@ -223,7 +235,7 @@ export default function ProfessionalCoverImageEditor({
           <img
             src={displayImageUrl}
             alt="Cover preview"
-            className="h-full w-full object-cover"
+            className={coverImageClass}
           />
         ) : (
           <div className="flex h-full items-center justify-center text-lumina-text-muted">
@@ -237,6 +249,10 @@ export default function ProfessionalCoverImageEditor({
               <p className="mt-2 text-[13px]">Add a cover image</p>
             </div>
           </div>
+        )}
+
+        {displayImageUrl && coverOverlayClass && (
+          <span className={coverOverlayClass} aria-hidden="true" />
         )}
 
         <button
@@ -266,6 +282,32 @@ export default function ProfessionalCoverImageEditor({
           onChange={handleCoverSelection}
         />
       </div>
+
+      <fieldset className="mt-4">
+        <legend className="text-[13px] font-medium text-lumina-text">
+          Cover style
+        </legend>
+        <div className="mt-2 grid grid-cols-3 gap-1 rounded-[14px] border border-lumina-border bg-lumina-surface-soft p-1">
+          {ARTIST_COVER_STYLES.map((style) => (
+            <label key={style.value} className="cursor-pointer">
+              <input
+                type="radio"
+                name="cover-style"
+                value={style.value}
+                checked={coverStyle === style.value}
+                onChange={() => onCoverStyleChange(style.value)}
+                className="peer sr-only"
+              />
+              <span className="flex min-h-10 items-center justify-center rounded-[10px] border border-transparent px-2 text-center text-[12px] font-medium text-lumina-text-muted transition peer-checked:border-lumina-border peer-checked:bg-lumina-surface peer-checked:text-lumina-text peer-checked:shadow-sm peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-lumina-text/30">
+                {style.label}
+              </span>
+            </label>
+          ))}
+        </div>
+        <p className="mt-2 text-[12px] leading-[1.45] text-lumina-text-muted">
+          Preview your selection here. Save changes to publish it.
+        </p>
+      </fieldset>
 
       {!coverImageUrl && displayImageUrl && (
         <p className="mt-2 text-[12px] text-lumina-text-muted">
