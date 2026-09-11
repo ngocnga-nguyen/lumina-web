@@ -9,6 +9,13 @@ const migration = readFileSync(
   ),
   "utf8"
 );
+const policyFixMigration = readFileSync(
+  new URL(
+    "../supabase/migrations/20260911130000_fix_artist_cover_image_storage_policy.sql",
+    import.meta.url
+  ),
+  "utf8"
+);
 const coverEditor = readFileSync(
   new URL("../components/ProfessionalCoverImageEditor.tsx", import.meta.url),
   "utf8"
@@ -44,20 +51,32 @@ test("cover migration creates a constrained public bucket", () => {
 
 test("storage writes are restricted to an authenticated professional owner folder", () => {
   assert.match(
-    migration,
+    policyFixMigration,
     /for insert\s+to authenticated\s+with check[\s\S]*bucket_id = 'artist-cover-images'/
   );
   assert.match(
-    migration,
+    policyFixMigration,
+    /array_length\(storage\.foldername\(name\), 1\) = 1/
+  );
+  assert.doesNotMatch(
+    policyFixMigration,
+    /array_length\(storage\.foldername\(name\), 1\) = 2/
+  );
+  assert.match(
+    policyFixMigration,
     /\(storage\.foldername\(name\)\)\[1\] = \(select auth\.uid\(\)\)::text/
   );
   assert.match(
-    migration,
+    policyFixMigration,
     /exists \([\s\S]*from public\.artists artist[\s\S]*artist\.id = \(select auth\.uid\(\)\)/
   );
-  assert.match(migration, /for delete\s+to authenticated\s+using/);
-  assert.doesNotMatch(migration, /for (insert|delete)\s+to anon/i);
-  assert.doesNotMatch(migration, /disable row level security/i);
+  assert.match(policyFixMigration, /for select\s+to authenticated\s+using/);
+  assert.match(policyFixMigration, /for delete\s+to authenticated\s+using/);
+  assert.doesNotMatch(
+    policyFixMigration,
+    /for (insert|delete)\s+to anon/i
+  );
+  assert.doesNotMatch(policyFixMigration, /disable row level security/i);
 });
 
 test("the new artist column follows the existing column-privilege model", () => {
