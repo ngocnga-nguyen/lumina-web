@@ -39,6 +39,7 @@ type Artist = {
   region?: string | null;
   price_start: number;
   bio?: string;
+  cover_image_url?: string | null;
   profile_image_url?: string;
   social_link?: string;
   availability?: string;
@@ -977,7 +978,10 @@ setAverageRating(updatedAverage);
     artist.bio ||
     `Professional ${artist.category.toLowerCase()} serving clients in ${artist.location}.`;
   const mobileCoverImage =
-    portfolioPhotos[0]?.image_url || artist.profile_image_url || null;
+    artist.cover_image_url ||
+    portfolioPhotos[0]?.image_url ||
+    artist.profile_image_url ||
+    null;
   const distanceMiles =
     userLocation &&
     typeof artist.latitude === "number" &&
@@ -1124,10 +1128,10 @@ setAverageRating(updatedAverage);
           ) : (
             <div className="h-full w-full bg-lumina-glass" />
           )}
-          <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-lumina-bg via-lumina-bg/35 to-transparent" />
         </div>
 
-        <div className="relative mx-3 -mt-9 rounded-[24px] border border-lumina-glass-border bg-lumina-glass/80 px-4 pb-3.5 shadow-[0_10px_30px_rgba(39,36,40,0.055)] backdrop-blur-[12px]">
+        <div className="relative -mt-16 rounded-b-[24px] border-x border-b border-lumina-glass-border/45 bg-lumina-glass/85 px-4 pb-4 shadow-[0_10px_24px_rgba(39,36,40,0.035)] backdrop-blur-[12px]">
+          <div className="relative z-10">
           <div className="-mt-12 flex items-end justify-between gap-4">
             <div className="relative z-10 flex h-24 w-24 shrink-0 items-center justify-center overflow-hidden rounded-full border-2 border-lumina-surface/90 bg-lumina-pearl shadow-[0_6px_18px_rgba(39,36,40,0.1)]">
               {artist.profile_image_url ? (
@@ -1163,11 +1167,11 @@ setAverageRating(updatedAverage);
               {artist.name}
             </h1>
             {artist.business_name && (
-              <p className="mt-1 text-[15px] leading-[1.35] text-lumina-text-muted">
+              <p className="mt-0.5 text-[15px] leading-[1.35] text-lumina-text-muted">
                 {artist.business_name}
               </p>
             )}
-            <p className="mt-2 text-[13px] leading-[1.45] text-lumina-text-muted">
+            <p className="mt-1.5 text-[13px] leading-[1.45] text-lumina-text-muted">
               {artist.category} · {compactLocation}
               {distanceMiles !== null && (
                 <> · {distanceMiles.toFixed(1)} mi away</>
@@ -1206,20 +1210,20 @@ setAverageRating(updatedAverage);
               aria-label="Professional highlights"
             >
               {verifiedLicenseArtistId === artistId && (
-                <span className="inline-flex items-center gap-1.5 rounded-full border border-lumina-glass-border bg-lumina-surface/65 px-2.5 py-1.5 text-[12px] text-lumina-text shadow-[inset_0_1px_0_rgba(255,255,255,0.55)] backdrop-blur-[8px]">
+                <span className="inline-flex items-center gap-1.5 text-[12px] text-lumina-text">
                   <ShieldCheck size={15} strokeWidth={1.7} aria-hidden="true" />
                   License verified
                 </span>
               )}
               {reviews.length > 0 && (
-                <span className="inline-flex items-center gap-1 rounded-full border border-lumina-glass-border bg-lumina-surface/65 px-2.5 py-1.5 text-[12px] text-lumina-text shadow-[inset_0_1px_0_rgba(255,255,255,0.55)] backdrop-blur-[8px]">
+                <span className="inline-flex items-center gap-1 text-[12px] text-lumina-text">
                   <Star size={14} strokeWidth={1.7} aria-hidden="true" />
                   {averageRating.toFixed(1)} ({reviews.length}{" "}
                   {reviews.length === 1 ? "review" : "reviews"})
                 </span>
               )}
               {publicWorkCount > 0 && (
-                <span className="inline-flex items-center gap-1.5 rounded-full border border-lumina-glass-border bg-lumina-surface/65 px-2.5 py-1.5 text-[12px] text-lumina-text shadow-[inset_0_1px_0_rgba(255,255,255,0.55)] backdrop-blur-[8px]">
+                <span className="inline-flex items-center gap-1.5 text-[12px] text-lumina-text">
                   {results.length > 0 ? (
                     <Layers3 size={14} strokeWidth={1.7} aria-hidden="true" />
                   ) : (
@@ -1265,7 +1269,7 @@ setAverageRating(updatedAverage);
             )}
           </div>
 
-          <div className="mt-3 rounded-[16px] border border-lumina-glass-border bg-lumina-surface/45 px-3 py-1 shadow-[0_5px_14px_rgba(39,36,40,0.03),inset_0_1px_0_rgba(255,255,255,0.45)] backdrop-blur-[8px]">
+          <div className="mt-3 rounded-[16px] border border-lumina-glass-border/70 bg-lumina-glass/50 px-3 py-1 shadow-[inset_0_1px_0_rgba(255,255,255,0.35)] backdrop-blur-[10px]">
             <button
               type="button"
               onClick={() => setAvailabilityExpanded((expanded) => !expanded)}
@@ -1302,6 +1306,7 @@ setAverageRating(updatedAverage);
                 </p>
               </div>
             )}
+          </div>
           </div>
         </div>
       </section>
@@ -1570,7 +1575,7 @@ setAverageRating(updatedAverage);
       </div>
 
         <section className="pb-12 md:mt-6 md:pb-16">
-          <div className="sticky top-0 z-30 -mx-4 grid grid-cols-4 gap-1 border-y border-lumina-glass-border bg-lumina-glass px-4 py-1 text-[12px] shadow-[0_8px_20px_rgba(39,36,40,0.05)] backdrop-blur-[14px] sm:flex sm:flex-wrap sm:justify-center sm:gap-6 sm:text-[15px] md:static md:mx-0 md:border-0 md:bg-transparent md:px-0 md:py-0 md:text-[16px] md:shadow-none md:backdrop-blur-none">
+          <div className="sticky top-0 z-30 -mx-4 grid grid-cols-4 gap-1 border-b border-lumina-glass-border/60 bg-lumina-surface/95 px-4 py-1 text-[12px] sm:flex sm:flex-wrap sm:justify-center sm:gap-6 sm:text-[15px] md:static md:mx-0 md:border-0 md:bg-transparent md:px-0 md:py-0 md:text-[16px]">
             {[
               { key: "service", label: "Services" },
               { key: "portfolio", label: "Portfolio" },

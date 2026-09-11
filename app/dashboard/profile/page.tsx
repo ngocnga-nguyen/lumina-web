@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import ProfessionalOnboardingContext from "@/components/ProfessionalOnboardingContext";
+import ProfessionalCoverImageEditor from "@/components/ProfessionalCoverImageEditor";
 
 type ProfileForm = {
   name: string;
@@ -26,6 +27,7 @@ type ProfileForm = {
   social_link: string;
   bio: string;
   availability: string;
+  cover_image_url: string;
   profile_image_url: string;
   years_experience: string;
   experience_unit: "new" | "months" | "years";
@@ -37,6 +39,7 @@ export default function DashboardProfilePage() {
   const [loading, setLoading] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
   const [locationSaved, setLocationSaved] = useState(false);
+  const [portfolioCoverFallback, setPortfolioCoverFallback] = useState("");
   const [onboardingStep, setOnboardingStep] = useState<
     "about" | "availability" | null
   >(null);
@@ -62,6 +65,7 @@ export default function DashboardProfilePage() {
     social_link: "",
     bio: "",
     availability: "",
+    cover_image_url: "",
     profile_image_url: "",
     years_experience: "",
     experience_unit: "new",
@@ -124,6 +128,7 @@ export default function DashboardProfilePage() {
           social_link: data.social_link || "",
           bio: data.bio || "",
           availability: data.availability || "",
+          cover_image_url: data.cover_image_url || "",
           profile_image_url: data.profile_image_url || "",
           years_experience: data.years_experience?.toString() || "",
           experience_unit:
@@ -135,6 +140,17 @@ export default function DashboardProfilePage() {
               ? data.years_experience.toString()
               : ""),
         });
+
+        const { data: portfolioFallbackData } = await supabase
+          .from("portfolio_images")
+          .select("image_url, entry_type")
+          .eq("artist_id", user.id)
+          .order("created_at", { ascending: false });
+
+        const firstPortfolioImage = portfolioFallbackData?.find(
+          (image) => image.entry_type !== "before_after"
+        );
+        setPortfolioCoverFallback(firstPortfolioImage?.image_url || "");
 
         if (data.latitude && data.longitude) {
           setLocationSaved(true);
@@ -300,6 +316,7 @@ export default function DashboardProfilePage() {
         social_link: bookingLink,
         bio: form.bio,
         availability: form.availability,
+        cover_image_url: form.cover_image_url || null,
         profile_image_url: form.profile_image_url,
         years_experience: yearsExperience,
         experience_unit: form.experience_unit,
@@ -542,6 +559,19 @@ export default function DashboardProfilePage() {
               <p className={sectionTitleClass}>Profile details</p>
 
               <div className="mt-4 space-y-4">
+                <ProfessionalCoverImageEditor
+                  coverImageUrl={form.cover_image_url || null}
+                  fallbackImageUrl={
+                    portfolioCoverFallback || form.profile_image_url || null
+                  }
+                  onCoverImageChange={(coverImageUrl) =>
+                    setForm((current) => ({
+                      ...current,
+                      cover_image_url: coverImageUrl || "",
+                    }))
+                  }
+                />
+
                 <div>
                   <p className="mb-3 text-[14px] text-lumina-text-muted">
                     Profile photo
