@@ -3,12 +3,13 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
-import { ChevronDown, ImageIcon, Layers3, ShieldCheck, Star } from "lucide-react";
+import { Camera, ChevronDown, ImageIcon, Layers3, Pencil, ShieldCheck, Star } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import SaveArtistButton from "@/components/SaveArtistButton";
 import ReviewReportDialog from "@/components/ReviewReportDialog";
 import ClientGuidanceTip from "@/components/ClientGuidanceTip";
 import PublicPageHeader from "@/components/PublicPageHeader";
+import ProfessionalProfileMediaEditor from "@/components/ProfessionalProfileMediaEditor";
 import { useClientOnboarding } from "@/lib/use-client-onboarding";
 import { useLuminaAdminAccess } from "@/lib/use-lumina-admin-access";
 import {
@@ -34,6 +35,10 @@ import {
   normalizeArtistCoverStyle,
   type ArtistCoverStyle,
 } from "@/lib/artist-cover-style";
+import {
+  getArtistCoverFramingStyle,
+  normalizeArtistCoverFraming,
+} from "@/lib/artist-cover-framing";
 
 type Artist = {
   id: string;
@@ -47,6 +52,9 @@ type Artist = {
   bio?: string;
   cover_image_url?: string | null;
   cover_style?: ArtistCoverStyle | null;
+  cover_position_x?: number | null;
+  cover_position_y?: number | null;
+  cover_scale?: number | null;
   profile_image_url?: string;
   social_link?: string;
   availability?: string;
@@ -187,6 +195,9 @@ const isLuminaAdmin = useLuminaAdminAccess(user?.id);
   const [availabilityExpanded, setAvailabilityExpanded] = useState(false);
   const [profileDetailsExpanded, setProfileDetailsExpanded] = useState(true);
   const [mobileBioExpanded, setMobileBioExpanded] = useState(false);
+  const [mediaEditorMode, setMediaEditorMode] = useState<
+    "cover" | "avatar" | null
+  >(null);
   const { userLocation } = useBrowseGeolocation({ successMessage: "" });
 
   useEffect(() => {
@@ -990,6 +1001,11 @@ setAverageRating(updatedAverage);
     artist.profile_image_url ||
     null;
   const mobileCoverStyle = normalizeArtistCoverStyle(artist.cover_style);
+  const mobileCoverFraming = normalizeArtistCoverFraming(
+    artist.cover_position_x,
+    artist.cover_position_y,
+    artist.cover_scale
+  );
   const mobileCoverImageClass = getArtistCoverImageClass(mobileCoverStyle);
   const mobileCoverOverlayClass =
     getArtistCoverOverlayClass(mobileCoverStyle);
@@ -1013,6 +1029,20 @@ setAverageRating(updatedAverage);
         .filter(Boolean)
     )
   ).slice(0, 3);
+  const mobileAvatarClassName = `relative z-10 flex h-24 w-24 shrink-0 items-center justify-center overflow-hidden rounded-full border border-lumina-surface/65 shadow-[0_3px_10px_rgba(39,36,40,0.07)] ${
+    artist.profile_image_url ? "bg-transparent" : "bg-lumina-pearl"
+  }`;
+  const mobileAvatarContent = artist.profile_image_url ? (
+    <img
+      src={artist.profile_image_url}
+      alt={artist.name}
+      className="h-full w-full object-cover"
+    />
+  ) : (
+    <span className="text-[30px] font-semibold text-lumina-text" aria-hidden="true">
+      {artist.name.charAt(0).toUpperCase()}
+    </span>
+  );
 
   return (
     <main data-lumina-public-page className="min-h-screen bg-lumina-surface text-lumina-text">
@@ -1135,6 +1165,10 @@ setAverageRating(updatedAverage);
               alt=""
               aria-hidden="true"
               className={mobileCoverImageClass}
+              style={getArtistCoverFramingStyle(
+                mobileCoverFraming,
+                mobileCoverStyle
+              )}
             />
           ) : (
             <div className="h-full w-full bg-lumina-glass" />
@@ -1142,31 +1176,36 @@ setAverageRating(updatedAverage);
           {mobileCoverImage && mobileCoverOverlayClass && (
             <span className={mobileCoverOverlayClass} aria-hidden="true" />
           )}
+          {isOwnProfile && (
+            <button
+              type="button"
+              onClick={() => setMediaEditorMode("cover")}
+              className="absolute right-3 top-3 inline-flex min-h-10 items-center gap-1.5 rounded-full border border-lumina-glass-border bg-lumina-surface/88 px-3 text-[11px] font-medium text-lumina-text shadow-sm backdrop-blur-[10px]"
+              aria-label="Edit cover image"
+            >
+              <Pencil size={13} aria-hidden="true" /> Edit cover
+            </button>
+          )}
         </div>
 
         <div className="relative -mt-16 rounded-b-[24px] border-x border-b border-lumina-glass-border/45 bg-lumina-glass/85 px-4 pb-4 shadow-[0_10px_24px_rgba(39,36,40,0.035)] backdrop-blur-[12px]">
           <div className="relative z-10">
           <div className="-mt-12 flex items-end justify-between gap-4">
-            <div
-              className={`relative z-10 flex h-24 w-24 shrink-0 items-center justify-center overflow-hidden rounded-full border border-lumina-surface/65 shadow-[0_3px_10px_rgba(39,36,40,0.07)] ${
-                artist.profile_image_url ? "bg-transparent" : "bg-lumina-pearl"
-              }`}
-            >
-              {artist.profile_image_url ? (
-                <img
-                  src={artist.profile_image_url}
-                  alt={artist.name}
-                  className="h-full w-full object-cover"
-                />
-              ) : (
-                <span
-                  className="text-[30px] font-semibold text-lumina-text"
-                  aria-hidden="true"
-                >
-                  {artist.name.charAt(0).toUpperCase()}
+            {isOwnProfile ? (
+              <button
+                type="button"
+                onClick={() => setMediaEditorMode("avatar")}
+                aria-label="Change profile photo"
+                className={`group ${mobileAvatarClassName}`}
+              >
+                {mobileAvatarContent}
+                <span className="absolute inset-x-0 bottom-0 flex h-7 items-center justify-center bg-lumina-black/55 text-white opacity-95">
+                  <Camera size={13} aria-hidden="true" />
                 </span>
-              )}
-            </div>
+              </button>
+            ) : (
+              <div className={mobileAvatarClassName}>{mobileAvatarContent}</div>
+            )}
 
             <div className="relative z-10 mb-2">
               <SaveArtistButton
@@ -1348,8 +1387,18 @@ setAverageRating(updatedAverage);
                   </div>
                 </div>
               )}
-
-              
+              {isOwnProfile && (
+                <button
+                  type="button"
+                  onClick={() => setMediaEditorMode("avatar")}
+                  className="group absolute inset-0 flex items-end p-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-lumina-surface"
+                  aria-label="Change profile photo"
+                >
+                  <span className="inline-flex items-center gap-1.5 rounded-full bg-lumina-surface/90 px-3 py-1.5 text-[11px] text-lumina-text opacity-90 shadow-sm backdrop-blur-[8px] transition group-hover:opacity-100">
+                    <Camera size={13} aria-hidden="true" /> Change photo
+                  </span>
+                </button>
+              )}
             </div>
 
             <div className="mt-2 rounded-[14px] border border-lumina-border bg-lumina-surface/80 px-3 py-2 backdrop-blur-[8px] md:mt-3 md:px-3.5 md:py-2.5">
@@ -1414,11 +1463,22 @@ setAverageRating(updatedAverage);
       {artist.name}
     </h1>
 
-    <SaveArtistButton
-      artistId={artist.id}
-      artistName={artist.name}
-      viewerIsArtist={viewerIsArtist}
-    />
+    <div className="flex shrink-0 items-center gap-2">
+      {isOwnProfile && (
+        <button
+          type="button"
+          onClick={() => setMediaEditorMode("cover")}
+          className="inline-flex min-h-10 items-center gap-1.5 rounded-full border border-lumina-border bg-lumina-surface px-3 text-[11px] text-lumina-text transition hover:border-lumina-text-muted hover:bg-lumina-surface-soft"
+        >
+          <Pencil size={13} aria-hidden="true" /> Edit cover
+        </button>
+      )}
+      <SaveArtistButton
+        artistId={artist.id}
+        artistName={artist.name}
+        viewerIsArtist={viewerIsArtist}
+      />
+    </div>
 </div>
 
             {artist.business_name && (
@@ -2601,6 +2661,50 @@ setAverageRating(updatedAverage);
             </button>
           </div>
         </div>
+      )}
+
+      {isOwnProfile && mediaEditorMode && (
+        <ProfessionalProfileMediaEditor
+          artistId={artist.id}
+          mode={mediaEditorMode}
+          open
+          onClose={() => setMediaEditorMode(null)}
+          imageUrl={
+            mediaEditorMode === "cover"
+              ? artist.cover_image_url || null
+              : artist.profile_image_url || null
+          }
+          fallbackImageUrl={
+            mediaEditorMode === "cover"
+              ? portfolioPhotos[0]?.image_url || artist.profile_image_url || null
+              : null
+          }
+          coverStyle={mobileCoverStyle}
+          coverPositionX={mobileCoverFraming.positionX}
+          coverPositionY={mobileCoverFraming.positionY}
+          coverScale={mobileCoverFraming.scale}
+          onSaved={(result) =>
+            setArtist((current) =>
+              current
+                ? {
+                    ...current,
+                    profile_image_url:
+                      result.profileImageUrl || current.profile_image_url,
+                    cover_image_url:
+                      result.coverImageUrl !== undefined
+                        ? result.coverImageUrl
+                        : current.cover_image_url,
+                    cover_style: result.coverStyle || current.cover_style,
+                    cover_position_x:
+                      result.coverPositionX ?? current.cover_position_x,
+                    cover_position_y:
+                      result.coverPositionY ?? current.cover_position_y,
+                    cover_scale: result.coverScale ?? current.cover_scale,
+                  }
+                : current
+            )
+          }
+        />
       )}
 
       {reportingReview && (

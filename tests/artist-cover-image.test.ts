@@ -33,7 +33,7 @@ const coverStyleHelper = readFileSync(
   "utf8"
 );
 const coverEditor = readFileSync(
-  new URL("../components/ProfessionalCoverImageEditor.tsx", import.meta.url),
+  new URL("../components/ProfessionalProfileMediaEditor.tsx", import.meta.url),
   "utf8"
 );
 const profileEditor = readFileSync(
@@ -133,7 +133,7 @@ test("cover style rendering is centralized and rejects unknown presentation valu
   assert.match(coverStyleHelper, /value: "soft_blur"/);
   assert.match(coverStyleHelper, /value: "softened"/);
   assert.match(coverStyleHelper, /: "natural";/);
-  assert.match(coverStyleHelper, /scale-\[1\.025\].*blur-\[2px\]/s);
+  assert.match(coverStyleHelper, /object-cover blur-\[2px\]/);
   assert.match(coverStyleHelper, /saturate-\[0\.82\].*contrast-\[0\.9\]/s);
   assert.match(coverStyleHelper, /bg-lumina-pearl\/20/);
   assert.equal(normalizeArtistCoverStyle("unexpected"), "natural");
@@ -148,19 +148,19 @@ test("cover style rendering is centralized and rejects unknown presentation valu
 });
 
 test("professional cover editing validates and persists owner-prefixed randomized uploads", () => {
-  assert.match(coverEditor, /COVER_IMAGE_MAX_BYTES = 5 \* 1024 \* 1024/);
+  assert.match(coverEditor, /COVER_MAX_BYTES = 5 \* 1024 \* 1024/);
   assert.match(coverEditor, /\["image\/jpeg", "jpg"\]/);
   assert.match(coverEditor, /\["image\/png", "png"\]/);
   assert.match(coverEditor, /\["image\/webp", "webp"\]/);
   assert.match(coverEditor, /crypto\.randomUUID/);
-  assert.match(coverEditor, /uploadedPath = `\$\{user\.id\}\/\$\{randomName\}/);
-  assert.match(coverEditor, /update\(\{ cover_image_url: nextCoverUrl \}\)/);
-  assert.match(coverEditor, /update\(\{ cover_image_url: null \}\)/);
-  assert.match(coverEditor, /removeStoredCover\(previousCoverUrl, user\.id\)/);
+  assert.match(coverEditor, /`\$\{ownerId\}\/\$\{crypto\.randomUUID\(\)\}\.\$\{extension\}`/);
+  assert.match(coverEditor, /cover_image_url: nextUrl/);
+  assert.match(coverEditor, /cover_image_url: null/);
+  assert.match(coverEditor, /getOwnedStoragePath\(imageUrl, COVER_BUCKET, user\.id\)/);
 });
 
 test("professional settings keeps cover and profile photo editing separate", () => {
-  assert.match(profileEditor, /ProfessionalCoverImageEditor/);
+  assert.match(profileEditor, /ProfessionalProfileMediaEditor/);
   assert.match(profileEditor, /cover_image_url: data\.cover_image_url \|\| ""/);
   assert.match(
     profileEditor,
@@ -169,12 +169,12 @@ test("professional settings keeps cover and profile photo editing separate", () 
   assert.match(profileEditor, /profile_image_url: data\.profile_image_url \|\| ""/);
   assert.match(profileEditor, /cover_image_url: form\.cover_image_url \|\| null/);
   assert.match(profileEditor, /cover_style: form\.cover_style/);
-  assert.match(coverEditor, /Cover style/);
-  assert.match(coverEditor, /Preview your selection here\. Save changes to publish it\./);
-  assert.doesNotMatch(coverEditor, /update\(\{ cover_style:/);
+  assert.match(coverEditor, /Appearance/);
+  assert.match(coverEditor, /mode === "cover"/);
+  assert.match(coverEditor, /mode === "avatar"/);
 });
 
-test("public mobile cover uses the approved fallback order and no public edit control", () => {
+test("public mobile cover uses the approved fallback order and owner-gated edit controls", () => {
   assert.match(
     publicProfile,
     /artist\.cover_image_url \|\|\s+portfolioPhotos\[0\]\?\.image_url \|\|\s+artist\.profile_image_url \|\|\s+null/
@@ -183,7 +183,9 @@ test("public mobile cover uses the approved fallback order and no public edit co
   assert.match(publicProfile, /normalizeArtistCoverStyle\(artist\.cover_style\)/);
   assert.match(publicProfile, /className=\{mobileCoverImageClass\}/);
   assert.match(publicProfile, /backdrop-blur-\[12px\]/);
-  assert.doesNotMatch(publicProfile, /ProfessionalCoverImageEditor/);
+  assert.match(publicProfile, /isOwnProfile && mediaEditorMode/);
+  assert.match(publicProfile, /ProfessionalProfileMediaEditor/);
+  assert.match(coverEditor, /Only the profile owner can edit this media/);
   assert.doesNotMatch(publicProfile, /bg-gradient-to-t/);
 });
 
@@ -198,9 +200,6 @@ test("mobile avatar keeps real images opaque with a transparent backing and a li
     publicProfile,
     /src=\{artist\.profile_image_url\}[\s\S]*className="h-full w-full object-cover"/
   );
-  assert.match(
-    profileEditor,
-    /accept="image\/jpeg,image\/png,image\/webp,\.jpg,\.jpeg,\.png,\.webp"/
-  );
-  assert.match(profileEditor, /uploadProfileImageToStorage\(file, user\.id\)/);
+  assert.match(profileEditor, /setMediaEditorMode\("avatar"\)/);
+  assert.match(coverEditor, /createCroppedProfileImage/);
 });

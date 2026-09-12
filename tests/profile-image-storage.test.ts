@@ -122,8 +122,9 @@ test("new profile image paths are randomized and owner-folder scoped", () => {
 });
 
 test("every active profile image uploader uses the shared hardened path", () => {
-  for (const source of [accountPage, dashboardPage, profilePage]) {
-    assert.match(source, /uploadProfileImageToStorage\(file, user\.id\)/);
+  assert.match(accountPage, /uploadProfileImageToStorage\(file, user\.id\)/);
+  for (const source of [dashboardPage, profilePage]) {
+    assert.match(source, /ProfessionalProfileMediaEditor/);
     assert.doesNotMatch(source, /`\$\{user\.id\}-\$\{Date\.now\(\)\}/);
   }
 });

@@ -16,7 +16,7 @@ export function normalizeArtistCoverStyle(
 
 export function getArtistCoverImageClass(style: ArtistCoverStyle) {
   if (style === "soft_blur") {
-    return "h-full w-full scale-[1.025] object-cover blur-[2px]";
+    return "h-full w-full object-cover blur-[2px]";
   }
 
   if (style === "softened") {

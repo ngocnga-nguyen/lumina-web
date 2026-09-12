@@ -2,8 +2,9 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
-import { CheckCircle2, X } from "lucide-react";
+import { CheckCircle2, Pencil, X } from "lucide-react";
 import { supabase } from "@/lib/supabase";
+import ProfessionalProfileMediaEditor from "@/components/ProfessionalProfileMediaEditor";
 import {
   getActivationCompletionPercent,
   getFirstIncompleteOnboardingStep,
@@ -17,10 +18,6 @@ import {
   loadMyProfessionalActivationStatus,
   setProfessionalProfileVisibility,
 } from "@/lib/professional-activation-client";
-import {
-  getProfileImageValidationError,
-} from "@/lib/profile-image-storage";
-import { uploadProfileImage as uploadProfileImageToStorage } from "@/lib/profile-image-upload";
 
 type Artist = {
   id: string;
@@ -30,6 +27,11 @@ type Artist = {
   price_start: number;
   bio?: string | null;
   profile_image_url?: string | null;
+  cover_image_url?: string | null;
+  cover_style?: "natural" | "soft_blur" | "softened" | null;
+  cover_position_x?: number | null;
+  cover_position_y?: number | null;
+  cover_scale?: number | null;
   availability?: string | null;
   is_verified?: boolean;
   years_experience?: number | null;
@@ -49,7 +51,9 @@ export default function DashboardPage() {
   const [artist, setArtist] = useState<Artist | null>(null);
   const [services, setServices] = useState<Service[]>([]);
   const [portfolioCount, setPortfolioCount] = useState(0);
-  const [uploadingImage, setUploadingImage] = useState(false);
+  const [mediaEditorMode, setMediaEditorMode] = useState<
+    "cover" | "avatar" | null
+  >(null);
   const [activationStatus, setActivationStatus] =
     useState<ProfessionalActivationStatus | null>(null);
   const [activationStatusLoaded, setActivationStatusLoaded] = useState(false);
@@ -81,51 +85,6 @@ export default function DashboardPage() {
     setActivationStatusLoaded(true);
     return result.data;
   }, [reconcilePanelDismissal]);
-
-  const uploadProfileImage = async (file: File) => {
-    if (!artist) return;
-
-    const validationError = getProfileImageValidationError(file);
-    if (validationError) {
-      alert(validationError);
-      return;
-    }
-
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) {
-      setUploadingImage(false);
-      alert("You need to be logged in.");
-      return;
-    }
-
-    setUploadingImage(true);
-    try {
-      const { publicUrl } = await uploadProfileImageToStorage(file, user.id);
-      const { error: updateError } = await supabase
-        .from("artists")
-        .update({ profile_image_url: publicUrl })
-        .eq("id", artist.id);
-
-      if (updateError) throw updateError;
-
-      setArtist({
-        ...artist,
-        profile_image_url: publicUrl,
-      });
-      await refreshActivationStatus();
-    } catch (error) {
-      alert(
-        error instanceof Error
-          ? error.message
-          : "The profile image could not be uploaded."
-      );
-    } finally {
-      setUploadingImage(false);
-    }
-  };
 
   useEffect(() => {
     const fetchDashboardData = async () => {
@@ -446,7 +405,11 @@ const dashboardProfileStatus =
 
         <div className="grid grid-cols-1 gap-8 lg:grid-cols-[320px_minmax(0,1fr)] lg:gap-12 xl:gap-16">
           <div>
-            <label className="relative block h-[320px] cursor-pointer overflow-hidden rounded-[22px] bg-lumina-pearl transition hover:opacity-90 sm:h-[380px] lg:h-[420px]">
+            <button
+              type="button"
+              onClick={() => setMediaEditorMode("avatar")}
+              className="group relative block h-[320px] w-full cursor-pointer overflow-hidden rounded-[22px] bg-lumina-pearl text-left transition hover:opacity-95 sm:h-[380px] lg:h-[420px]"
+            >
               {artist?.profile_image_url ? (
                 <img
                   src={artist.profile_image_url}
@@ -463,20 +426,17 @@ const dashboardProfileStatus =
               )}
 
               <div className="absolute bottom-4 left-4 rounded-full bg-lumina-surface/85 px-4 py-2 text-[13px] shadow-sm">
-                {uploadingImage ? "Uploading..." : "Change photo"}
+                Change photo
               </div>
+            </button>
 
-              <input
-                type="file"
-                accept="image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp"
-                className="hidden"
-                disabled={uploadingImage}
-                onChange={(e) => {
-                  const file = e.target.files?.[0];
-                  if (file) uploadProfileImage(file);
-                }}
-              />
-            </label>
+            <button
+              type="button"
+              onClick={() => setMediaEditorMode("cover")}
+              className="mt-3 inline-flex min-h-10 items-center gap-2 rounded-full border border-lumina-border bg-lumina-surface px-4 text-[12px] text-lumina-text transition hover:border-lumina-text-muted hover:bg-lumina-surface-soft"
+            >
+              <Pencil size={14} aria-hidden="true" /> Edit cover
+            </button>
 
             <div className="mt-6 rounded-[22px] border border-lumina-glass-border bg-lumina-surface/80 p-5 backdrop-blur-[10px]">
               <h2
@@ -653,6 +613,49 @@ const dashboardProfileStatus =
           )}
         </section>
       </section>
+
+      {artist && mediaEditorMode && (
+        <ProfessionalProfileMediaEditor
+          artistId={artist.id}
+          mode={mediaEditorMode}
+          open
+          onClose={() => setMediaEditorMode(null)}
+          imageUrl={
+            mediaEditorMode === "cover"
+              ? artist.cover_image_url || null
+              : artist.profile_image_url || null
+          }
+          fallbackImageUrl={
+            mediaEditorMode === "cover" ? artist.profile_image_url || null : null
+          }
+          coverStyle={artist.cover_style || "natural"}
+          coverPositionX={Number(artist.cover_position_x ?? 0.5)}
+          coverPositionY={Number(artist.cover_position_y ?? 0.5)}
+          coverScale={Number(artist.cover_scale ?? 1)}
+          onSaved={(result) => {
+            setArtist((current) =>
+              current
+                ? {
+                    ...current,
+                    profile_image_url:
+                      result.profileImageUrl || current.profile_image_url,
+                    cover_image_url:
+                      result.coverImageUrl !== undefined
+                        ? result.coverImageUrl
+                        : current.cover_image_url,
+                    cover_style: result.coverStyle || current.cover_style,
+                    cover_position_x:
+                      result.coverPositionX ?? current.cover_position_x,
+                    cover_position_y:
+                      result.coverPositionY ?? current.cover_position_y,
+                    cover_scale: result.coverScale ?? current.cover_scale,
+                  }
+                : current
+            );
+            if (result.profileImageUrl) void refreshActivationStatus();
+          }}
+        />
+      )}
     </div>
   );
 }

@@ -2,17 +2,20 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { Pencil } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import ProfessionalOnboardingContext from "@/components/ProfessionalOnboardingContext";
-import ProfessionalCoverImageEditor from "@/components/ProfessionalCoverImageEditor";
+import ProfessionalProfileMediaEditor from "@/components/ProfessionalProfileMediaEditor";
 import {
+  getArtistCoverImageClass,
+  getArtistCoverOverlayClass,
   normalizeArtistCoverStyle,
   type ArtistCoverStyle,
 } from "@/lib/artist-cover-style";
 import {
-  getProfileImageValidationError,
-} from "@/lib/profile-image-storage";
-import { uploadProfileImage as uploadProfileImageToStorage } from "@/lib/profile-image-upload";
+  getArtistCoverFramingStyle,
+  normalizeArtistCoverFraming,
+} from "@/lib/artist-cover-framing";
 
 type ProfileForm = {
   name: string;
@@ -37,6 +40,9 @@ type ProfileForm = {
   availability: string;
   cover_image_url: string;
   cover_style: ArtistCoverStyle;
+  cover_position_x: number;
+  cover_position_y: number;
+  cover_scale: number;
   profile_image_url: string;
   years_experience: string;
   experience_unit: "new" | "months" | "years";
@@ -45,8 +51,11 @@ type ProfileForm = {
 
 export default function DashboardProfilePage() {
   const router = useRouter();
+  const [artistId, setArtistId] = useState("");
   const [loading, setLoading] = useState(false);
-  const [uploadingImage, setUploadingImage] = useState(false);
+  const [mediaEditorMode, setMediaEditorMode] = useState<
+    "cover" | "avatar" | null
+  >(null);
   const [locationSaved, setLocationSaved] = useState(false);
   const [portfolioCoverFallback, setPortfolioCoverFallback] = useState("");
   const [onboardingStep, setOnboardingStep] = useState<
@@ -76,6 +85,9 @@ export default function DashboardProfilePage() {
     availability: "",
     cover_image_url: "",
     cover_style: "natural",
+    cover_position_x: 0.5,
+    cover_position_y: 0.5,
+    cover_scale: 1,
     profile_image_url: "",
     years_experience: "",
     experience_unit: "new",
@@ -89,6 +101,7 @@ export default function DashboardProfilePage() {
       } = await supabase.auth.getUser();
 
       if (!user) return;
+      setArtistId(user.id);
 
       const requestedStep = new URLSearchParams(window.location.search).get(
         "onboarding"
@@ -115,6 +128,11 @@ export default function DashboardProfilePage() {
           .map((part: string) => part.trim());
         const legacyRegionParts = (legacyAddressParts[2] || "").split(/\s+/);
 
+        const coverFraming = normalizeArtistCoverFraming(
+          data.cover_position_x,
+          data.cover_position_y,
+          data.cover_scale
+        );
         setForm({
           name: savedName,
           business_name: data.business_name || "",
@@ -140,6 +158,9 @@ export default function DashboardProfilePage() {
           availability: data.availability || "",
           cover_image_url: data.cover_image_url || "",
           cover_style: normalizeArtistCoverStyle(data.cover_style),
+          cover_position_x: coverFraming.positionX,
+          cover_position_y: coverFraming.positionY,
+          cover_scale: coverFraming.scale,
           profile_image_url: data.profile_image_url || "",
           years_experience: data.years_experience?.toString() || "",
           experience_unit:
@@ -329,6 +350,9 @@ export default function DashboardProfilePage() {
         availability: form.availability,
         cover_image_url: form.cover_image_url || null,
         cover_style: form.cover_style,
+        cover_position_x: form.cover_position_x,
+        cover_position_y: form.cover_position_y,
+        cover_scale: form.cover_scale,
         profile_image_url: form.profile_image_url,
         years_experience: yearsExperience,
         experience_unit: form.experience_unit,
@@ -369,6 +393,11 @@ export default function DashboardProfilePage() {
 
   const sectionTitleClass =
     "text-[12px] font-medium uppercase tracking-[0.14em] text-lumina-text-muted";
+
+  const coverPreviewImage =
+    form.cover_image_url || portfolioCoverFallback || form.profile_image_url;
+  const coverPreviewClass = getArtistCoverImageClass(form.cover_style);
+  const coverPreviewOverlayClass = getArtistCoverOverlayClass(form.cover_style);
 
   return (
     <div className="bg-lumina-surface text-lumina-text">
@@ -571,32 +600,72 @@ export default function DashboardProfilePage() {
               <p className={sectionTitleClass}>Profile details</p>
 
               <div className="mt-4 space-y-4">
-                <ProfessionalCoverImageEditor
-                  coverImageUrl={form.cover_image_url || null}
-                  fallbackImageUrl={
-                    portfolioCoverFallback || form.profile_image_url || null
-                  }
-                  coverStyle={form.cover_style}
-                  onCoverImageChange={(coverImageUrl) =>
-                    setForm((current) => ({
-                      ...current,
-                      cover_image_url: coverImageUrl || "",
-                    }))
-                  }
-                  onCoverStyleChange={(coverStyle) =>
-                    setForm((current) => ({
-                      ...current,
-                      cover_style: coverStyle,
-                    }))
-                  }
-                />
+                <div>
+                  <div className="mb-3 flex items-center justify-between gap-4">
+                    <div>
+                      <p className="text-[14px] text-lumina-text-muted">Cover image</p>
+                      <p className="mt-1 text-[12px] text-lumina-text-muted">
+                        Click the preview to replace or reposition it.
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setMediaEditorMode("cover")}
+                      disabled={!artistId}
+                      className="inline-flex min-h-10 items-center gap-2 rounded-full border border-lumina-border bg-lumina-surface px-4 text-[12px] text-lumina-text transition hover:border-lumina-text-muted hover:bg-lumina-surface-soft disabled:opacity-50"
+                    >
+                      <Pencil size={14} aria-hidden="true" />
+                      {form.cover_image_url ? "Edit cover" : "Add cover"}
+                    </button>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setMediaEditorMode("cover")}
+                    disabled={!artistId}
+                    className="group relative block h-[170px] w-full overflow-hidden rounded-[18px] border border-lumina-border bg-lumina-surface-soft text-lumina-text-muted sm:h-[210px]"
+                    aria-label={form.cover_image_url ? "Edit cover image" : "Add cover image"}
+                  >
+                    {coverPreviewImage ? (
+                      <>
+                        <img
+                          src={coverPreviewImage}
+                          alt="Cover preview"
+                          className={coverPreviewClass}
+                          style={getArtistCoverFramingStyle(
+                            {
+                              positionX: form.cover_position_x,
+                              positionY: form.cover_position_y,
+                              scale: form.cover_scale,
+                            },
+                            form.cover_style
+                          )}
+                        />
+                        {coverPreviewOverlayClass && (
+                          <span className={coverPreviewOverlayClass} aria-hidden="true" />
+                        )}
+                      </>
+                    ) : (
+                      <span className="flex h-full items-center justify-center text-[13px]">
+                        Add a cover image
+                      </span>
+                    )}
+                    <span className="absolute bottom-3 right-3 rounded-full bg-lumina-surface/90 px-3 py-1.5 text-[11px] text-lumina-text opacity-90 shadow-sm backdrop-blur-[8px] transition group-hover:opacity-100">
+                      Edit cover
+                    </span>
+                  </button>
+                </div>
 
                 <div>
                   <p className="mb-3 text-[14px] text-lumina-text-muted">
                     Profile photo
                   </p>
 
-                  <label className="flex h-[220px] w-full cursor-pointer items-center justify-center overflow-hidden rounded-[18px] border border-dashed border-lumina-text-muted/35 bg-lumina-surface-soft transition hover:bg-lumina-pearl">
+                  <button
+                    type="button"
+                    onClick={() => setMediaEditorMode("avatar")}
+                    disabled={!artistId}
+                    className="group relative flex h-[220px] w-full items-center justify-center overflow-hidden rounded-[18px] border border-dashed border-lumina-text-muted/35 bg-lumina-surface-soft transition hover:bg-lumina-pearl disabled:opacity-50"
+                  >
                     {form.profile_image_url ? (
                       <img
                         src={form.profile_image_url}
@@ -615,48 +684,10 @@ export default function DashboardProfilePage() {
                       </div>
                     )}
 
-                    <input
-                      type="file"
-                      accept="image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp"
-                      className="hidden"
-                      onChange={async (e) => {
-                        const file = e.target.files?.[0];
-
-                        if (!file) return;
-
-                        const validationError =
-                          getProfileImageValidationError(file);
-                        if (validationError) {
-                          alert(validationError);
-                          return;
-                        }
-
-                        const {
-                          data: { user },
-                        } = await supabase.auth.getUser();
-
-                        if (!user) return;
-
-                        setUploadingImage(true);
-                        try {
-                          const { publicUrl } =
-                            await uploadProfileImageToStorage(file, user.id);
-                          setForm((current) => ({
-                            ...current,
-                            profile_image_url: publicUrl,
-                          }));
-                        } catch (error) {
-                          alert(
-                            error instanceof Error
-                              ? error.message
-                              : "The profile image could not be uploaded."
-                          );
-                        } finally {
-                          setUploadingImage(false);
-                        }
-                      }}
-                    />
-                  </label>
+                    <span className="absolute bottom-3 right-3 rounded-full bg-lumina-surface/90 px-3 py-1.5 text-[11px] text-lumina-text shadow-sm backdrop-blur-[8px]">
+                      Change photo
+                    </span>
+                  </button>
                 </div>
 
                 <textarea
@@ -697,12 +728,10 @@ export default function DashboardProfilePage() {
 
             <button
               onClick={saveProfile}
-              disabled={loading || uploadingImage}
+              disabled={loading}
               className="w-full rounded-full bg-lumina-black px-6 py-3 text-[14px] font-medium text-white transition hover:opacity-90 disabled:opacity-50"
             >
-              {uploadingImage
-                ? "Uploading photo..."
-                : loading
+              {loading
                 ? "Saving changes..."
                 : onboardingStep
                   ? "Save and continue"
@@ -711,6 +740,46 @@ export default function DashboardProfilePage() {
           </div>
         </div>
       </section>
+
+      {artistId && mediaEditorMode && (
+        <ProfessionalProfileMediaEditor
+          artistId={artistId}
+          mode={mediaEditorMode}
+          open
+          onClose={() => setMediaEditorMode(null)}
+          imageUrl={
+            mediaEditorMode === "cover"
+              ? form.cover_image_url || null
+              : form.profile_image_url || null
+          }
+          fallbackImageUrl={
+            mediaEditorMode === "cover"
+              ? portfolioCoverFallback || form.profile_image_url || null
+              : null
+          }
+          coverStyle={form.cover_style}
+          coverPositionX={form.cover_position_x}
+          coverPositionY={form.cover_position_y}
+          coverScale={form.cover_scale}
+          onSaved={(result) =>
+            setForm((current) => ({
+              ...current,
+              cover_image_url:
+                result.coverImageUrl !== undefined
+                  ? result.coverImageUrl || ""
+                  : current.cover_image_url,
+              cover_style: result.coverStyle || current.cover_style,
+              cover_position_x:
+                result.coverPositionX ?? current.cover_position_x,
+              cover_position_y:
+                result.coverPositionY ?? current.cover_position_y,
+              cover_scale: result.coverScale ?? current.cover_scale,
+              profile_image_url:
+                result.profileImageUrl || current.profile_image_url,
+            }))
+          }
+        />
+      )}
     </div>
   );
 }

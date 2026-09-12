@@ -34,3 +34,26 @@ export function createProfileImagePath(userId: string, mimeType: string) {
 
   return `${userId}/${randomName}.${extension}`;
 }
+
+export function getOwnedProfileImagePath(url: string, userId: string) {
+  try {
+    const marker = `/storage/v1/object/public/${PROFILE_IMAGE_BUCKET}/`;
+    const pathname = new URL(url).pathname;
+    const markerIndex = pathname.indexOf(marker);
+    if (markerIndex < 0) return null;
+
+    const storagePath = decodeURIComponent(
+      pathname.slice(markerIndex + marker.length)
+    );
+    const ownerFolder = `${userId}/`;
+
+    if (storagePath.startsWith(ownerFolder)) return storagePath;
+    if (!storagePath.includes("/") && storagePath.startsWith(`${userId}-`)) {
+      return storagePath;
+    }
+
+    return null;
+  } catch {
+    return null;
+  }
+}

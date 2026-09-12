@@ -331,6 +331,10 @@ The active application uses these Supabase Storage buckets:
   JPEG, PNG, and WebP uploads are limited to 5 MB. Existing root-level avatar
   URLs remain readable, with deletion allowed only when the authenticated
   owner UUID is safely identifiable from the legacy filename prefix.
+- Professional cover framing is stored non-destructively on `artists` as
+  normalized `cover_position_x`, `cover_position_y`, and validated
+  `cover_scale` values. The owning professional edits these through the shared
+  profile media editor; existing Artists RLS remains authoritative.
 - `portfolio` — professional portfolio images
 - `chat-images` — images shared in request conversations
 - `consultation-images` — private inspiration images submitted with an optional Consultation Snapshot; participants use short-lived signed URLs
