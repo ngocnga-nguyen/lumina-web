@@ -15,18 +15,15 @@ import AccountMenu from "@/components/AccountMenu";
 import WorkspaceNavigationIndicator, {
   getWorkspaceIndicatorLabel,
 } from "@/components/WorkspaceNavigationIndicator";
+import {
+  ProfessionalWorkspaceProvider,
+  type ProfessionalWorkspaceProfile,
+} from "@/components/ProfessionalWorkspaceContext";
 import { supabase } from "@/lib/supabase";
 import { useWorkspaceActionCounts } from "@/lib/use-workspace-action-counts";
 import { useWorkspaceMessageUnreadCount } from "@/lib/use-workspace-message-unread-count";
 import { useWorkspaceSidebarPreference } from "@/lib/use-workspace-sidebar-preference";
 import { getProfessionalWorkspaceNavigation } from "@/lib/workspace-navigation";
-
-type ProfessionalProfile = {
-  id: string;
-  name: string;
-  category: string;
-  profile_image_url: string | null;
-};
 
 type ShellProps = {
   children: React.ReactNode;
@@ -47,7 +44,8 @@ const pageTitles: Array<{ path: string; title: string }> = [
 export default function ProfessionalDashboardShell({ children }: ShellProps) {
   const pathname = usePathname();
   const router = useRouter();
-  const [professional, setProfessional] = useState<ProfessionalProfile | null>(null);
+  const [professional, setProfessional] =
+    useState<ProfessionalWorkspaceProfile | null>(null);
   const [mobileNavigationOpen, setMobileNavigationOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] =
     useWorkspaceSidebarPreference();
@@ -360,67 +358,83 @@ export default function ProfessionalDashboardShell({ children }: ShellProps) {
     );
   }
 
-  if (!accountResolved) {
-    return <div className="min-h-screen bg-lumina-bg" aria-label="Loading professional workspace" />;
+  if (!accountResolved || !professional) {
+    return (
+      <div
+        className="min-h-screen bg-lumina-bg"
+        aria-label="Loading professional workspace"
+      />
+    );
   }
 
   return (
-    <div className="min-h-screen overflow-x-hidden bg-lumina-bg text-lumina-text">
-      <aside
-        className={`fixed inset-y-0 left-0 z-40 hidden border-r border-lumina-glass-border transition-[width] duration-200 lg:block ${
-          sidebarCollapsed ? "w-[88px]" : "w-[280px]"
-        }`}
-      >
-        {renderSidebar(sidebarCollapsed)}
-      </aside>
+    <ProfessionalWorkspaceProvider
+      value={{
+        professional,
+        requestActionCount: actionCounts.requests,
+        requestIssueCount: actionCounts.requestIssues,
+        messageUnreadCount,
+      }}
+    >
+      <div className="min-h-screen overflow-x-hidden bg-lumina-bg text-lumina-text">
+        <aside
+          className={`fixed inset-y-0 left-0 z-40 hidden border-r border-lumina-glass-border transition-[width] duration-200 lg:block ${
+            sidebarCollapsed ? "w-[88px]" : "w-[280px]"
+          }`}
+        >
+          {renderSidebar(sidebarCollapsed)}
+        </aside>
 
-      {mobileNavigationOpen && (
-        <div className="fixed inset-0 z-50 lg:hidden">
-          <button
-            type="button"
-            className="absolute inset-0 bg-black/25"
-            onClick={() => setMobileNavigationOpen(false)}
-            aria-label="Close dashboard navigation"
-          />
-          <aside className="relative h-full w-[min(86vw,300px)] border-r border-lumina-border bg-lumina-bg-soft text-lumina-text shadow-xl">
-            {renderSidebar(false, true)}
-          </aside>
-        </div>
-      )}
-
-      <div
-        className={`min-w-0 transition-[padding] duration-200 ${
-          sidebarCollapsed ? "lg:pl-[88px]" : "lg:pl-[280px]"
-        }`}
-      >
-        <header className="sticky top-0 z-30 flex h-[68px] items-center justify-between border-b border-lumina-border bg-lumina-surface/95 px-4 backdrop-blur md:px-8">
-          <div className="flex min-w-0 items-center gap-3">
+        {mobileNavigationOpen && (
+          <div className="fixed inset-0 z-50 lg:hidden">
             <button
               type="button"
-              onClick={() => setMobileNavigationOpen(true)}
-              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-lumina-border text-lumina-text lg:hidden"
-              aria-label="Open dashboard navigation"
-              aria-expanded={mobileNavigationOpen}
-            >
-              <Menu size={20} strokeWidth={1.7} />
-            </button>
-            <div className="min-w-0">
-              <p className="hidden text-[10px] font-semibold uppercase tracking-[0.16em] text-lumina-text-muted sm:block">
-                Professional workspace
-              </p>
-              <p className="truncate text-[14px] font-medium text-lumina-text sm:mt-0.5">
-                {currentTitle}
-              </p>
+              className="absolute inset-0 bg-black/25"
+              onClick={() => setMobileNavigationOpen(false)}
+              aria-label="Close dashboard navigation"
+            />
+            <aside className="relative h-full w-[min(86vw,300px)] border-r border-lumina-border bg-lumina-bg-soft text-lumina-text shadow-xl">
+              {renderSidebar(false, true)}
+            </aside>
+          </div>
+        )}
+
+        <div
+          className={`min-w-0 transition-[padding] duration-200 ${
+            sidebarCollapsed ? "lg:pl-[88px]" : "lg:pl-[280px]"
+          }`}
+        >
+          <header className="sticky top-0 z-30 flex h-[68px] items-center justify-between border-b border-lumina-border bg-lumina-surface/95 px-4 backdrop-blur md:px-8">
+            <div className="flex min-w-0 items-center gap-3">
+              <button
+                type="button"
+                onClick={() => setMobileNavigationOpen(true)}
+                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-lumina-border text-lumina-text lg:hidden"
+                aria-label="Open dashboard navigation"
+                aria-expanded={mobileNavigationOpen}
+              >
+                <Menu size={20} strokeWidth={1.7} />
+              </button>
+              <div className="min-w-0">
+                <p className="hidden text-[10px] font-semibold uppercase tracking-[0.16em] text-lumina-text-muted sm:block">
+                  Professional workspace
+                </p>
+                <p className="truncate text-[14px] font-medium text-lumina-text sm:mt-0.5">
+                  {currentTitle}
+                </p>
+              </div>
             </div>
-          </div>
 
-          <div className="flex items-center gap-3">
-            <AccountMenu workspace="professional" />
-          </div>
-        </header>
+            <div className="flex items-center gap-3">
+              <AccountMenu workspace="professional" />
+            </div>
+          </header>
 
-        <main className="min-h-[calc(100vh-68px)] min-w-0 bg-lumina-bg text-lumina-text">{children}</main>
+          <main className="min-h-[calc(100vh-68px)] min-w-0 bg-lumina-bg text-lumina-text">
+            {children}
+          </main>
+        </div>
       </div>
-    </div>
+    </ProfessionalWorkspaceProvider>
   );
 }

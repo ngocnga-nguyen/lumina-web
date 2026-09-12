@@ -6,6 +6,10 @@ import { CheckCircle2, Pencil, X } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import ProfessionalProfileMediaEditor from "@/components/ProfessionalProfileMediaEditor";
 import {
+  ProfessionalDashboardMobileSummary,
+  ProfessionalDashboardMobileWorkspace,
+} from "@/components/ProfessionalDashboardMobileHome";
+import {
   getActivationCompletionPercent,
   getFirstIncompleteOnboardingStep,
   getMissingActivationLabels,
@@ -265,9 +269,17 @@ const dashboardProfileStatus =
 
   return (
     <div className="bg-lumina-surface text-lumina-text">
-      <section className="px-4 py-6 md:px-10 md:py-10">
+      <section className="px-3 py-6 md:px-8 md:py-10 lg:px-10">
+        {artist && (
+          <ProfessionalDashboardMobileSummary
+            profileStatus={dashboardProfileStatus}
+            profileIsActive={panelMode === "active"}
+            onEditAvatar={() => setMediaEditorMode("avatar")}
+          />
+        )}
+
         {artist && activationStatusLoaded && showProfilePanel && panelMode === "incomplete" && (
-          <div className="mb-8 max-w-[1140px] rounded-[22px] border border-lumina-border bg-lumina-surface-soft p-5 md:p-6">
+          <div className="mb-0 mt-5 max-w-[1140px] rounded-[22px] border border-lumina-border bg-lumina-surface-soft p-5 md:p-6 lg:mb-8 lg:mt-0">
             <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
               <div className="max-w-[700px] flex-1">
                 <p className="text-[12px] font-semibold uppercase tracking-[0.18em] text-lumina-text-muted">
@@ -330,7 +342,7 @@ const dashboardProfileStatus =
         )}
 
         {artist && activationStatusLoaded && showProfilePanel && panelMode === "verification_pending" && (
-          <div className="mb-8 flex max-w-[1140px] flex-col gap-3 rounded-[18px] border border-lumina-glass-border bg-lumina-glass px-5 py-4 backdrop-blur-[10px] sm:flex-row sm:items-center sm:justify-between">
+          <div className="mb-0 mt-5 flex max-w-[1140px] flex-col gap-3 rounded-[18px] border border-lumina-glass-border bg-lumina-glass px-5 py-4 backdrop-blur-[10px] sm:flex-row sm:items-center sm:justify-between lg:mb-8 lg:mt-0">
             <div>
               <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-lumina-text-muted">
                 Your Lumina profile · {profileCompletion}% complete
@@ -346,7 +358,7 @@ const dashboardProfileStatus =
         )}
 
         {artist && activationStatusLoaded && showProfilePanel && panelMode === "ready" && (
-          <div className="mb-8 flex max-w-[1140px] flex-col gap-4 rounded-[18px] border border-lumina-border bg-lumina-glass px-5 py-4 backdrop-blur-[10px] sm:flex-row sm:items-center sm:justify-between">
+          <div className="mb-0 mt-5 flex max-w-[1140px] flex-col gap-4 rounded-[18px] border border-lumina-border bg-lumina-glass px-5 py-4 backdrop-blur-[10px] sm:flex-row sm:items-center sm:justify-between lg:mb-8 lg:mt-0">
             <div>
               <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-lumina-text-muted">
                 Your Lumina profile · 100% complete
@@ -378,7 +390,7 @@ const dashboardProfileStatus =
         )}
 
         {artist && activationStatusLoaded && showProfilePanel && panelMode === "active" && (
-          <div className="mb-8 flex max-w-[1140px] items-center gap-3 rounded-[16px] border border-lumina-border bg-lumina-glass px-4 py-3 backdrop-blur-[8px]">
+          <div className="mb-0 mt-5 flex max-w-[1140px] items-center gap-3 rounded-[16px] border border-lumina-border bg-lumina-glass px-4 py-3 backdrop-blur-[8px] lg:mb-8 lg:mt-0">
             <CheckCircle2 size={17} strokeWidth={1.7} className="shrink-0 text-lumina-text" />
             <div className="min-w-0 flex-1 sm:flex sm:items-baseline sm:gap-2">
               <p className="text-[13px] font-medium text-lumina-text">Profile active</p>
@@ -403,6 +415,14 @@ const dashboardProfileStatus =
           </div>
         )}
 
+        {artist && (
+          <ProfessionalDashboardMobileWorkspace
+            serviceCount={services.length}
+            portfolioEntryCount={portfolioCount}
+          />
+        )}
+
+        <div className="hidden lg:block">
         <div className="grid grid-cols-1 gap-8 lg:grid-cols-[320px_minmax(0,1fr)] lg:gap-12 xl:gap-16">
           <div>
             <button
@@ -612,6 +632,7 @@ const dashboardProfileStatus =
             </div>
           )}
         </section>
+        </div>
       </section>
 
       {artist && mediaEditorMode && (
