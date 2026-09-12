@@ -17,6 +17,10 @@ import {
   loadMyProfessionalActivationStatus,
   setProfessionalProfileVisibility,
 } from "@/lib/professional-activation-client";
+import {
+  getProfileImageValidationError,
+} from "@/lib/profile-image-storage";
+import { uploadProfileImage as uploadProfileImageToStorage } from "@/lib/profile-image-upload";
 
 type Artist = {
   id: string;
@@ -81,7 +85,11 @@ export default function DashboardPage() {
   const uploadProfileImage = async (file: File) => {
     if (!artist) return;
 
-    setUploadingImage(true);
+    const validationError = getProfileImageValidationError(file);
+    if (validationError) {
+      alert(validationError);
+      return;
+    }
 
     const {
       data: { user },
@@ -93,42 +101,30 @@ export default function DashboardPage() {
       return;
     }
 
-    const fileExt = file.name.split(".").pop();
-    const fileName = `${user.id}-${Date.now()}.${fileExt}`;
+    setUploadingImage(true);
+    try {
+      const { publicUrl } = await uploadProfileImageToStorage(file, user.id);
+      const { error: updateError } = await supabase
+        .from("artists")
+        .update({ profile_image_url: publicUrl })
+        .eq("id", artist.id);
 
-    const { error: uploadError } = await supabase.storage
-      .from("profile-images")
-      .upload(fileName, file);
+      if (updateError) throw updateError;
 
-    if (uploadError) {
+      setArtist({
+        ...artist,
+        profile_image_url: publicUrl,
+      });
+      await refreshActivationStatus();
+    } catch (error) {
+      alert(
+        error instanceof Error
+          ? error.message
+          : "The profile image could not be uploaded."
+      );
+    } finally {
       setUploadingImage(false);
-      alert(uploadError.message);
-      return;
     }
-
-    const { data } = supabase.storage
-      .from("profile-images")
-      .getPublicUrl(fileName);
-
-    const imageUrl = data.publicUrl;
-
-    const { error: updateError } = await supabase
-      .from("artists")
-      .update({ profile_image_url: imageUrl })
-      .eq("id", artist.id);
-
-    setUploadingImage(false);
-
-    if (updateError) {
-      alert(updateError.message);
-      return;
-    }
-
-    setArtist({
-      ...artist,
-      profile_image_url: imageUrl,
-    });
-    await refreshActivationStatus();
   };
 
   useEffect(() => {
@@ -472,7 +468,7 @@ const dashboardProfileStatus =
 
               <input
                 type="file"
-                accept="image/*"
+                accept="image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp"
                 className="hidden"
                 disabled={uploadingImage}
                 onChange={(e) => {

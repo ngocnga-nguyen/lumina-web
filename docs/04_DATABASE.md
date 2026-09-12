@@ -326,7 +326,11 @@ These power realtime request arrival, proposal changes, completion status, messa
 
 The active application uses these Supabase Storage buckets:
 
-- `profile-images` — account and professional profile images
+- `profile-images` — publicly readable account and professional profile images;
+  new writes use `<auth.uid()>/<random-file>` and are owner-folder scoped.
+  JPEG, PNG, and WebP uploads are limited to 5 MB. Existing root-level avatar
+  URLs remain readable, with deletion allowed only when the authenticated
+  owner UUID is safely identifiable from the legacy filename prefix.
 - `portfolio` — professional portfolio images
 - `chat-images` — images shared in request conversations
 - `consultation-images` — private inspiration images submitted with an optional Consultation Snapshot; participants use short-lived signed URLs

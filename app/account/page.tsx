@@ -6,6 +6,10 @@ import { supabase } from "@/lib/supabase";
 import { useRouter } from "next/navigation";
 import { Camera, CircleUser } from "lucide-react";
 import ClientWorkspaceShell from "@/components/ClientWorkspaceShell";
+import {
+  getProfileImageValidationError,
+} from "@/lib/profile-image-storage";
+import { uploadProfileImage as uploadProfileImageToStorage } from "@/lib/profile-image-upload";
 
 export default function AccountPage() {
   const router = useRouter();
@@ -71,13 +75,9 @@ export default function AccountPage() {
   };
 
   const uploadProfileImage = async (file: File) => {
-    if (!file.type.startsWith("image/")) {
-      alert("Please choose an image file.");
-      return;
-    }
-
-    if (file.size > 5 * 1024 * 1024) {
-      alert("Please choose an image smaller than 5 MB.");
+    const validationError = getProfileImageValidationError(file);
+    if (validationError) {
+      alert(validationError);
       return;
     }
 
@@ -88,24 +88,18 @@ export default function AccountPage() {
     if (!user) return;
 
     setUploading(true);
-    const fileExtension = file.name.split(".").pop() || "jpg";
-    const fileName = `${user.id}-${Date.now()}.${fileExtension}`;
-    const { error } = await supabase.storage
-      .from("profile-images")
-      .upload(fileName, file);
-
-    if (error) {
+    try {
+      const { publicUrl } = await uploadProfileImageToStorage(file, user.id);
+      setProfileImageUrl(publicUrl);
+    } catch (error) {
+      alert(
+        error instanceof Error
+          ? error.message
+          : "The profile image could not be uploaded."
+      );
+    } finally {
       setUploading(false);
-      alert(error.message);
-      return;
     }
-
-    const { data } = supabase.storage
-      .from("profile-images")
-      .getPublicUrl(fileName);
-
-    setProfileImageUrl(data.publicUrl);
-    setUploading(false);
   };
 
   const saveProfile = async () => {
@@ -245,7 +239,7 @@ export default function AccountPage() {
                     <Camera size={20} />
                     <input
                       type="file"
-                      accept="image/*"
+                      accept="image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp"
                       className="hidden"
                       disabled={uploading}
                       onChange={(event) => {

@@ -198,6 +198,9 @@ test("mobile avatar keeps real images opaque with a transparent backing and a li
     publicProfile,
     /src=\{artist\.profile_image_url\}[\s\S]*className="h-full w-full object-cover"/
   );
-  assert.match(profileEditor, /accept="image\/\*"/);
-  assert.match(profileEditor, /\.upload\(fileName, file\)/);
+  assert.match(
+    profileEditor,
+    /accept="image\/jpeg,image\/png,image\/webp,\.jpg,\.jpeg,\.png,\.webp"/
+  );
+  assert.match(profileEditor, /uploadProfileImageToStorage\(file, user\.id\)/);
 });

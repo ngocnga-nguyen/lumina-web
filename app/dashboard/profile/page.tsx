@@ -9,6 +9,10 @@ import {
   normalizeArtistCoverStyle,
   type ArtistCoverStyle,
 } from "@/lib/artist-cover-style";
+import {
+  getProfileImageValidationError,
+} from "@/lib/profile-image-storage";
+import { uploadProfileImage as uploadProfileImageToStorage } from "@/lib/profile-image-upload";
 
 type ProfileForm = {
   name: string;
@@ -613,20 +617,17 @@ export default function DashboardProfilePage() {
 
                     <input
                       type="file"
-                      accept="image/*"
+                      accept="image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp"
                       className="hidden"
                       onChange={async (e) => {
                         const file = e.target.files?.[0];
 
                         if (!file) return;
 
-                        if (!file.type.startsWith("image/")) {
-                          alert("Please choose an image file.");
-                          return;
-                        }
-
-                        if (file.size > 5 * 1024 * 1024) {
-                          alert("Please choose an image smaller than 5 MB.");
+                        const validationError =
+                          getProfileImageValidationError(file);
+                        if (validationError) {
+                          alert(validationError);
                           return;
                         }
 
@@ -637,29 +638,22 @@ export default function DashboardProfilePage() {
                         if (!user) return;
 
                         setUploadingImage(true);
-
-                        const fileExt = file.name.split(".").pop();
-                        const fileName = `${user.id}-${Date.now()}.${fileExt}`;
-
-                        const { error: uploadError } = await supabase.storage
-                          .from("profile-images")
-                          .upload(fileName, file);
-
-                        if (uploadError) {
+                        try {
+                          const { publicUrl } =
+                            await uploadProfileImageToStorage(file, user.id);
+                          setForm((current) => ({
+                            ...current,
+                            profile_image_url: publicUrl,
+                          }));
+                        } catch (error) {
+                          alert(
+                            error instanceof Error
+                              ? error.message
+                              : "The profile image could not be uploaded."
+                          );
+                        } finally {
                           setUploadingImage(false);
-                          alert(uploadError.message);
-                          return;
                         }
-
-                        const { data } = supabase.storage
-                          .from("profile-images")
-                          .getPublicUrl(fileName);
-
-                        setForm({
-                          ...form,
-                          profile_image_url: data.publicUrl,
-                        });
-                        setUploadingImage(false);
                       }}
                     />
                   </label>
