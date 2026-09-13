@@ -390,7 +390,7 @@ const dashboardProfileStatus =
         )}
 
         {artist && activationStatusLoaded && showProfilePanel && panelMode === "active" && (
-          <div className="mb-0 mt-5 flex max-w-[1140px] items-center gap-3 rounded-[16px] border border-lumina-border bg-lumina-glass px-4 py-3 backdrop-blur-[8px] lg:mb-8 lg:mt-0">
+          <div className="mb-8 hidden max-w-[1140px] items-center gap-3 rounded-[16px] border border-lumina-border bg-lumina-glass px-4 py-3 backdrop-blur-[8px] lg:flex">
             <CheckCircle2 size={17} strokeWidth={1.7} className="shrink-0 text-lumina-text" />
             <div className="min-w-0 flex-1 sm:flex sm:items-baseline sm:gap-2">
               <p className="text-[13px] font-medium text-lumina-text">Profile active</p>

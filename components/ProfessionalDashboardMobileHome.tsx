@@ -5,6 +5,7 @@ import {
   AlertCircle,
   ArrowUpRight,
   CheckCircle2,
+  ChevronRight,
   Pencil,
 } from "lucide-react";
 import WorkspaceNavigationIndicator, {
@@ -24,14 +25,11 @@ type ProfessionalDashboardMobileWorkspaceProps = {
   portfolioEntryCount: number;
 };
 
-const shortcutOrder = [
-  "requests",
-  "messages",
+const businessShortcutOrder = [
   "clients",
   "services",
   "portfolio",
   "reviews",
-  "settings",
 ] as const;
 
 export function ProfessionalDashboardMobileSummary({
@@ -43,7 +41,7 @@ export function ProfessionalDashboardMobileSummary({
 
   return (
     <section className="border-b border-lumina-border/70 pb-4 lg:hidden">
-      <div className="flex items-start gap-3.5">
+      <div className="flex items-start gap-3">
         <button
           type="button"
           onClick={onEditAvatar}
@@ -66,12 +64,12 @@ export function ProfessionalDashboardMobileSummary({
           </span>
         </button>
 
-        <div className="min-w-0 flex-1 pt-0.5">
+        <div className="min-w-0 flex-1">
           <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-lumina-text-muted">
             Professional workspace
           </p>
           <h1
-            className="mt-1 truncate text-[25px] font-semibold leading-tight text-lumina-text"
+            className="mt-0.5 truncate text-[25px] font-semibold leading-tight text-lumina-text"
             style={{ fontFamily: "Georgia, Times New Roman, serif" }}
           >
             {professional.name}
@@ -80,7 +78,7 @@ export function ProfessionalDashboardMobileSummary({
             {professional.category || "Lumina professional"}
           </p>
           {profileStatus && (
-            <p className="mt-2 inline-flex items-center gap-1.5 text-[11px] font-medium text-lumina-text">
+            <p className="mt-1.5 inline-flex items-center gap-1.5 text-[11px] font-medium text-lumina-text">
               {profileIsActive ? (
                 <CheckCircle2
                   size={13}
@@ -100,7 +98,7 @@ export function ProfessionalDashboardMobileSummary({
         </div>
       </div>
 
-      <div className="mt-3.5 flex flex-wrap items-center gap-2">
+      <div className="mt-3 flex flex-wrap items-center gap-2">
         <Link
           href={`/artist/${professional.id}`}
           className="inline-flex min-h-[42px] items-center justify-center gap-1.5 rounded-full bg-lumina-black px-3.5 text-[12px] font-medium text-white transition hover:opacity-85 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lumina-black focus-visible:ring-offset-2"
@@ -130,21 +128,81 @@ export function ProfessionalDashboardMobileWorkspace({
     messageUnreadCount,
   } = useProfessionalWorkspace();
   const navigation = getProfessionalWorkspaceNavigation(professional.id);
-  const shortcuts = shortcutOrder
+  const businessShortcuts = businessShortcutOrder
     .map((id) => navigation.find((item) => item.id === id))
     .filter((item): item is NonNullable<typeof item> => Boolean(item));
-  const MessagesIcon = navigation.find((item) => item.id === "messages")?.icon;
+  const requestsItem = navigation.find((item) => item.id === "requests");
+  const messagesItem = navigation.find((item) => item.id === "messages");
+  const servicesItem = navigation.find((item) => item.id === "services");
+  const settingsItem = navigation.find((item) => item.id === "settings");
+  const RequestsIcon = requestsItem?.icon;
+  const MessagesIcon = messagesItem?.icon;
+  const ServicesIcon = servicesItem?.icon;
+  const SettingsIcon = settingsItem?.icon;
   const hasPriorityActions =
     requestActionCount > 0 || messageUnreadCount > 0;
+  const overviewMetrics = [
+    {
+      label: "Requests",
+      value: requestActionCount,
+      href: requestsItem?.href || "/dashboard/requests",
+      icon: RequestsIcon,
+    },
+    {
+      label: "Unread",
+      value: messageUnreadCount,
+      href: messagesItem?.href || "/dashboard/messages",
+      icon: MessagesIcon,
+    },
+    {
+      label: "Services",
+      value: serviceCount,
+      href: servicesItem?.href || "/dashboard/services",
+      icon: ServicesIcon,
+    },
+  ];
 
   return (
-    <div className="mt-4 lg:hidden">
+    <div className="mt-3.5 lg:hidden">
+      <section aria-label="Professional overview">
+        <div className="grid grid-cols-3 divide-x divide-lumina-border/70 border-y border-lumina-border/70">
+          {overviewMetrics.map((metric) => {
+            const MetricIcon = metric.icon;
+
+            return (
+              <Link
+                key={metric.label}
+                href={metric.href}
+                className="group flex min-h-[62px] flex-col items-center justify-center gap-1 px-2 py-2.5 text-center transition hover:bg-lumina-surface-soft/70 active:bg-lumina-pearl/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-lumina-black"
+              >
+                <span className="flex min-h-[17px] items-center justify-center gap-1.5">
+                  {MetricIcon && (
+                    <MetricIcon
+                      size={13}
+                      strokeWidth={1.65}
+                      className="shrink-0 text-lumina-text-muted group-hover:text-lumina-text"
+                      aria-hidden="true"
+                    />
+                  )}
+                  <span className="text-[17px] font-medium leading-none text-lumina-text">
+                    {metric.value}
+                  </span>
+                </span>
+                <span className="text-[9px] font-semibold uppercase tracking-[0.1em] text-lumina-text-muted">
+                  {metric.label}
+                </span>
+              </Link>
+            );
+          })}
+        </div>
+      </section>
+
       {hasPriorityActions && (
-        <section>
+        <section className="mt-4">
           <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-lumina-text-muted">
             Needs your attention
           </p>
-          <div className="mt-2 grid grid-cols-2 gap-2">
+          <div className="mt-2 divide-y divide-lumina-border/70 rounded-[14px] border border-lumina-border bg-lumina-surface/88 shadow-[0_8px_20px_rgba(17,17,17,0.035)] backdrop-blur-[7px]">
             {requestActionCount > 0 && (
               <Link
                 href="/dashboard/requests"
@@ -153,11 +211,7 @@ export function ProfessionalDashboardMobileWorkspace({
                   "request action",
                   requestIssueCount
                 )}
-                className={`flex min-h-[58px] items-center gap-2.5 rounded-[14px] border bg-lumina-surface/82 px-3 py-2.5 backdrop-blur-[8px] transition hover:bg-lumina-surface active:scale-[0.99] ${
-                  requestIssueCount > 0
-                    ? "border-lumina-attention/30"
-                    : "border-lumina-glass-border"
-                }`}
+                className="flex min-h-12 items-center gap-2.5 px-3 py-2 transition hover:bg-lumina-surface/80 active:bg-lumina-pearl/65 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-lumina-black"
               >
                 <span
                   className={`inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full ${
@@ -169,13 +223,10 @@ export function ProfessionalDashboardMobileWorkspace({
                   <AlertCircle size={14} strokeWidth={1.7} aria-hidden="true" />
                 </span>
                 <span className="min-w-0 flex-1">
-                  <span className="block text-[12px] font-medium text-lumina-text">
-                    Requests
-                  </span>
-                  <span className="mt-0.5 block text-[10px] leading-tight text-lumina-text-muted">
+                  <span className="block text-[12px] font-medium leading-tight text-lumina-text">
                     {requestActionCount === 1
-                      ? "1 action"
-                      : `${requestActionCount} actions`}
+                      ? "1 client request waiting"
+                      : `${requestActionCount} client requests waiting`}
                   </span>
                 </span>
                 <WorkspaceNavigationIndicator
@@ -192,7 +243,7 @@ export function ProfessionalDashboardMobileWorkspace({
                   messageUnreadCount,
                   "unread message"
                 )}
-                className="flex min-h-[58px] items-center gap-2.5 rounded-[14px] border border-lumina-glass-border bg-lumina-surface/82 px-3 py-2.5 backdrop-blur-[8px] transition hover:bg-lumina-surface active:scale-[0.99]"
+                className="flex min-h-12 items-center gap-2.5 px-3 py-2 transition hover:bg-lumina-surface/80 active:bg-lumina-pearl/65 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-lumina-black"
               >
                 <span className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-lumina-blush/75 text-lumina-text">
                   {MessagesIcon && (
@@ -204,13 +255,10 @@ export function ProfessionalDashboardMobileWorkspace({
                   )}
                 </span>
                 <span className="min-w-0 flex-1">
-                  <span className="block text-[12px] font-medium text-lumina-text">
-                    Messages
-                  </span>
-                  <span className="mt-0.5 block text-[10px] leading-tight text-lumina-text-muted">
+                  <span className="block text-[12px] font-medium leading-tight text-lumina-text">
                     {messageUnreadCount === 1
-                      ? "1 unread"
-                      : `${messageUnreadCount} unread`}
+                      ? "1 unread message"
+                      : `${messageUnreadCount} unread messages`}
                   </span>
                 </span>
                 <WorkspaceNavigationIndicator count={messageUnreadCount} />
@@ -220,36 +268,23 @@ export function ProfessionalDashboardMobileWorkspace({
         </section>
       )}
 
-      <section className={hasPriorityActions ? "mt-4" : ""}>
-        <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-lumina-text-muted">
-          Workspace
-        </p>
+      <section className="mt-4">
         <h2
-          className="mt-1 text-[21px] leading-tight text-lumina-text"
+          className="text-[19px] leading-tight text-lumina-text"
           style={{ fontFamily: "Georgia, Times New Roman, serif" }}
         >
-          Manage your business
+          Your business
         </h2>
 
-        <div className="mt-2.5 grid grid-cols-2 gap-2">
-          {shortcuts.map((item, index) => {
+        <div className="mt-2 grid grid-cols-2 gap-x-4">
+          {businessShortcuts.map((item) => {
             const Icon = item.icon;
-            const count =
-              item.id === "requests"
-                ? requestActionCount
-                : item.id === "messages"
-                  ? messageUnreadCount
-                  : 0;
 
             return (
               <Link
                 key={item.id}
                 href={item.href}
-                className={`group flex min-h-[52px] items-center gap-2 rounded-[14px] border border-lumina-glass-border bg-lumina-surface/74 px-2.5 py-2 text-lumina-text backdrop-blur-[7px] transition hover:border-lumina-border hover:bg-lumina-surface active:scale-[0.985] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lumina-black focus-visible:ring-offset-2 ${
-                  shortcuts.length % 2 === 1 && index === shortcuts.length - 1
-                    ? "col-span-2 mx-auto w-[calc(50%-4px)]"
-                    : ""
-                }`}
+                className="group flex min-h-11 items-center gap-2 border-b border-lumina-border/60 px-1 py-2 text-lumina-text/85 transition hover:bg-lumina-surface-soft/50 hover:text-lumina-text active:bg-lumina-pearl/55 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-lumina-black"
               >
                 <Icon
                   size={16}
@@ -260,21 +295,30 @@ export function ProfessionalDashboardMobileWorkspace({
                 <span className="min-w-0 flex-1 text-[11px] font-medium leading-[1.25] min-[390px]:text-[12px]">
                   {item.label}
                 </span>
-                {count > 0 && (
-                  <WorkspaceNavigationIndicator
-                    count={count}
-                    hasIssue={
-                      item.id === "requests" && requestIssueCount > 0
-                    }
-                  />
-                )}
+                <ChevronRight
+                  size={13}
+                  strokeWidth={1.7}
+                  className="shrink-0 text-lumina-text-muted/70"
+                  aria-hidden="true"
+                />
               </Link>
             );
           })}
         </div>
+
+        {settingsItem && SettingsIcon && (
+          <Link
+            href={settingsItem.href}
+            className="mt-2 inline-flex min-h-10 items-center gap-2 px-1 text-[11px] font-medium text-lumina-text-muted transition hover:text-lumina-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lumina-black focus-visible:ring-offset-2 min-[390px]:text-[12px]"
+          >
+            <SettingsIcon size={15} strokeWidth={1.65} aria-hidden="true" />
+            Settings
+            <ChevronRight size={12} strokeWidth={1.7} aria-hidden="true" />
+          </Link>
+        )}
       </section>
 
-      <section className="mt-4 rounded-[16px] border border-lumina-glass-border bg-lumina-surface/66 px-3.5 py-3 backdrop-blur-[8px]">
+      <section className="mt-3 border-t border-lumina-border/70 pt-3">
         <div className="flex items-center justify-between gap-3">
           <div>
             <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-lumina-text-muted">

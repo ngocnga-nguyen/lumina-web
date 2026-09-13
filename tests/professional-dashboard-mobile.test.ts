@@ -22,6 +22,10 @@ test("mobile dashboard is isolated below lg while desktop dashboard stays intact
   assert.match(mobileHome, /lg:hidden/);
   assert.match(mobileHome, /portfolioEntryCount/);
   assert.match(mobileHome, /Manage services/);
+  assert.match(
+    dashboard,
+    /panelMode === "active"[\s\S]*mb-8 hidden[\s\S]*lg:flex/
+  );
 });
 
 test("profile actions use the existing public and editing routes", () => {
@@ -53,19 +57,16 @@ test("attention cards render only for genuine nonzero counts", () => {
   assert.match(mobileHome, /requestIssueCount > 0/);
 });
 
-test("workspace shortcuts preserve all approved professional destinations", () => {
-  for (const id of [
-    "requests",
-    "messages",
-    "clients",
-    "services",
-    "portfolio",
-    "reviews",
-    "settings",
-  ]) {
+test("overview metrics and lighter business destinations preserve approved routes", () => {
+  assert.match(mobileHome, /overviewMetrics/);
+  assert.match(mobileHome, /label: "Requests"/);
+  assert.match(mobileHome, /label: "Unread"/);
+  assert.match(mobileHome, /label: "Services"/);
+
+  for (const id of ["clients", "services", "portfolio", "reviews"]) {
     assert.match(mobileHome, new RegExp(`"${id}"`));
   }
   assert.match(mobileHome, /getProfessionalWorkspaceNavigation/);
-  assert.match(mobileHome, /shortcuts\.length % 2 === 1/);
-  assert.match(mobileHome, /col-span-2 mx-auto/);
+  assert.match(mobileHome, /Your business/);
+  assert.match(mobileHome, /settingsItem/);
 });
