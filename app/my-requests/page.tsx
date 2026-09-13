@@ -6,6 +6,7 @@ import { supabase } from "@/lib/supabase";
 import { createRealtimeChannelTopic } from "@/lib/realtime-channel";
 import { Bell, MessageCircle, CalendarDays, Star } from "lucide-react";
 import ChatModal from "@/components/ChatModal";
+import ClientRequestMobileSummary from "@/components/ClientRequestMobileSummary";
 import ClientWorkspaceShell from "@/components/ClientWorkspaceShell";
 import ConsultationSnapshot from "@/components/ConsultationSnapshot";
 import ClientGuidanceTip from "@/components/ClientGuidanceTip";
@@ -28,10 +29,15 @@ import {
 } from "@/lib/request-completion";
 import {
   getLatestRequestConversationUpdate,
+  getRequestConversationPreview,
   getRequestConversationUnreadCount,
   markConversationUpdatesRead,
   markRequestConversationRead,
 } from "@/lib/request-conversations";
+import {
+  getClientMobilePriorityClass,
+  getClientMobileRequestStatus,
+} from "@/lib/client-request-mobile";
 
 type ClientRequest = {
   id: string;
@@ -94,6 +100,45 @@ type Notification = {
   is_read: boolean | null;
   created_at: string;
 };
+
+function formatMobileRequestSchedule(
+  scheduledFor: string | null,
+  date: string | null,
+  time: string | null
+) {
+  if (scheduledFor) {
+    const scheduled = new Date(scheduledFor);
+    if (!Number.isNaN(scheduled.getTime())) {
+      return scheduled.toLocaleString("en-US", {
+        month: "short",
+        day: "numeric",
+        hour: "numeric",
+        minute: "2-digit",
+      });
+    }
+  }
+
+  if (!date && !time) return null;
+  const parsedDate = date ? new Date(`${date.slice(0, 10)}T00:00:00`) : null;
+  const dateLabel =
+    parsedDate && !Number.isNaN(parsedDate.getTime())
+      ? parsedDate.toLocaleDateString("en-US", {
+          month: "short",
+          day: "numeric",
+        })
+      : date;
+  const parsedTime = time ? new Date(`2000-01-01T${time}`) : null;
+  const timeLabel =
+    parsedTime && !Number.isNaN(parsedTime.getTime())
+      ? parsedTime.toLocaleTimeString("en-US", {
+          hour: "numeric",
+          minute: "2-digit",
+        })
+      : time;
+
+  return [dateLabel, timeLabel].filter(Boolean).join(" · ");
+}
+
 export default function MyRequestsPage() {
   const [requests, setRequests] = useState<ClientRequest[]>([]);
   const [reviewedRequestIds, setReviewedRequestIds] = useState<Set<string>>(
@@ -982,25 +1027,49 @@ const hasProposalConfirmationAction = currentActionKeys.some(
     >
       <div className="min-h-screen bg-lumina-surface text-lumina-text">
 
-      <section className="mx-auto w-full max-w-[1600px] px-5 py-10 md:px-10 md:py-14">
+      <section className="mx-auto w-full max-w-[1600px] px-3 py-4 md:px-8 md:py-7 lg:px-10 lg:py-14">
         <h1
-          className="text-[42px] leading-[1.02] font-semibold md:text-[56px]"
+          className="text-[26px] font-semibold leading-[1.04] md:text-[30px] lg:text-[56px] lg:leading-[1.02]"
           style={{ fontFamily: "Georgia, Times New Roman, serif" }}
         >
           My requests
         </h1>
 
-        <p className="mt-4 max-w-[680px] text-[16px] leading-[1.6] text-lumina-text-muted">
+        <p className="mt-1 max-w-[680px] text-[12px] leading-[1.45] text-lumina-text-muted lg:mt-4 lg:text-[16px] lg:leading-[1.6]">
           Track your booking requests and confirm artist suggestions.
         </p>
        {!loading && (
   <div>
-    <p className="mt-2 text-[14px] text-lumina-text-muted">
+    <p className="mt-2 hidden text-[14px] text-lumina-text-muted lg:block">
       {requests.length} {requestTab} request
       {requests.length !== 1 ? "s" : ""}
     </p>
 
-    <div className="mt-6 flex gap-2">
+    <div className="mt-3 inline-flex rounded-full border border-lumina-border/70 bg-lumina-pearl/65 p-1 lg:hidden">
+      <button
+        onClick={() => setRequestTab("active")}
+        className={`min-h-9 rounded-full px-4 text-[11px] font-medium transition ${
+          requestTab === "active"
+            ? "bg-lumina-black text-white"
+            : "text-lumina-text-muted hover:text-lumina-text"
+        }`}
+      >
+        Active
+      </button>
+
+      <button
+        onClick={() => setRequestTab("archived")}
+        className={`min-h-9 rounded-full px-4 text-[11px] font-medium transition ${
+          requestTab === "archived"
+            ? "bg-lumina-black text-white"
+            : "text-lumina-text-muted hover:text-lumina-text"
+        }`}
+      >
+        Archived
+      </button>
+    </div>
+
+    <div className="mt-6 hidden gap-2 lg:flex">
       <button
         onClick={() => setRequestTab("active")}
         className={`rounded-full px-4 py-2 text-[13px] ${
@@ -1011,7 +1080,6 @@ const hasProposalConfirmationAction = currentActionKeys.some(
       >
         Active
       </button>
-
       <button
         onClick={() => setRequestTab("archived")}
         className={`rounded-full px-4 py-2 text-[13px] ${
@@ -1066,13 +1134,13 @@ const hasProposalConfirmationAction = currentActionKeys.some(
             </div>
           )}
 
-        <div className="mt-10 space-y-5">
+        <div className="mt-5 flex flex-col gap-3 lg:mt-10 lg:gap-5">
           {loading ? (
-            <div className="rounded-[24px] bg-lumina-surface-soft p-6 text-lumina-text-muted">
+            <div className="rounded-[18px] bg-lumina-surface-soft p-4 text-[12px] text-lumina-text-muted lg:rounded-[24px] lg:p-6 lg:text-base">
               Loading requests...
             </div>
           ) : requests.length === 0 ? (
-            <div className="rounded-[24px] border border-lumina-border bg-lumina-surface p-6">
+            <div className="rounded-[18px] border border-lumina-border bg-lumina-surface p-4 lg:rounded-[24px] lg:p-6">
               <h2 className="text-[16px] font-medium text-lumina-text">No requests yet</h2>
               <p className="mt-1 text-[14px] leading-[1.55] text-lumina-text-muted">
                 Requests you send to professionals will appear here.
@@ -1120,6 +1188,23 @@ requests.map((request) => {
     const exceptionLabel = getAppointmentExceptionLabel(
       request.appointment_exception_reason
     );
+    const mobileStatus = getClientMobileRequestStatus(
+      request,
+      actionState,
+      completionState
+    );
+    const mobileScheduleLabel = formatMobileRequestSchedule(
+      request.scheduled_for,
+      proposedDate || request.preferred_date,
+      proposedTime || request.preferred_time
+    );
+    const mobileMessagePreview =
+      latestUpdate && (latestUpdate.message?.trim() || latestUpdate.image_url)
+        ? getRequestConversationPreview(latestUpdate)
+        : latestMessage?.trim() || null;
+    const mobilePriorityClass = getClientMobilePriorityClass(
+      mobileStatus.priority
+    );
 
   return (
                 <div
@@ -1128,25 +1213,59 @@ requests.map((request) => {
   ref={(el) => {
     requestRefs.current[request.id] = el;
   }}
-  className={`rounded-[24px] border p-6 transition-all duration-700 ${
+  className={`${mobilePriorityClass} rounded-[18px] border border-lumina-border/70 bg-lumina-surface transition-all duration-700 lg:order-none lg:rounded-[24px] ${
+    actionState ? "p-3 lg:p-6" : "p-3.5 lg:p-6"
+  } ${
     actionState?.key === "review_ready"
-      ? "border-lumina-blush bg-lumina-surface shadow-sm ring-1 ring-lumina-blush/70 hover:bg-lumina-blush/15 focus-within:bg-lumina-blush/15"
+      ? "lg:border-lumina-blush lg:bg-lumina-surface lg:shadow-sm lg:ring-1 lg:ring-lumina-blush/70 lg:hover:bg-lumina-blush/15 lg:focus-within:bg-lumina-blush/15"
       : actionState
-      ? "border-lumina-border/70 bg-lumina-surface shadow-sm"
-      : "border-lumina-border/70 bg-lumina-surface shadow-sm"
+      ? "lg:border-lumina-border/70 lg:bg-lumina-surface lg:shadow-sm"
+      : "lg:border-lumina-border/70 lg:bg-lumina-surface lg:shadow-sm"
   } ${
     highlightedRequestId === request.id
       ? "bg-lumina-surface-soft ring-2 ring-lumina-border"
       : ""
   }`}
 >
+                <ClientRequestMobileSummary
+                  requestId={request.id}
+                  artistName={request.artist_name || "Artist"}
+                  artistImageUrl={request.artist_image_url}
+                  artistHref={`/artist/${request.artist_slug || ""}`}
+                  serviceSummary={
+                    requestedServiceNames.join(" · ") || "Service request"
+                  }
+                  status={mobileStatus}
+                  scheduleLabel={mobileScheduleLabel}
+                  priceLabel={
+                    proposedPrice != null ? `$${proposedPrice}` : null
+                  }
+                  latestMessagePreview={mobileMessagePreview}
+                  unreadCount={unreadCount}
+                  action={mobileStatus.action}
+                  reviewHref={`/artist/${request.artist_id}?tab=reviews&request=${request.id}`}
+                  expanded={expandedRequestId === request.id}
+                  archived={requestTab === "archived"}
+                  onExpand={() =>
+                    setExpandedRequestId(
+                      expandedRequestId === request.id ? null : request.id
+                    )
+                  }
+                  onMessage={async () => {
+                    await markMessagesRead(request.id);
+                    setOpenHistoryId(request.id);
+                  }}
+                  onArchive={() =>
+                    setRequestHidden(request.id, requestTab === "active")
+                  }
+                />
                 <div
   onClick={() =>
     setExpandedRequestId(
       expandedRequestId === request.id ? null : request.id
     )
   }
-  className="cursor-pointer flex flex-col gap-3 md:flex-row md:items-start md:justify-between"
+  className="hidden cursor-pointer flex-col gap-3 lg:flex lg:flex-row lg:items-start lg:justify-between"
 >
                   <div>
   <div className="mb-3">
@@ -1402,28 +1521,105 @@ style={{ fontFamily: "Georgia, Times New Roman, serif" }}
 request.booking_status !== "completed" &&
 request.client_status !== "confirmed" &&
 request.client_status !== "declined" && (
-<div className="mt-4 flex flex-wrap items-center gap-4 border-t border-lumina-border pt-4">
+<>
+  {request.client_status !== "needs_different_time" && (
+    <div className="mt-4 border-t border-lumina-border pt-4 lg:hidden">
+      <div className="grid grid-cols-2 gap-2">
+        <button
+          type="button"
+          onClick={() => void updateClientStatus(request.id, "confirmed")}
+          disabled={
+            request.completion_protocol_version === 3 && !canConfirmAppointment
+          }
+          className="min-h-10 rounded-full bg-lumina-black px-3 text-[11px] font-medium text-white transition hover:opacity-85 disabled:cursor-not-allowed disabled:opacity-45"
+        >
+          Accept
+        </button>
+        <button
+          type="button"
+          onClick={() =>
+            setReplyingToId(
+              replyingToId === request.id ? null : request.id
+            )
+          }
+          aria-expanded={replyingToId === request.id}
+          className="min-h-10 rounded-full border border-lumina-border bg-lumina-surface px-3 text-[10px] font-medium text-lumina-text transition hover:bg-lumina-surface-soft"
+        >
+          Request different time
+        </button>
+      </div>
+      <button
+        type="button"
+        onClick={() => void updateClientStatus(request.id, "declined")}
+        className="mt-1.5 min-h-9 px-2 text-[10px] text-lumina-text-muted transition hover:text-lumina-text"
+      >
+        Decline
+      </button>
+
+      {replyingToId === request.id && (
+        <div className="mt-2.5 rounded-[14px] bg-lumina-pearl/65 p-3">
+          <label
+            htmlFor={`different-time-${request.id}`}
+            className="text-[10px] font-medium text-lumina-text"
+          >
+            What timing would work better?
+          </label>
+          <textarea
+            id={`different-time-${request.id}`}
+            value={responseNotes[request.id] || ""}
+            onChange={(event) =>
+              setResponseNotes((current) => ({
+                ...current,
+                [request.id]: event.target.value,
+              }))
+            }
+            rows={3}
+            className="mt-2 w-full resize-none rounded-[12px] border border-lumina-border bg-lumina-surface px-3 py-2 text-[12px] text-lumina-text outline-none transition placeholder:text-lumina-text-muted focus:border-lumina-text-muted"
+            placeholder="Share a preferred day or time."
+          />
+          <div className="mt-2 flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => void sendDifferentTimeNote(request.id)}
+              className="min-h-9 rounded-full bg-lumina-black px-3.5 text-[10px] font-medium text-white"
+            >
+              Send request
+            </button>
+            <button
+              type="button"
+              onClick={() => setReplyingToId(null)}
+              className="min-h-9 px-2 text-[10px] text-lumina-text-muted"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  )}
+
+  <div className="mt-4 hidden flex-wrap items-center gap-4 border-t border-lumina-border pt-4 lg:flex">
     <button
-  onClick={() => void updateClientStatus(request.id, "confirmed")}
-  disabled={request.completion_protocol_version === 3 && !canConfirmAppointment}
-
-className="group rounded-full bg-lumina-black px-6 py-2.5 text-[13px] font-medium text-white shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md disabled:cursor-not-allowed disabled:opacity-45">
-Confirm appointment <span className="ml-1 inline-block transition-transform duration-200 group-hover:translate-x-1">→</span></button>
-
-                      <button
-  onClick={() => {
-    setSelectedAction({
-      ...selectedAction,
-      [request.id]: "declined",
-    });
-
-    updateClientStatus(request.id, "declined");
-  }}
-  className="px-2 py-2 text-[13px] text-lumina-text-muted hover:text-lumina-black"
->
-  Not Interested
-</button>
-                    </div>
+      onClick={() => void updateClientStatus(request.id, "confirmed")}
+      disabled={request.completion_protocol_version === 3 && !canConfirmAppointment}
+      className="group rounded-full bg-lumina-black px-6 py-2.5 text-[13px] font-medium text-white shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md disabled:cursor-not-allowed disabled:opacity-45"
+    >
+      Confirm appointment <span className="ml-1 inline-block transition-transform duration-200 group-hover:translate-x-1">→</span>
+    </button>
+    <button
+      onClick={() => {
+        setSelectedAction({
+          ...selectedAction,
+          [request.id]: "declined",
+        });
+        updateClientStatus(request.id, "declined");
+      }}
+      className="px-2 py-2 text-[13px] text-lumina-text-muted hover:text-lumina-black"
+    >
+      Not Interested
+    </button>
+  </div>
+</>
 )}
 {request.client_status === "confirmed" &&
   request.booking_status === "booked" &&
