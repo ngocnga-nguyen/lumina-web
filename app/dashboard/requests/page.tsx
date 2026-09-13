@@ -6,6 +6,7 @@ import { createRealtimeChannelTopic } from "@/lib/realtime-channel";
 import { Bell, MessageCircle, Sparkles, CalendarDays, Clock } from "lucide-react";
 import ChatModal from "@/components/ChatModal";
 import ConsultationSnapshot from "@/components/ConsultationSnapshot";
+import ProfessionalRequestMobileSummary from "@/components/ProfessionalRequestMobileSummary";
 import {
   formatDurationMinutes,
   getRequestServiceNames,
@@ -21,15 +22,21 @@ import {
   getAppointmentExceptionLabel,
   getCompletionState,
   getCompletionStateLabel,
+  getProfessionalRequestAction,
   type AppointmentExceptionReason,
   type CompletionResponse,
 } from "@/lib/request-completion";
 import {
   getLatestRequestConversationUpdate,
+  getRequestConversationPreview,
   getRequestConversationUnreadCount,
   markConversationUpdatesRead,
   markRequestConversationRead,
 } from "@/lib/request-conversations";
+import {
+  getProfessionalMobilePriorityClass,
+  getProfessionalMobileRequestStatus,
+} from "@/lib/professional-request-mobile";
 
 type ClientRequest = {
   id: string;
@@ -93,6 +100,44 @@ type Notification = {
   is_read: boolean | null;
   created_at: string;
 };
+
+function formatMobileRequestSchedule(
+  scheduledFor: string | null,
+  date: string | null,
+  time: string | null
+) {
+  if (scheduledFor) {
+    const scheduled = new Date(scheduledFor);
+    if (!Number.isNaN(scheduled.getTime())) {
+      return scheduled.toLocaleString("en-US", {
+        month: "short",
+        day: "numeric",
+        hour: "numeric",
+        minute: "2-digit",
+      });
+    }
+  }
+
+  if (!date && !time) return null;
+  const parsedDate = date ? new Date(`${date.slice(0, 10)}T00:00:00`) : null;
+  const dateLabel =
+    parsedDate && !Number.isNaN(parsedDate.getTime())
+      ? parsedDate.toLocaleDateString("en-US", {
+          month: "short",
+          day: "numeric",
+        })
+      : date;
+  const parsedTime = time ? new Date(`2000-01-01T${time}`) : null;
+  const timeLabel =
+    parsedTime && !Number.isNaN(parsedTime.getTime())
+      ? parsedTime.toLocaleTimeString("en-US", {
+          hour: "numeric",
+          minute: "2-digit",
+        })
+      : time;
+
+  return [dateLabel, timeLabel].filter(Boolean).join(" · ");
+}
 
 export default function DashboardRequestsPage() {
   const [requests, setRequests] = useState<ClientRequest[]>([]);
@@ -775,9 +820,9 @@ const deleteMessage = async (messageId: string) => {
     await fetchRequests();
   }
 };
-  return (
-    <div className="relative bg-lumina-surface text-lumina-text">
-      <div className="flex justify-end px-5 pt-5 md:px-10">
+	  return (
+	    <div className="relative bg-lumina-surface text-lumina-text">
+	      <div className="hidden justify-end px-5 pt-5 md:px-10 lg:flex">
         <button
           onClick={() => setShowNotifications(!showNotifications)}
           className="relative flex h-9 w-9 items-center justify-center rounded-full border border-lumina-border bg-lumina-surface transition hover:bg-lumina-surface-soft"
@@ -793,7 +838,7 @@ const deleteMessage = async (messageId: string) => {
         </button>
       </div>
 {showNotifications && (
-  <div className="absolute right-5 top-[72px] z-40 w-[320px] rounded-[22px] border border-lumina-glass-border bg-lumina-glass p-4 shadow-sm backdrop-blur-[12px]">
+  <div className="absolute right-3 top-[64px] z-40 w-[min(320px,calc(100vw-24px))] rounded-[22px] border border-lumina-glass-border bg-lumina-glass p-4 shadow-sm backdrop-blur-[12px] md:right-5 lg:top-[72px]">
     <div className="flex items-center justify-between gap-4">
       <p className="text-[15px] font-medium">Notifications</p>
       {notifications.length > 0 && (
@@ -876,22 +921,71 @@ const deleteMessage = async (messageId: string) => {
     </div>
   </div>
 )}
-      <section className="px-5 py-10 md:px-10 md:py-14">
+      <section className="w-full px-3 py-4 md:px-8 md:py-7 lg:px-10 lg:py-14">
+        <div className="flex items-start justify-between gap-4 lg:hidden">
+          <div>
+            <h1
+              className="text-[26px] font-semibold leading-[1.04] md:text-[30px]"
+              style={{ fontFamily: "Georgia, Times New Roman, serif" }}
+            >
+              Requests
+            </h1>
+            <p className="mt-1 max-w-[560px] text-[12px] leading-[1.45] text-lumina-text-muted">
+              Respond to clients and manage upcoming appointments.
+            </p>
+          </div>
+
+          <button
+            onClick={() => setShowNotifications(!showNotifications)}
+            className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-lumina-border bg-lumina-surface transition hover:bg-lumina-surface-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lumina-black focus-visible:ring-offset-2"
+            aria-label="Notifications"
+          >
+            <Bell size={17} strokeWidth={1.7} />
+            {unreadCount > 0 && (
+              <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-lumina-black px-1 text-[10px] text-white">
+                {unreadCount > 99 ? "99+" : unreadCount}
+              </span>
+            )}
+          </button>
+        </div>
+
         <h1
-          className="text-[42px] leading-[1.02] font-semibold md:text-[56px]"
+          className="hidden text-[56px] font-semibold leading-[1.02] lg:block"
           style={{ fontFamily: "Georgia, Times New Roman, serif" }}
         >
           Requests
         </h1>
 
-        <p className="mt-4 max-w-[680px] text-[16px] leading-[1.6] text-lumina-text-muted">
+        <p className="mt-4 hidden max-w-[680px] text-[16px] leading-[1.6] text-lumina-text-muted lg:block">
           Manage client inquiries, send proposals, and follow up.
         </p>
-        <p className="mt-2 text-[14px] text-lumina-text-muted">
+        <p className="mt-2 hidden text-[14px] text-lumina-text-muted lg:block">
   {requests.length} {requestTab} request
   {requests.length !== 1 ? "s" : ""}
 </p>
-<div className="mt-6 flex gap-2">
+<div className="mt-3 inline-flex rounded-full border border-lumina-border/70 bg-lumina-pearl/65 p-1 lg:hidden">
+  <button
+    onClick={() => setRequestTab("active")}
+    className={`min-h-9 rounded-full px-4 text-[11px] font-medium transition ${
+      requestTab === "active"
+        ? "bg-lumina-black text-white"
+        : "text-lumina-text-muted hover:text-lumina-text"
+    }`}
+  >
+    Active
+  </button>
+  <button
+    onClick={() => setRequestTab("archived")}
+    className={`min-h-9 rounded-full px-4 text-[11px] font-medium transition ${
+      requestTab === "archived"
+        ? "bg-lumina-black text-white"
+        : "text-lumina-text-muted hover:text-lumina-text"
+    }`}
+  >
+    Archived
+  </button>
+</div>
+<div className="mt-6 hidden gap-2 lg:flex">
   <button
     onClick={() => setRequestTab("active")}
     className={`rounded-full px-4 py-2 text-[13px] ${
@@ -914,19 +1008,20 @@ const deleteMessage = async (messageId: string) => {
     Archived
   </button>
 </div>
-        <div className="mt-10 space-y-5">
+        <div className="mt-5 flex flex-col gap-3 lg:mt-10 lg:gap-5">
           {requests.length === 0 ? (
-            <div className="rounded-[24px] border border-lumina-border bg-lumina-surface p-6">
-              <h2 className="text-[16px] font-medium text-lumina-text">No requests yet</h2>
-              <p className="mt-1 text-[14px] leading-[1.55] text-lumina-text-muted">
+            <div className="rounded-[18px] border border-lumina-border bg-lumina-surface p-4 lg:rounded-[24px] lg:p-6">
+              <h2 className="text-[15px] font-medium text-lumina-text lg:text-[16px]">No requests yet</h2>
+              <p className="mt-1 text-[12px] leading-[1.5] text-lumina-text-muted lg:text-[14px] lg:leading-[1.55]">
                 New client requests will appear here when they arrive.
               </p>
             </div>
-          ) : (
-            requests.map((request) => {
-  const unreadMessages = getUnreadCount(request.id);
-  const requestedServiceNames = getRequestServiceNames(request);
-  const completionState = getCompletionState(request);
+	          ) : (
+	            requests.map((request) => {
+	  const latestUpdate = getLatestUpdate(request.id);
+	  const unreadMessages = getUnreadCount(request.id);
+	  const requestedServiceNames = getRequestServiceNames(request);
+	  const completionState = getCompletionState(request);
   const showCompletionState = completionState !== "scheduled";
   const canRespondToCompletion = canSubmitCompletionResponse(request, "artist");
   const canMarkBookingLiteCompleted =
@@ -950,30 +1045,83 @@ const deleteMessage = async (messageId: string) => {
     proposedDates[request.id],
     proposedTimes[request.id]
   );
-  const proposalExpectedEndAt = createExpectedEndAt(
-    proposalScheduledFor,
-    Number(proposedDurations[request.id])
-  );
+	  const proposalExpectedEndAt = createExpectedEndAt(
+	    proposalScheduledFor,
+	    Number(proposedDurations[request.id])
+	  );
+	  const mobileStatus = getProfessionalMobileRequestStatus(request, {
+	    completionState,
+	    professionalAction: getProfessionalRequestAction(request),
+	    canComplete: canRespondToCompletion || canMarkBookingLiteCompleted,
+	  });
+	  const mobilePriorityClass = getProfessionalMobilePriorityClass(
+	    mobileStatus.priority
+	  );
+	  const mobileScheduleLabel = formatMobileRequestSchedule(
+	    request.scheduled_for,
+	    request.proposed_date || request.preferred_date,
+	    request.proposed_time || request.preferred_time
+	  );
+	  const mobileMessagePreview =
+	    latestUpdate &&
+	    (latestUpdate.message?.trim() || latestUpdate.image_url)
+	      ? getRequestConversationPreview(latestUpdate)
+	      : null;
+	  const toggleRequestDetails = () =>
+	    setExpandedRequestId(
+	      expandedRequestId === request.id ? null : request.id
+	    );
 
-  return (
-             <div
-  key={request.id}
-  ref={(el) => {
-    requestRefs.current[request.id] = el;
-  }}
-  className={`rounded-[24px] border border-lumina-border p-6 transition-all duration-700 ${
-    highlightedRequestId === request.id
-      ? "bg-lumina-surface ring-2 ring-lumina-attention/25"
-      : ""
-  }`}
+	  return (
+	             <div
+	  id={`professional-request-${request.id}`}
+	  key={request.id}
+	  ref={(el) => {
+	    requestRefs.current[request.id] = el;
+	  }}
+	  className={`${mobilePriorityClass} rounded-[18px] border p-3.5 transition-all duration-300 lg:order-none lg:rounded-[24px] lg:border-lumina-border lg:p-6 lg:duration-700 ${
+	    highlightedRequestId === request.id
+	      ? "border-lumina-blush bg-lumina-blush/10 ring-1 ring-lumina-blush/60 lg:bg-lumina-surface lg:ring-2 lg:ring-lumina-attention/25"
+	      : mobileStatus.tone === "attention" || mobileStatus.tone === "action"
+	      ? "border-lumina-blush/75 bg-lumina-surface lg:bg-transparent"
+	      : "border-lumina-border/70 bg-lumina-surface lg:bg-transparent"
+	  }`}
 >
-                <div
-  onClick={() =>
-    setExpandedRequestId(
-      expandedRequestId === request.id ? null : request.id
-    )
-  }
-  className="cursor-pointer flex flex-col gap-2 md:flex-row md:items-start md:justify-between"
+	                <ProfessionalRequestMobileSummary
+	                  requestId={request.id}
+	                  clientName={request.client_name || "Client"}
+	                  clientImageUrl={request.client_image_url || null}
+	                  serviceSummary={
+	                    requestedServiceNames.join(" · ") || "Service request"
+	                  }
+	                  status={mobileStatus}
+	                  scheduleLabel={mobileScheduleLabel}
+	                  priceLabel={
+	                    request.proposed_price != null
+	                      ? `$${request.proposed_price}`
+	                      : null
+	                  }
+	                  latestMessagePreview={mobileMessagePreview}
+	                  unreadCount={unreadMessages}
+	                  expanded={expandedRequestId === request.id}
+	                  archived={requestTab === "archived"}
+	                  onExpand={toggleRequestDetails}
+	                  onPrimaryAction={() => {
+	                    if (mobileStatus.action?.kind === "complete") {
+	                      return submitArtistCompletionResponse(
+	                        request,
+	                        "confirmed"
+	                      );
+	                    }
+	                    toggleRequestDetails();
+	                  }}
+	                  onArchive={() =>
+	                    setRequestHidden(request.id, requestTab === "active")
+	                  }
+	                />
+	                <div
+	  onClick={toggleRequestDetails}
+	  className="hidden cursor-pointer flex-col gap-2 lg:flex lg:flex-row lg:items-start lg:justify-between"
 >
                   <div>
                     <div className="flex flex-wrap items-center gap-3">
@@ -1089,15 +1237,16 @@ const deleteMessage = async (messageId: string) => {
 </div>
                 </div>
 <div
-  className={`overflow-hidden transition-all duration-400 ${
+	  id={`professional-request-details-${request.id}`}
+	  className={`overflow-hidden transition-all duration-400 ${
     expandedRequestId === request.id
       ? "max-h-[5000px] opacity-100"
       : "max-h-0 opacity-0"
   }`}
 >
-                <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-3">
-  <div className="flex items-center gap-4 rounded-[20px] bg-lumina-surface-soft p-5">
-    <Sparkles size={24} strokeWidth={1.6} className="text-lumina-text" />
+                <div className="mt-4 grid grid-cols-1 gap-2.5 md:grid-cols-3 lg:mt-6 lg:gap-4">
+  <div className="flex items-center gap-3 rounded-[16px] bg-lumina-surface-soft p-3.5 lg:gap-4 lg:rounded-[20px] lg:p-5">
+    <Sparkles size={24} strokeWidth={1.6} className="h-5 w-5 text-lumina-text lg:h-6 lg:w-6" />
 
     <div>
       <p className="text-[12px] uppercase tracking-[0.14em] text-lumina-text-muted">
@@ -1117,8 +1266,8 @@ const deleteMessage = async (messageId: string) => {
     </div>
   </div>
 
-  <div className="flex items-center gap-4 rounded-[20px] bg-lumina-surface-soft p-5">
-    <CalendarDays size={24} strokeWidth={1.6} className="text-lumina-text" />
+  <div className="flex items-center gap-3 rounded-[16px] bg-lumina-surface-soft p-3.5 lg:gap-4 lg:rounded-[20px] lg:p-5">
+    <CalendarDays size={24} strokeWidth={1.6} className="h-5 w-5 text-lumina-text lg:h-6 lg:w-6" />
 
     <div>
       <p className="text-[12px] uppercase tracking-[0.14em] text-lumina-text-muted">
@@ -1130,8 +1279,8 @@ const deleteMessage = async (messageId: string) => {
     </div>
   </div>
 
-  <div className="flex items-center gap-4 rounded-[20px] bg-lumina-surface-soft p-5">
-    <Clock size={24} strokeWidth={1.6} className="text-lumina-text" />
+  <div className="flex items-center gap-3 rounded-[16px] bg-lumina-surface-soft p-3.5 lg:gap-4 lg:rounded-[20px] lg:p-5">
+    <Clock size={24} strokeWidth={1.6} className="h-5 w-5 text-lumina-text lg:h-6 lg:w-6" />
 
     <div>
       <p className="text-[12px] uppercase tracking-[0.14em] text-lumina-text-muted">
@@ -1150,12 +1299,12 @@ const deleteMessage = async (messageId: string) => {
                 />
 
                 {request.notes && (
-                  <p className="mt-5 whitespace-pre-line rounded-[18px] bg-lumina-surface-soft p-4 text-[15px] leading-[1.6] text-lumina-text">
+                  <p className="mt-4 whitespace-pre-line rounded-[16px] bg-lumina-surface-soft p-3.5 text-[13px] leading-[1.55] text-lumina-text lg:mt-5 lg:rounded-[18px] lg:p-4 lg:text-[15px] lg:leading-[1.6]">
                     {request.notes}
                   </p>
                 )}
 
-                <div className="mt-6 rounded-[22px] bg-lumina-surface-soft p-5">
+                <div className="mt-4 rounded-[18px] bg-lumina-surface-soft p-3.5 lg:mt-6 lg:rounded-[22px] lg:p-5">
                   {(request.booking_status === "completed" ||
                     request.client_status === "confirmed" ||
                     request.client_status === "declined") ? (
@@ -1412,7 +1561,7 @@ const deleteMessage = async (messageId: string) => {
   />
 </div>
                   </div>
-                  <div className="mt-6 flex flex-col items-end gap-2">
+                  <div className="mt-5 flex flex-row items-center justify-end gap-2 lg:mt-6 lg:flex-col lg:items-end">
   <button
     onClick={() => updateRequest(request.id, "accepted")}
     disabled={savingId === request.id}
@@ -1428,7 +1577,7 @@ const deleteMessage = async (messageId: string) => {
   <button
     onClick={() => updateRequest(request.id, "declined")}
     disabled={savingId === request.id}
-    className="rounded-full border border-lumina-border px-6 py-2.5 text-[13px] text-lumina-text-muted transition hover:border-lumina-text-muted/35 hover:text-lumina-text disabled:opacity-50"
+    className="min-h-10 rounded-full px-3 text-[11px] text-lumina-text-muted underline decoration-lumina-border underline-offset-4 transition hover:text-lumina-text disabled:opacity-50 lg:min-h-0 lg:border lg:border-lumina-border lg:px-6 lg:py-2.5 lg:text-[13px] lg:no-underline lg:hover:border-lumina-text-muted/35"
   >
     Decline request
   </button>
