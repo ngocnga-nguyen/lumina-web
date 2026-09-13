@@ -14,6 +14,7 @@ import {
 } from "@/lib/request-messaging";
 import { supabase } from "@/lib/supabase";
 import { createRealtimeChannelTopic } from "@/lib/realtime-channel";
+import { markClientNotificationsRead } from "@/lib/client-notifications";
 
 const REQUEST_COLUMNS = [
   "id",
@@ -222,8 +223,15 @@ export function useRequestInbox(role: RequestConversationRole) {
         requestId,
         role
       );
-      if (readError) {
-        setError(readError.message);
+      const notificationResult =
+        role === "client"
+          ? await markClientNotificationsRead({
+              requestId,
+              kind: "message",
+            })
+          : { error: null };
+      if (readError || notificationResult.error) {
+        setError(readError?.message || notificationResult.error?.message || null);
         await loadInboxSafely();
       }
     },

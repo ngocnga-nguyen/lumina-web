@@ -211,6 +211,7 @@ export default function ClientOverviewPage() {
   const recentRequests = requests.filter((request) => !request.client_hidden).slice(0, 3);
   const mobileNextRequest: ClientOverviewNextItem | null = upcomingRequest
     ? {
+        id: upcomingRequest.id,
         artistName: upcomingRequest.artist_name || "Lumina professional",
         serviceSummary:
           formatRequestServiceSummary(upcomingRequest) || "Upcoming service",
@@ -398,7 +399,7 @@ export default function ClientOverviewPage() {
                   recentRequests.map((request) => (
                     <Link
                       key={request.id}
-                      href="/my-requests"
+                      href={`/my-requests?request=${request.id}`}
                       className="flex items-center gap-4 py-4 first:pt-1"
                     >
                       <div className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-full bg-lumina-pearl text-[13px] font-medium">
@@ -465,7 +466,7 @@ export default function ClientOverviewPage() {
                       : ""}
                   </p>
                   <Link
-                    href="/my-requests"
+                    href={`/my-requests?request=${upcomingRequest.id}`}
                     className="mt-6 inline-flex rounded-full bg-lumina-black px-5 py-2.5 text-[13px] text-white transition hover:opacity-80"
                   >
                     View request

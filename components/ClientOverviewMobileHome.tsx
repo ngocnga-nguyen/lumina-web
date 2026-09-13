@@ -22,6 +22,7 @@ export type ClientOverviewRequestItem = {
 };
 
 export type ClientOverviewNextItem = {
+  id: string;
   artistName: string;
   serviceSummary: string;
   dateLabel: string | null;
@@ -167,7 +168,7 @@ export default function ClientOverviewMobileHome({
                 )}
               </div>
               <Link
-                href="/my-requests"
+                href={`/my-requests?request=${nextRequest.id}`}
                 className="inline-flex min-h-9 shrink-0 items-center rounded-full border border-white/18 px-3 text-[11px] font-medium text-white transition hover:bg-white hover:text-lumina-black focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
               >
                 View request
@@ -242,7 +243,7 @@ export default function ClientOverviewMobileHome({
             recentRequests.map((request) => (
               <Link
                 key={request.id}
-                href="/my-requests"
+                href={`/my-requests?request=${request.id}`}
                 className="group flex min-h-[58px] items-center gap-2.5 py-2.5 transition hover:bg-lumina-surface-soft/45 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-lumina-black"
               >
                 <span className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full bg-lumina-pearl text-[11px] font-medium text-lumina-text">

@@ -1,13 +1,18 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { createRealtimeChannelTopic } from "@/lib/realtime-channel";
-import { Bell, MessageCircle, CalendarDays, Star } from "lucide-react";
+import { MessageCircle, CalendarDays, Star } from "lucide-react";
 import ChatModal from "@/components/ChatModal";
 import ClientRequestMobileSummary from "@/components/ClientRequestMobileSummary";
 import ClientWorkspaceShell from "@/components/ClientWorkspaceShell";
+import {
+  hasUnreadClientActionNotification,
+  useClientWorkspace,
+} from "@/components/ClientWorkspaceContext";
 import ConsultationSnapshot from "@/components/ConsultationSnapshot";
 import ClientGuidanceTip from "@/components/ClientGuidanceTip";
 import { useClientOnboarding } from "@/lib/use-client-onboarding";
@@ -91,16 +96,6 @@ is_read_by_artist: boolean | null;
 image_url: string | null;
 is_deleted: boolean | null;
 };
-type Notification = {
-  id: string;
-  user_id: string;
-  request_id: string | null;
-  title: string;
-  message: string | null;
-  is_read: boolean | null;
-  created_at: string;
-};
-
 function formatMobileRequestSchedule(
   scheduledFor: string | null,
   date: string | null,
@@ -139,7 +134,10 @@ function formatMobileRequestSchedule(
   return [dateLabel, timeLabel].filter(Boolean).join(" · ");
 }
 
-export default function MyRequestsPage() {
+function MyRequestsContent() {
+  const { notifications, acknowledgeNotifications } = useClientWorkspace();
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const [requests, setRequests] = useState<ClientRequest[]>([]);
   const [reviewedRequestIds, setReviewedRequestIds] = useState<Set<string>>(
     () => new Set()
@@ -154,19 +152,15 @@ export default function MyRequestsPage() {
   const [replyingToId, setReplyingToId] = useState<string | null>(null);
   const [openHistoryId, setOpenHistoryId] = useState<string | null>(null);
   const [expandedRequestId, setExpandedRequestId] = useState<string | null>(null);
-  const [highlightedRequestId, setHighlightedRequestId] = useState<string | null>(null);
   const requestRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const openChatRequestIdRef = useRef<string | null>(null);
   const handledDeepLinkRef = useRef<string | null>(null);
   const routeActiveRef = useRef(true);
   const [requestTab, setRequestTab] = useState<"active" | "archived">("active");
   const [updates, setUpdates] = useState<Record<string, RequestUpdate[]>>({});
-  const [notifications, setNotifications] = useState<Notification[]>([]);
   const [consultationImageUrls, setConsultationImageUrls] = useState<
     Record<string, string[]>
   >({});
-const [showNotifications, setShowNotifications] = useState(false);
-const unreadCount = notifications.filter((n) => !n.is_read).length;
 const clientOnboarding = useClientOnboarding();
 
   useEffect(() => {
@@ -184,21 +178,21 @@ const clientOnboarding = useClientOnboarding();
   }, []);
 
   useEffect(() => {
-    const requestId = new URLSearchParams(window.location.search).get("request");
+    const requestId = searchParams.get("request");
     if (!requestId || handledDeepLinkRef.current === requestId) return;
     if (!requests.some((request) => request.id === requestId)) return;
 
     handledDeepLinkRef.current = requestId;
     const frame = requestAnimationFrame(() => {
       setExpandedRequestId(requestId);
-      setHighlightedRequestId(requestId);
+      void acknowledgeNotifications({ requestId, kind: "action" });
       requestRefs.current[requestId]?.scrollIntoView({
         behavior: "smooth",
         block: "center",
       });
     });
     return () => cancelAnimationFrame(frame);
-  }, [requests]);
+  }, [acknowledgeNotifications, requests, searchParams]);
 
 
   const loadRequests = async () => {
@@ -211,15 +205,6 @@ const clientOnboarding = useClientOnboarding();
       setLoading(false);
       return;
     }
-    const { data: notificationData } = await supabase
-  .from("notifications")
-  .select("*")
-  .eq("user_id", user.id)
-  .order("created_at", { ascending: false });
-
-if (!routeActiveRef.current) return;
-setNotifications(notificationData || []);
-
     const { data: submittedReviews, error: submittedReviewsError } =
       await supabase
         .from("reviews")
@@ -399,22 +384,6 @@ useEffect(() => {
             next.add(requestId);
             return next;
           });
-        }
-      )
-      .on(
-        "postgres_changes",
-        {
-          event: "INSERT",
-          schema: "public",
-          table: "notifications",
-          filter: `user_id=eq.${user.id}`,
-        },
-        (payload) => {
-          if (cancelled) return;
-          setNotifications((prev) => [
-            payload.new as Notification,
-            ...prev,
-          ]);
         }
       )
       .on(
@@ -799,95 +768,6 @@ const submitClientCompletionResponse = async (
     if (status === "declined") return "Artist declined";
     return status;
   };
-const openNotification = async (notification: Notification) => {
-  if (notification.request_id) {
-  setExpandedRequestId(notification.request_id);
-  setHighlightedRequestId(notification.request_id);
-
-  setTimeout(() => {
-    setHighlightedRequestId(null);
-  }, 1200);
-}
-setTimeout(() => {
-  document
-    .getElementById(`request-${notification.request_id}`)
-    ?.scrollIntoView({
-      behavior: "smooth",
-      block: "center",
-    });
-}, 150);
-
-  setShowNotifications(false);
-
-  if (!notification.is_read) {
-    await supabase
-      .from("notifications")
-      .update({ is_read: true })
-      .eq("id", notification.id);
-
-    setNotifications((prev) =>
-      prev.map((item) =>
-        item.id === notification.id ? { ...item, is_read: true } : item
-      )
-    );
-  }
-
-  if (
-    notification.title === "New Message" &&
-    notification.request_id
-  ) {
-    await markMessagesRead(notification.request_id);
-    setOpenHistoryId(notification.request_id);
-    return;
-  }
-
-  if (
-    notification.title === "Appointment Completed" &&
-    notification.request_id
-  ) {
-    let artistId = requests.find(
-      (request) => request.id === notification.request_id
-    )?.artist_id;
-
-    if (!artistId) {
-      const { data } = await supabase
-        .from("client_requests")
-        .select("artist_id")
-        .eq("id", notification.request_id)
-        .maybeSingle();
-
-      artistId = data?.artist_id;
-    }
-
-    if (artistId) {
-      window.location.assign(
-        `/artist/${artistId}?tab=reviews&request=${notification.request_id}`
-      );
-    }
-  }
-};
-const clearNotifications = async () => {
-  if (!notifications.length) return;
-  if (!window.confirm("Clear all notifications?")) return;
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) return;
-
-  const { error } = await supabase
-    .from("notifications")
-    .delete()
-    .eq("user_id", user.id);
-
-  if (error) {
-    alert(error.message);
-    return;
-  }
-
-  setNotifications([]);
-};
 const markMessagesRead = async (requestId: string) => {
   setUpdates((prev) => ({
     ...prev,
@@ -898,9 +778,13 @@ const markMessagesRead = async (requestId: string) => {
   }));
 
   const { error } = await markRequestConversationRead(requestId, "client");
+  const notificationResult = await acknowledgeNotifications({
+    requestId,
+    kind: "message",
+  });
 
-  if (error) {
-    alert(error.message);
+  if (error || notificationResult.error) {
+    alert(error?.message || notificationResult.error?.message);
     await loadRequests();
   }
 };
@@ -923,108 +807,6 @@ const hasProposalConfirmationAction = currentActionKeys.some(
   (key) => key === "review_proposal" || key === "confirm_appointment"
 );
   return (
-    <ClientWorkspaceShell
-      topBarActions={
-        <>
-        <button
-  onClick={() => setShowNotifications(!showNotifications)}
-  className="relative flex h-9 w-9 items-center justify-center rounded-full border border-lumina-border bg-lumina-surface transition hover:bg-lumina-blush/60"
-  aria-label="Notifications"
->
-<Bell size={18} strokeWidth={1.7} />
-
-  {unreadCount > 0 && (
-    <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-lumina-black px-1 text-[10px] text-white">
-{unreadCount}
-    </span>
-  )}
-</button>
-      {showNotifications && (
-  <div className="absolute right-0 top-12 z-40 w-[min(320px,calc(100vw-32px))] rounded-[22px] border border-lumina-border bg-lumina-surface p-4 shadow-xl">
-    <div className="flex items-center justify-between gap-4">
-      <p className="text-[15px] font-medium">Notifications</p>
-      {notifications.length > 0 && (
-        <button
-          onClick={() => void clearNotifications()}
-          className="text-[12px] text-lumina-text-muted transition hover:text-lumina-black"
-        >
-          Clear all
-        </button>
-      )}
-    </div>
-
-    <div className="mt-4 max-h-[70vh] space-y-3 overflow-y-auto pr-1">
-      {notifications.length === 0 ? (
-        <p className="text-[14px] text-lumina-text-muted">
-          No notifications yet.
-        </p>
-      ) : (
-        notifications.map((notification) => {
-          const relatedRequest = requests.find(
-            (request) => request.id === notification.request_id
-          );
-          const senderName = relatedRequest?.artist_name || "Your artist";
-          const senderImage = relatedRequest?.artist_image_url;
-          const notificationMessage =
-            notification.title === "New Message"
-              ? `${senderName} sent you a message.`
-              : notification.title === "New Proposal"
-              ? `${senderName} sent you a proposal.`
-              : notification.title === "Proposal Updated"
-              ? `${senderName} updated your proposal.`
-              : notification.title === "Appointment Completed"
-              ? `You and ${senderName} confirmed the service. You can now leave a verified review.`
-              : notification.message;
-
-          return (
-          <div
-  key={notification.id}
-  onClick={() => openNotification(notification)}
-  className={`cursor-pointer rounded-[16px] p-3 transition hover:bg-lumina-blush/70 ${
-    notification.is_read ? "bg-lumina-surface" : "bg-lumina-blush/60"
-  }`}
->
-            <div className="flex items-start gap-3">
-              <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full bg-lumina-pearl text-[12px] font-medium text-lumina-text-muted">
-                {senderImage ? (
-                  <img
-                    src={senderImage}
-                    alt={senderName}
-                    className="h-full w-full object-cover"
-                  />
-                ) : (
-                  senderName.charAt(0).toUpperCase()
-                )}
-              </div>
-
-              <div className="min-w-0">
-                <p className="truncate text-[13px] font-medium text-lumina-text">
-                  {senderName}
-                </p>
-                <p className="text-[14px] font-medium">
-                  {notification.title}
-                </p>
-
-                {notificationMessage && (
-                  <p className="mt-1 text-[13px] text-lumina-text-muted">
-                    {notificationMessage}
-                  </p>
-                )}
-                <p className="mt-2 text-[11px] text-lumina-text-muted">
-                  {new Date(notification.created_at).toLocaleDateString()}
-                </p>
-              </div>
-            </div>
-          </div>
-          );
-        })
-      )}
-    </div>
-  </div>
-)}
-        </>
-      }
-    >
       <div className="min-h-screen bg-lumina-surface text-lumina-text">
 
       <section className="mx-auto w-full max-w-[1600px] px-3 py-4 md:px-8 md:py-7 lg:px-10 lg:py-14">
@@ -1205,6 +987,16 @@ requests.map((request) => {
     const mobilePriorityClass = getClientMobilePriorityClass(
       mobileStatus.priority
     );
+    const hasUnreadActionAttention =
+      !!actionState &&
+      hasUnreadClientActionNotification(notifications, request.id);
+    const toggleRequestDetails = () => {
+      const opening = expandedRequestId !== request.id;
+      setExpandedRequestId(opening ? request.id : null);
+      if (opening) {
+        void acknowledgeNotifications({ requestId: request.id, kind: "action" });
+      }
+    };
 
   return (
                 <div
@@ -1213,18 +1005,12 @@ requests.map((request) => {
   ref={(el) => {
     requestRefs.current[request.id] = el;
   }}
-  className={`${mobilePriorityClass} rounded-[18px] border border-lumina-border/70 bg-lumina-surface transition-all duration-700 lg:order-none lg:rounded-[24px] ${
+  className={`${mobilePriorityClass} rounded-[18px] border bg-lumina-surface transition-all duration-300 lg:order-none lg:rounded-[24px] ${
     actionState ? "p-3 lg:p-6" : "p-3.5 lg:p-6"
   } ${
-    actionState?.key === "review_ready"
-      ? "lg:border-lumina-blush lg:bg-lumina-surface lg:shadow-sm lg:ring-1 lg:ring-lumina-blush/70 lg:hover:bg-lumina-blush/15 lg:focus-within:bg-lumina-blush/15"
-      : actionState
-      ? "lg:border-lumina-border/70 lg:bg-lumina-surface lg:shadow-sm"
-      : "lg:border-lumina-border/70 lg:bg-lumina-surface lg:shadow-sm"
-  } ${
-    highlightedRequestId === request.id
-      ? "bg-lumina-surface-soft ring-2 ring-lumina-border"
-      : ""
+    hasUnreadActionAttention
+      ? "border-lumina-blush bg-lumina-blush/10 shadow-[0_8px_28px_rgba(129,91,98,0.08)] ring-1 ring-lumina-blush/60"
+      : "border-lumina-border/70 lg:shadow-sm"
   }`}
 >
                 <ClientRequestMobileSummary
@@ -1246,11 +1032,7 @@ requests.map((request) => {
                   reviewHref={`/artist/${request.artist_id}?tab=reviews&request=${request.id}`}
                   expanded={expandedRequestId === request.id}
                   archived={requestTab === "archived"}
-                  onExpand={() =>
-                    setExpandedRequestId(
-                      expandedRequestId === request.id ? null : request.id
-                    )
-                  }
+                  onExpand={toggleRequestDetails}
                   onMessage={async () => {
                     await markMessagesRead(request.id);
                     setOpenHistoryId(request.id);
@@ -1258,13 +1040,15 @@ requests.map((request) => {
                   onArchive={() =>
                     setRequestHidden(request.id, requestTab === "active")
                   }
+                  onAcknowledgeAction={() =>
+                    acknowledgeNotifications({
+                      requestId: request.id,
+                      kind: "action",
+                    })
+                  }
                 />
                 <div
-  onClick={() =>
-    setExpandedRequestId(
-      expandedRequestId === request.id ? null : request.id
-    )
-  }
+  onClick={toggleRequestDetails}
   className="hidden cursor-pointer flex-col gap-3 lg:flex lg:flex-row lg:items-start lg:justify-between"
 >
                   <div>
@@ -1354,7 +1138,18 @@ requests.map((request) => {
   {actionState?.key === "review_ready" ? (
     <Link
       href={`/artist/${request.artist_id}?tab=reviews&request=${request.id}`}
-      onClick={(e) => e.stopPropagation()}
+      onClick={(event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        void acknowledgeNotifications({
+          requestId: request.id,
+          kind: "action",
+        }).then(() => {
+          router.push(
+            `/artist/${request.artist_id}?tab=reviews&request=${request.id}`
+          );
+        });
+      }}
       className="inline-flex items-center gap-2 rounded-full bg-lumina-black px-4 py-2.5 text-[12px] font-medium text-white transition hover:opacity-85"
     >
       <Star size={14} fill="currentColor" strokeWidth={1.5} />
@@ -1366,6 +1161,7 @@ requests.map((request) => {
       onClick={(event) => {
         event.stopPropagation();
         setExpandedRequestId(request.id);
+        void acknowledgeNotifications({ requestId: request.id, kind: "action" });
       }}
       aria-expanded={expandedRequestId === request.id}
       aria-controls={`request-details-${request.id}`}
@@ -1715,6 +1511,17 @@ request.client_status !== "declined" && (
 
     <Link
       href={`/artist/${request.artist_id}?tab=reviews&request=${request.id}`}
+      onClick={(event) => {
+        event.preventDefault();
+        void acknowledgeNotifications({
+          requestId: request.id,
+          kind: "action",
+        }).then(() => {
+          router.push(
+            `/artist/${request.artist_id}?tab=reviews&request=${request.id}`
+          );
+        });
+      }}
       className="group flex items-center gap-2 rounded-full bg-lumina-black px-6 py-2.5 text-[13px] font-medium text-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
     >
       <Star size={16} fill="currentColor" strokeWidth={1.5} />
@@ -1764,6 +1571,13 @@ onRequestDifferentTime={() => {
   />
 )}
       </div>
+  );
+}
+
+export default function MyRequestsPage() {
+  return (
+    <ClientWorkspaceShell>
+      <MyRequestsContent />
     </ClientWorkspaceShell>
   );
 }

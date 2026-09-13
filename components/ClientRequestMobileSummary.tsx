@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   CalendarDays,
   ChevronDown,
@@ -28,6 +29,7 @@ type ClientRequestMobileSummaryProps = {
   onExpand: () => void;
   onMessage: () => void | Promise<void>;
   onArchive: () => void | Promise<void>;
+  onAcknowledgeAction: () => Promise<{ error: { message: string } | null }>;
 };
 
 const statusToneClasses: Record<
@@ -59,7 +61,9 @@ export default function ClientRequestMobileSummary({
   onExpand,
   onMessage,
   onArchive,
+  onAcknowledgeAction,
 }: ClientRequestMobileSummaryProps) {
+  const router = useRouter();
   const initials = artistName
     .split(/\s+/)
     .map((part) => part[0])
@@ -71,6 +75,12 @@ export default function ClientRequestMobileSummary({
     action.key === "review_ready" ? (
       <Link
         href={reviewHref}
+        onClick={(event) => {
+          event.preventDefault();
+          void onAcknowledgeAction().then(() => {
+            router.push(reviewHref);
+          });
+        }}
         className="inline-flex min-h-10 items-center justify-center rounded-full bg-lumina-black px-3 text-[10px] font-medium text-white transition hover:opacity-85 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lumina-black focus-visible:ring-offset-2"
       >
         {action.cta}

@@ -11,12 +11,14 @@ import {
   X,
 } from "lucide-react";
 import AccountMenu from "@/components/AccountMenu";
+import ClientNotificationCenter from "@/components/ClientNotificationCenter";
 import { ClientWorkspaceProvider } from "@/components/ClientWorkspaceContext";
 import WorkspaceNavigationIndicator, {
   getWorkspaceIndicatorLabel,
 } from "@/components/WorkspaceNavigationIndicator";
 import { supabase } from "@/lib/supabase";
 import { useWorkspaceActionCounts } from "@/lib/use-workspace-action-counts";
+import { useClientNotifications } from "@/lib/use-client-notifications";
 import { useWorkspaceMessageUnreadCount } from "@/lib/use-workspace-message-unread-count";
 import { useWorkspaceSidebarPreference } from "@/lib/use-workspace-sidebar-preference";
 import { clientWorkspaceNavigation } from "@/lib/workspace-navigation";
@@ -135,6 +137,7 @@ export default function ClientWorkspaceShell({
   );
   const actionCounts = useWorkspaceActionCounts("client", accountId);
   const messageUnreadCount = useWorkspaceMessageUnreadCount("client", accountId);
+  const clientNotifications = useClientNotifications(accountId);
 
   const isSelected = (label: string, href: string) => {
     if (label === "Compare") {
@@ -388,6 +391,8 @@ export default function ClientWorkspaceShell({
         requestIssueCount: actionCounts.requestIssues,
         reviewReadyCount: actionCounts.reviews,
         messageUnreadCount,
+        notifications: clientNotifications.notifications,
+        acknowledgeNotifications: clientNotifications.acknowledge,
       }}
     >
     <div className="min-h-screen overflow-x-hidden bg-lumina-bg text-lumina-text">
@@ -441,6 +446,14 @@ export default function ClientWorkspaceShell({
 
           <div className="relative flex items-center gap-2">
             {topBarActions}
+            <ClientNotificationCenter
+              notifications={clientNotifications.notifications}
+              requestsById={clientNotifications.requestsById}
+              unreadCount={clientNotifications.unreadCount}
+              error={clientNotifications.error}
+              onAcknowledge={clientNotifications.acknowledge}
+              onClearAll={clientNotifications.clearAll}
+            />
             <AccountMenu />
           </div>
         </header>
