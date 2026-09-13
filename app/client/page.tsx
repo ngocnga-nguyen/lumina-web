@@ -12,6 +12,10 @@ import {
 } from "lucide-react";
 import ClientWorkspaceShell from "@/components/ClientWorkspaceShell";
 import ClientOnboardingWelcome from "@/components/ClientOnboardingWelcome";
+import ClientOverviewMobileHome, {
+  type ClientOverviewNextItem,
+  type ClientOverviewRequestItem,
+} from "@/components/ClientOverviewMobileHome";
 import { shouldShowClientWelcome } from "@/lib/client-onboarding";
 import { useClientOnboarding } from "@/lib/use-client-onboarding";
 import { formatRequestServiceSummary } from "@/lib/request-services";
@@ -205,6 +209,31 @@ export default function ClientOverviewPage() {
   }, [requests]);
 
   const recentRequests = requests.filter((request) => !request.client_hidden).slice(0, 3);
+  const mobileNextRequest: ClientOverviewNextItem | null = upcomingRequest
+    ? {
+        artistName: upcomingRequest.artist_name || "Lumina professional",
+        serviceSummary:
+          formatRequestServiceSummary(upcomingRequest) || "Upcoming service",
+        dateLabel: formatDate(upcomingRequest.proposed_date),
+        timeLabel: formatTime(upcomingRequest.proposed_time),
+      }
+    : null;
+  const mobileRecentRequests: ClientOverviewRequestItem[] = recentRequests.map(
+    (request) => ({
+      id: request.id,
+      artistName: request.artist_name || "Lumina professional",
+      artistImageUrl: request.artist_image_url,
+      serviceSummary:
+        formatRequestServiceSummary(request) || "Service request",
+      statusLabel: requestStatus(request),
+      dateLabel: formatDate(
+        request.scheduled_for ||
+          request.proposed_date ||
+          request.preferred_date ||
+          request.created_at
+      ),
+    })
+  );
   const showAutomaticWelcome = shouldShowClientWelcome({
     ready: clientOnboarding.ready && !loading && !loadError,
     isClient: clientOnboarding.isClient,
@@ -224,6 +253,22 @@ export default function ClientOverviewPage() {
   return (
     <ClientWorkspaceShell>
       <div className="bg-lumina-surface text-lumina-text">
+        <ClientOverviewMobileHome
+          clientName={clientName}
+          loading={loading}
+          loadError={loadError}
+          activeRequestCount={activeRequests.length}
+          savedCount={savedCount}
+          nextRequest={mobileNextRequest}
+          recentRequests={mobileRecentRequests}
+          showWelcome={showWelcome}
+          welcomeManuallyOpen={welcomeManuallyOpen}
+          onOpenWelcome={() => setWelcomeManuallyOpen(true)}
+          onDismissWelcome={dismissWelcome}
+          onRetry={() => setLoadAttempt((current) => current + 1)}
+        />
+
+        <div className="hidden lg:block">
         <section className="mx-auto max-w-[1240px] px-5 py-10 md:px-10 md:py-14">
           <div className="max-w-[760px]">
             <p className="text-[12px] font-semibold uppercase tracking-[0.18em] text-lumina-text-muted">
@@ -442,6 +487,7 @@ export default function ClientOverviewPage() {
             </section>
           </div>
         </section>
+        </div>
       </div>
     </ClientWorkspaceShell>
   );

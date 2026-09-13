@@ -11,6 +11,7 @@ import {
   X,
 } from "lucide-react";
 import AccountMenu from "@/components/AccountMenu";
+import { ClientWorkspaceProvider } from "@/components/ClientWorkspaceContext";
 import WorkspaceNavigationIndicator, {
   getWorkspaceIndicatorLabel,
 } from "@/components/WorkspaceNavigationIndicator";
@@ -381,6 +382,14 @@ export default function ClientWorkspaceShell({
   }
 
   return (
+    <ClientWorkspaceProvider
+      value={{
+        requestActionCount: actionCounts.requests,
+        requestIssueCount: actionCounts.requestIssues,
+        reviewReadyCount: actionCounts.reviews,
+        messageUnreadCount,
+      }}
+    >
     <div className="min-h-screen overflow-x-hidden bg-lumina-bg text-lumina-text">
       <aside
         className={`fixed inset-y-0 left-0 z-40 hidden border-r border-lumina-glass-border transition-[width] duration-200 lg:block ${
@@ -439,5 +448,6 @@ export default function ClientWorkspaceShell({
         <main className="min-h-[calc(100vh-68px)] min-w-0 bg-lumina-bg text-lumina-text">{children}</main>
       </div>
     </div>
+    </ClientWorkspaceProvider>
   );
 }
