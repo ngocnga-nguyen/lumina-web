@@ -108,6 +108,7 @@ export function useRequestInbox(role: RequestConversationRole) {
 
     const requestRows = (data || []) as unknown as RequestRow[];
     const clientNames = new Map<string, string>();
+    const artistBusinessNames = new Map<string, string>();
 
     if (role === "artist") {
       const clientIds = [...new Set(requestRows.map((request) => request.client_id))];
@@ -124,6 +125,23 @@ export function useRequestInbox(role: RequestConversationRole) {
           });
         }
       }
+    } else {
+      const artistIds = [...new Set(requestRows.map((request) => request.artist_id))];
+      if (artistIds.length > 0) {
+        const { data: artists, error: artistsError } = await supabase
+          .from("artists")
+          .select("id, business_name")
+          .in("id", artistIds);
+
+        if (!canCommit()) return;
+        if (!artistsError) {
+          (artists || []).forEach((artist) => {
+            if (artist.business_name) {
+              artistBusinessNames.set(artist.id, artist.business_name);
+            }
+          });
+        }
+      }
     }
 
     const normalizedRequests = requestRows.map((request) => ({
@@ -134,6 +152,10 @@ export function useRequestInbox(role: RequestConversationRole) {
           : clientNames.get(request.client_id) ||
             request.client_name?.trim() ||
             "Lumina client",
+      participant_business_name:
+        role === "client"
+          ? artistBusinessNames.get(request.artist_id) || null
+          : null,
       participant_image_url:
         role === "client" ? request.artist_image_url || null : null,
       participant_subtitle:

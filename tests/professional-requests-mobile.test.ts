@@ -136,5 +136,13 @@ test("mobile presentation routes to the shared inbox and mounts no realtime clie
   assert.match(summary, /unreadCount > 99/);
   assert.match(summary, /status\.label === "New request"/);
   assert.match(summary, /bg-lumina-surface-soft text-lumina-text-muted/);
+  assert.match(page, /placeholder="Search requests"/);
+  assert.match(page, /\["active", "history", "archived"\]/);
+  assert.match(page, /Needs action/);
+  assert.match(page, /requestView === "active"[\s\S]*Active request filters/);
+  assert.match(page, /requestView === "history"[\s\S]*Request history filters/);
+  assert.match(page, /\["all", "completed", "declined"\]/);
+  assert.match(page, /matchesRequestLifecycleView/);
+  assert.match(page, /matchesRequestSearch/);
   assert.doesNotMatch(summary, /supabase|\.channel\(/);
 });

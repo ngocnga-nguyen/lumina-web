@@ -173,5 +173,13 @@ test("mobile presentation stays isolated and reuses existing messaging", () => {
   assert.match(page, /setOpenHistoryId\(request\.id\)/);
   assert.match(summary, /Archive/);
   assert.match(summary, /Restore/);
+  assert.match(page, /placeholder="Search requests"/);
+  assert.match(page, /\["active", "history", "archived"\]/);
+  assert.match(page, /Needs action/);
+  assert.match(page, /requestView === "active"[\s\S]*Active request filters/);
+  assert.match(page, /requestView === "history"[\s\S]*Request history filters/);
+  assert.match(page, /\["all", "completed", "declined"\]/);
+  assert.match(page, /matchesRequestLifecycleView/);
+  assert.match(page, /matchesRequestSearch/);
   assert.doesNotMatch(summary, /supabase|\.channel\(/);
 });

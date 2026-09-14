@@ -1,6 +1,6 @@
 "use client";
 
-import { MessageCircle } from "lucide-react";
+import { MessageCircle, Search } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import RequestConversationPanel from "@/components/RequestConversationPanel";
 import {
@@ -55,6 +55,7 @@ export default function RequestInbox({ role }: RequestInboxProps) {
   const openInboxConversation = inbox.openConversation;
   const setSelectedRequestId = inbox.setSelectedRequestId;
   const [filter, setFilter] = useState<RequestConversationFilter>("all");
+  const [searchQuery, setSearchQuery] = useState("");
   const [drafts, setDrafts] = useState<Record<string, string>>({});
   const [selectedImage, setSelectedImage] = useState<File | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
@@ -64,9 +65,10 @@ export default function RequestInbox({ role }: RequestInboxProps) {
         inbox.requests,
         inbox.updatesByRequestId,
         role,
-        filter
+        filter,
+        searchQuery
       ),
-    [filter, inbox.requests, inbox.updatesByRequestId, role]
+    [filter, inbox.requests, inbox.updatesByRequestId, role, searchQuery]
   );
   const selectedRequest = inbox.requests.find(
     (request) => request.id === inbox.selectedRequestId
@@ -172,7 +174,27 @@ export default function RequestInbox({ role }: RequestInboxProps) {
         </header>
 
         <div
-          className={`mt-4 flex gap-2 overflow-x-auto pb-1 md:mt-5 lg:mt-6 ${
+          className={`relative mt-4 md:mt-5 lg:mt-6 ${
+            inbox.selectedRequestId ? "hidden lg:block" : "block"
+          }`}
+        >
+          <Search
+            size={16}
+            strokeWidth={1.7}
+            className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-lumina-text-muted"
+          />
+          <input
+            type="search"
+            value={searchQuery}
+            onChange={(event) => setSearchQuery(event.target.value)}
+            placeholder="Search conversations"
+            aria-label="Search conversations"
+            className="min-h-11 w-full rounded-full border border-lumina-border bg-lumina-surface py-2.5 pl-10 pr-4 text-[13px] text-lumina-text outline-none transition placeholder:text-lumina-text-muted focus:border-lumina-text lg:max-w-[420px]"
+          />
+        </div>
+
+        <div
+          className={`mt-3 flex gap-2 overflow-x-auto pb-1 ${
             inbox.selectedRequestId ? "hidden lg:flex" : "flex"
           }`}
           aria-label="Conversation filters"
@@ -245,7 +267,9 @@ export default function RequestInbox({ role }: RequestInboxProps) {
                       className="mx-auto text-lumina-text-muted"
                     />
                     <p className="mt-4 text-[14px] font-medium text-lumina-text">
-                      {filter === "unread"
+                      {searchQuery.trim()
+                        ? "No matching conversations"
+                        : filter === "unread"
                         ? "No unread conversations"
                         : filter === "archived"
                         ? "No archived conversations"

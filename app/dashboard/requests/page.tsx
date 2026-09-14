@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { createRealtimeChannelTopic } from "@/lib/realtime-channel";
-import { Bell, MessageCircle, Sparkles, CalendarDays, Clock } from "lucide-react";
+import { Bell, MessageCircle, Sparkles, CalendarDays, Clock, Search } from "lucide-react";
 import ChatModal from "@/components/ChatModal";
 import ConsultationSnapshot from "@/components/ConsultationSnapshot";
 import ProfessionalRequestMobileSummary from "@/components/ProfessionalRequestMobileSummary";
@@ -15,6 +15,7 @@ import {
 import { createConsultationSignedUrls } from "@/lib/consultation-snapshot";
 import {
   appointmentTimeHasPassed,
+  canMarkBookingLiteCompleted,
   canSubmitCompletionResponse,
   createExpectedEndAt,
   createScheduledFor,
@@ -37,6 +38,15 @@ import {
   getProfessionalMobilePriorityClass,
   getProfessionalMobileRequestStatus,
 } from "@/lib/professional-request-mobile";
+import {
+  matchesActiveRequestFilter,
+  matchesHistoryRequestFilter,
+  matchesRequestLifecycleView,
+  matchesRequestSearch,
+  type ActiveRequestFilter,
+  type HistoryRequestFilter,
+  type RequestLifecycleView,
+} from "@/lib/request-workflow-filters";
 
 type ClientRequest = {
   id: string;
@@ -152,7 +162,11 @@ export default function DashboardRequestsPage() {
   const [draftMessage, setDraftMessage] = useState("");
   const [selectedImage, setSelectedImage] = useState<File | null>(null);
   const [expandedRequestId, setExpandedRequestId] = useState<string | null>(null);
-  const [requestTab, setRequestTab] = useState<"active" | "archived">("active");
+  const [requestView, setRequestView] = useState<RequestLifecycleView>("active");
+  const [activeFilter, setActiveFilter] = useState<ActiveRequestFilter>("all");
+  const [historyFilter, setHistoryFilter] = useState<HistoryRequestFilter>("all");
+  const [searchQuery, setSearchQuery] = useState("");
+  const showingArchived = requestView === "archived";
   const [updates, setUpdates] = useState<Record<string, RequestUpdate[]>>({});
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [showNotifications, setShowNotifications] = useState(false);
@@ -162,7 +176,7 @@ export default function DashboardRequestsPage() {
   >({});
   const requestRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const openChatRequestIdRef = useRef<string | null>(null);
-  const requestTabRef = useRef<"active" | "archived">("active");
+  const showingArchivedRef = useRef(false);
   const handledDeepLinkRef = useRef<string | null>(null);
   const routeActiveRef = useRef(true);
 
@@ -176,17 +190,24 @@ export default function DashboardRequestsPage() {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     if (params.get("view") !== "archived") return;
-    const frame = window.requestAnimationFrame(() => setRequestTab("archived"));
+    const frame = window.requestAnimationFrame(() => setRequestView("archived"));
     return () => window.cancelAnimationFrame(frame);
   }, []);
 
   useEffect(() => {
     const requestId = new URLSearchParams(window.location.search).get("request");
     if (!requestId || handledDeepLinkRef.current === requestId) return;
-    if (!requests.some((request) => request.id === requestId)) return;
+    const linkedRequest = requests.find((request) => request.id === requestId);
+    if (!linkedRequest) return;
 
     handledDeepLinkRef.current = requestId;
     const frame = requestAnimationFrame(() => {
+      if (
+        requestView !== "archived" &&
+        !matchesRequestLifecycleView(linkedRequest, "active", false)
+      ) {
+        setRequestView("history");
+      }
       setExpandedRequestId(requestId);
       setHighlightedRequestId(requestId);
       requestRefs.current[requestId]?.scrollIntoView({
@@ -195,7 +216,7 @@ export default function DashboardRequestsPage() {
       });
     });
     return () => cancelAnimationFrame(frame);
-  }, [requests]);
+  }, [requestView, requests]);
 
   const fetchRequests = async () => {
     const {
@@ -217,7 +238,7 @@ setNotifications(notificationData || []);
       .from("client_requests")
       .select("*")
       .eq("artist_id", user.id)
-      .eq("artist_hidden", requestTab === "archived")
+      .eq("artist_hidden", showingArchived)
       .order("created_at", { ascending: false });
 
     if (!routeActiveRef.current) return;
@@ -312,13 +333,13 @@ setUpdates(updateMap);
     cancelled = true;
     window.clearTimeout(refreshTimer);
   };
-}, [requestTab]);
+}, [showingArchived]);
 useEffect(() => {
   openChatRequestIdRef.current = chatRequest?.id || null;
 }, [chatRequest]);
 useEffect(() => {
-  requestTabRef.current = requestTab;
-}, [requestTab]);
+  showingArchivedRef.current = showingArchived;
+}, [showingArchived]);
 useEffect(() => {
   let channel: ReturnType<typeof supabase.channel> | null = null;
   let cancelled = false;
@@ -398,7 +419,7 @@ useEffect(() => {
           if (cancelled) return;
           const newRequest = payload.new as ClientRequest;
 
-          if (requestTabRef.current !== "active" || newRequest.artist_hidden) {
+          if (showingArchivedRef.current || newRequest.artist_hidden) {
             return;
           }
 
@@ -423,7 +444,9 @@ useEffect(() => {
 
           setRequests((prev) =>
             prev.map((request) =>
-              request.id === updatedRequest.id ? updatedRequest : request
+              request.id === updatedRequest.id
+                ? { ...request, ...updatedRequest }
+                : request
             )
           );
         }
@@ -668,7 +691,7 @@ const setRequestHidden = async (id: string, hidden: boolean) => {
   const confirmed = window.confirm(
     hidden
       ? "Move this request to Archived?"
-      : "Move this request back to Active?"
+      : "Restore this request to its current workflow view?"
   );
 
   if (!confirmed) return;
@@ -782,6 +805,42 @@ const getUnreadCount = (requestId: string) => {
 const getLatestUpdate = (requestId: string) => {
   return getLatestRequestConversationUpdate(updates[requestId] || []);
 };
+const visibleRequests = useMemo(
+  () =>
+    requests.filter((request) => {
+      if (
+        !matchesRequestLifecycleView(
+          request,
+          requestView,
+          !!request.artist_hidden
+        )
+      ) {
+        return false;
+      }
+
+      if (
+        requestView === "active" &&
+        !matchesActiveRequestFilter(request, activeFilter, {
+          role: "artist",
+        })
+      ) {
+        return false;
+      }
+
+      if (
+        requestView === "history" &&
+        !matchesHistoryRequestFilter(request, historyFilter)
+      ) {
+        return false;
+      }
+
+      return matchesRequestSearch(searchQuery, [
+        request.client_name,
+        ...getRequestServiceNames(request),
+      ]);
+    }),
+  [activeFilter, historyFilter, requestView, requests, searchQuery]
+);
 const deleteMessage = async (messageId: string) => {
   const confirmed = window.confirm("Delete this message for everyone?");
 
@@ -959,78 +1018,70 @@ const deleteMessage = async (messageId: string) => {
         <p className="mt-4 hidden max-w-[680px] text-[16px] leading-[1.6] text-lumina-text-muted lg:block">
           Manage client inquiries, send proposals, and follow up.
         </p>
-        <p className="mt-2 hidden text-[14px] text-lumina-text-muted lg:block">
-  {requests.length} {requestTab} request
-  {requests.length !== 1 ? "s" : ""}
-</p>
-<div className="mt-3 inline-flex rounded-full border border-lumina-border/70 bg-lumina-pearl/65 p-1 lg:hidden">
-  <button
-    onClick={() => setRequestTab("active")}
-    className={`min-h-9 rounded-full px-4 text-[11px] font-medium transition ${
-      requestTab === "active"
-        ? "bg-lumina-black text-white"
-        : "text-lumina-text-muted hover:text-lumina-text"
-    }`}
-  >
-    Active
-  </button>
-  <button
-    onClick={() => setRequestTab("archived")}
-    className={`min-h-9 rounded-full px-4 text-[11px] font-medium transition ${
-      requestTab === "archived"
-        ? "bg-lumina-black text-white"
-        : "text-lumina-text-muted hover:text-lumina-text"
-    }`}
-  >
-    Archived
-  </button>
-</div>
-<div className="mt-6 hidden gap-2 lg:flex">
-  <button
-    onClick={() => setRequestTab("active")}
-    className={`rounded-full px-4 py-2 text-[13px] ${
-      requestTab === "active"
-        ? "bg-lumina-black text-white"
-        : "border border-lumina-border bg-lumina-surface text-lumina-text-muted"
-    }`}
-  >
-    Active
-  </button>
-
-  <button
-    onClick={() => setRequestTab("archived")}
-    className={`rounded-full px-4 py-2 text-[13px] ${
-      requestTab === "archived"
-        ? "bg-lumina-black text-white"
-        : "border border-lumina-border bg-lumina-surface text-lumina-text-muted"
-    }`}
-  >
-    Archived
-  </button>
-</div>
+        <div className="mt-4 lg:mt-6">
+          <p className="mb-3 hidden text-[14px] text-lumina-text-muted lg:block">
+            {visibleRequests.length} request{visibleRequests.length !== 1 ? "s" : ""}
+          </p>
+          <div className="relative max-w-[520px]">
+            <Search className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-lumina-text-muted" size={16} strokeWidth={1.7} />
+            <input
+              type="search"
+              value={searchQuery}
+              onChange={(event) => setSearchQuery(event.target.value)}
+              placeholder="Search requests"
+              aria-label="Search requests"
+              className="min-h-11 w-full rounded-full border border-lumina-border bg-lumina-surface py-2.5 pl-10 pr-4 text-[13px] outline-none transition placeholder:text-lumina-text-muted focus:border-lumina-text"
+            />
+          </div>
+          <div className="mt-3 flex gap-1 overflow-x-auto rounded-full border border-lumina-border/70 bg-lumina-pearl/65 p-1 sm:w-fit" aria-label="Request views">
+            {(["active", "history", "archived"] as RequestLifecycleView[]).map((view) => (
+              <button key={view} type="button" onClick={() => setRequestView(view)} aria-pressed={requestView === view} className={`min-h-9 flex-1 shrink-0 rounded-full px-4 text-[11px] font-medium capitalize transition sm:flex-none lg:text-[13px] ${requestView === view ? "bg-lumina-black text-white" : "text-lumina-text-muted hover:text-lumina-text"}`}>
+                {view}
+              </button>
+            ))}
+          </div>
+          {requestView === "active" && (
+            <div className="mt-2.5 flex gap-2 overflow-x-auto pb-1" aria-label="Active request filters">
+              {([["all", "All"], ["needs_action", "Needs action"], ["waiting", "Waiting"], ["confirmed", "Confirmed"]] as Array<[ActiveRequestFilter, string]>).map(([value, label]) => (
+                <button key={value} type="button" onClick={() => setActiveFilter(value)} aria-pressed={activeFilter === value} className={`min-h-9 shrink-0 rounded-full border px-3 text-[11px] transition lg:text-[12px] ${activeFilter === value ? "border-lumina-text bg-lumina-surface-soft text-lumina-text" : "border-lumina-border bg-lumina-surface text-lumina-text-muted"}`}>
+                  {label}
+                </button>
+              ))}
+            </div>
+          )}
+          {requestView === "history" && (
+            <div className="mt-2.5 flex gap-2 overflow-x-auto pb-1" aria-label="Request history filters">
+              {(["all", "completed", "declined"] as HistoryRequestFilter[]).map((value) => (
+                <button key={value} type="button" onClick={() => setHistoryFilter(value)} aria-pressed={historyFilter === value} className={`min-h-9 shrink-0 rounded-full border px-3 text-[11px] capitalize transition lg:text-[12px] ${historyFilter === value ? "border-lumina-text bg-lumina-surface-soft text-lumina-text" : "border-lumina-border bg-lumina-surface text-lumina-text-muted"}`}>
+                  {value}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
         <div className="mt-5 flex flex-col gap-3 lg:mt-10 lg:gap-5">
-          {requests.length === 0 ? (
+          {visibleRequests.length === 0 ? (
             <div className="rounded-[18px] border border-lumina-border bg-lumina-surface p-4 lg:rounded-[24px] lg:p-6">
-              <h2 className="text-[15px] font-medium text-lumina-text lg:text-[16px]">No requests yet</h2>
+              <h2 className="text-[15px] font-medium text-lumina-text lg:text-[16px]">
+                {searchQuery.trim() ? "No matching requests" : `No ${requestView} requests`}
+              </h2>
               <p className="mt-1 text-[12px] leading-[1.5] text-lumina-text-muted lg:text-[14px] lg:leading-[1.55]">
-                New client requests will appear here when they arrive.
+                {searchQuery.trim()
+                  ? "Try another client or service name."
+                  : requests.length === 0
+                  ? "New client requests will appear here when they arrive."
+                  : "Choose another view or filter to see more requests."}
               </p>
             </div>
 	          ) : (
-	            requests.map((request) => {
+	            visibleRequests.map((request) => {
 	  const latestUpdate = getLatestUpdate(request.id);
 	  const unreadMessages = getUnreadCount(request.id);
 	  const requestedServiceNames = getRequestServiceNames(request);
 	  const completionState = getCompletionState(request);
   const showCompletionState = completionState !== "scheduled";
   const canRespondToCompletion = canSubmitCompletionResponse(request, "artist");
-  const canMarkBookingLiteCompleted =
-    request.completion_protocol_version === 3 &&
-    request.status === "accepted" &&
-    request.client_status === "confirmed" &&
-    request.booking_status === "booked" &&
-    !request.appointment_exception_reason &&
-    appointmentTimeHasPassed(request);
+  const canMarkBookingLiteComplete = canMarkBookingLiteCompleted(request);
   const canReportBookingLiteException =
     request.completion_protocol_version === 3 &&
     request.status === "accepted" &&
@@ -1052,7 +1103,7 @@ const deleteMessage = async (messageId: string) => {
 	  const mobileStatus = getProfessionalMobileRequestStatus(request, {
 	    completionState,
 	    professionalAction: getProfessionalRequestAction(request),
-	    canComplete: canRespondToCompletion || canMarkBookingLiteCompleted,
+	    canComplete: canRespondToCompletion || canMarkBookingLiteComplete,
 	  });
 	  const mobilePriorityClass = getProfessionalMobilePriorityClass(
 	    mobileStatus.priority
@@ -1104,7 +1155,7 @@ const deleteMessage = async (messageId: string) => {
 	                  latestMessagePreview={mobileMessagePreview}
 	                  unreadCount={unreadMessages}
 	                  expanded={expandedRequestId === request.id}
-	                  archived={requestTab === "archived"}
+	                  archived={requestView === "archived"}
 	                  onExpand={toggleRequestDetails}
 	                  onPrimaryAction={() => {
 	                    if (mobileStatus.action?.kind === "complete") {
@@ -1116,7 +1167,7 @@ const deleteMessage = async (messageId: string) => {
 	                    toggleRequestDetails();
 	                  }}
 	                  onArchive={() =>
-	                    setRequestHidden(request.id, requestTab === "active")
+	                    setRequestHidden(request.id, requestView !== "archived")
 	                  }
 	                />
 	                <div
@@ -1197,7 +1248,7 @@ const deleteMessage = async (messageId: string) => {
   )}
 </button>
 )}
-{(canRespondToCompletion || canMarkBookingLiteCompleted) && (
+{(canRespondToCompletion || canMarkBookingLiteComplete) && (
   <div className="flex flex-wrap items-center gap-2">
     <button
       onClick={(e) => {
@@ -1224,11 +1275,11 @@ const deleteMessage = async (messageId: string) => {
   <button
     onClick={(e) => {
       e.stopPropagation();
-      setRequestHidden(request.id, requestTab === "active");
+      setRequestHidden(request.id, requestView !== "archived");
     }}
     className="rounded-full border border-lumina-border px-3 py-1 text-[12px] text-lumina-text-muted transition hover:text-lumina-text"
   >
-    {requestTab === "active" ? "Hide" : "Unhide"}
+    {requestView === "archived" ? "Restore" : "Archive"}
   </button>
 
   <span className="text-[15px] text-lumina-text-muted">

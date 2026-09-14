@@ -28,6 +28,8 @@ test("client and professional routes retain one shared role-aware inbox", () => 
   assert.match(professionalRoute, /<RequestInbox role="artist" \/>/);
   assert.doesNotMatch(clientRoute, /request_updates|postgres_changes/);
   assert.doesNotMatch(professionalRoute, /request_updates|postgres_changes/);
+  assert.match(inbox, /placeholder="Search conversations"/);
+  assert.match(inbox, /filterRequestConversations\([\s\S]*searchQuery/);
 });
 
 test("mobile conversation uses the dynamic workspace viewport while desktop keeps split view", () => {

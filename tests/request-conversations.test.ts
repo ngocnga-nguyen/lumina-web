@@ -50,6 +50,7 @@ function request(
     client_hidden: false,
     artist_hidden: false,
     participant_name: "Artist",
+    participant_business_name: null,
     participant_image_url: null,
     participant_subtitle: "Nails",
     ...overrides,
@@ -183,5 +184,130 @@ test("filters compose with participant-specific archive state and recency sortin
   assert.equal(
     filterRequestConversations(requests, histories, "artist", "archived").length,
     0
+  );
+});
+
+test("search composes after visibility and lifecycle filtering", async () => {
+  const { filterRequestConversations } = await conversationsModule;
+  const requests = [
+    request({
+      id: "active-match",
+      created_at: "2026-09-01T12:00:00.000Z",
+      participant_name: "Hong Pham",
+      participant_business_name: "Vianne Nails and Spa",
+    }),
+    request({
+      id: "completed-match",
+      created_at: "2026-09-02T12:00:00.000Z",
+      participant_name: "Hong Pham",
+      booking_status: "completed",
+    }),
+    request({
+      id: "archived-match",
+      created_at: "2026-09-03T12:00:00.000Z",
+      participant_name: "Hong Pham",
+      client_hidden: true,
+    }),
+  ];
+  const histories = {
+    "active-match": [
+      update({
+        id: "message",
+        request_id: "active-match",
+        created_at: "2026-09-10T12:00:00.000Z",
+        message: "Would you like chrome details?",
+      }),
+    ],
+    "completed-match": [],
+    "archived-match": [],
+  };
+
+  assert.deepEqual(
+    filterRequestConversations(requests, histories, "client", "active", "vianne").map(
+      (item) => item.id
+    ),
+    ["active-match"]
+  );
+  assert.deepEqual(
+    filterRequestConversations(requests, histories, "client", "all", "chrome").map(
+      (item) => item.id
+    ),
+    ["active-match"]
+  );
+  assert.deepEqual(
+    filterRequestConversations(requests, histories, "client", "archived", "hong").map(
+      (item) => item.id
+    ),
+    ["archived-match"]
+  );
+});
+
+test("conversation Active follows completed, declined, and participant archive lifecycle", async () => {
+  const { filterRequestConversations } = await conversationsModule;
+  const updates = {
+    lifecycle: [
+      update({
+        id: "incoming",
+        request_id: "lifecycle",
+        created_at: "2026-09-10T12:00:00.000Z",
+        message: "Latest request message",
+        is_read_by_client: false,
+      }),
+    ],
+  };
+  const active = request({
+    id: "lifecycle",
+    created_at: "2026-09-01T12:00:00.000Z",
+    participant_name: "Ariana Cole",
+  });
+
+  assert.deepEqual(
+    filterRequestConversations([active], updates, "client", "active", "ariana").map(
+      (item) => item.id
+    ),
+    ["lifecycle"]
+  );
+
+  const completed = request({
+    ...active,
+    booking_status: "completed",
+  });
+  assert.equal(
+    filterRequestConversations([completed], updates, "client", "active").length,
+    0
+  );
+  assert.deepEqual(
+    filterRequestConversations([completed], updates, "client", "all").map(
+      (item) => item.id
+    ),
+    ["lifecycle"]
+  );
+
+  const declined = request({ ...active, status: "declined" });
+  assert.equal(
+    filterRequestConversations([declined], updates, "client", "active").length,
+    0
+  );
+  assert.deepEqual(
+    filterRequestConversations([declined], updates, "client", "all", "latest").map(
+      (item) => item.id
+    ),
+    ["lifecycle"]
+  );
+
+  const archived = request({ ...active, client_hidden: true });
+  assert.equal(
+    filterRequestConversations([archived], updates, "client", "all").length,
+    0
+  );
+  assert.deepEqual(
+    filterRequestConversations([archived], updates, "client", "archived").map(
+      (item) => item.id
+    ),
+    ["lifecycle"]
+  );
+  assert.equal(
+    filterRequestConversations([archived], updates, "artist", "all").length,
+    1
   );
 });

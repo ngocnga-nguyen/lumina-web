@@ -1,6 +1,7 @@
 import {
   getCompletionState,
   getCompletionStateLabel,
+  isActiveRequestState,
   isTerminalRequestState,
   type CompletionRequestLike,
 } from "@/lib/request-completion";
@@ -9,6 +10,8 @@ import {
   isIncomingUnreadMessage,
 } from "@/lib/message-unread";
 import { supabase } from "@/lib/supabase";
+import { getRequestServiceNames } from "@/lib/request-services";
+import { matchesRequestSearch } from "@/lib/request-workflow-filters";
 
 export const REQUEST_MESSAGE_READ_STATE_EVENT =
   "lumina:request-message-read-state-changed";
@@ -47,6 +50,7 @@ export type RequestConversationRecord = CompletionRequestLike & {
   client_hidden: boolean | null;
   artist_hidden: boolean | null;
   participant_name: string;
+  participant_business_name?: string | null;
   participant_image_url: string | null;
   participant_subtitle: string;
 };
@@ -152,7 +156,7 @@ export function isRequestConversationArchived(
 export function isRequestConversationActive(
   request: RequestConversationRecord
 ) {
-  return !isTerminalRequestState(request);
+  return isActiveRequestState(request);
 }
 
 export function getRequestConversationStateLabel(
@@ -186,7 +190,8 @@ export function filterRequestConversations(
   requests: RequestConversationRecord[],
   updatesByRequestId: Record<string, RequestConversationUpdate[]>,
   role: RequestConversationRole,
-  filter: RequestConversationFilter
+  filter: RequestConversationFilter,
+  searchQuery = ""
 ) {
   return requests
     .filter((request) => {
@@ -203,6 +208,18 @@ export function filterRequestConversations(
       }
       if (filter === "active") return isRequestConversationActive(request);
       return true;
+    })
+    .filter((request) => {
+      const latestUpdate = getLatestRequestConversationUpdate(
+        updatesByRequestId[request.id] || []
+      );
+      return matchesRequestSearch(searchQuery, [
+        request.participant_name,
+        request.participant_business_name,
+        request.participant_subtitle,
+        ...getRequestServiceNames(request),
+        getRequestConversationPreview(latestUpdate),
+      ]);
     })
     .sort((first, second) => {
       const firstTime = new Date(

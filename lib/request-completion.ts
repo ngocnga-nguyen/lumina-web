@@ -412,11 +412,51 @@ export type WorkspaceActionRequest = CompletionRequestLike & {
 };
 
 export function isTerminalRequestState(request: CompletionRequestLike) {
+  return isCompletedRequestState(request) || isDeclinedRequestState(request);
+}
+
+export function isCompletedRequestState(request: CompletionRequestLike) {
+  return request.booking_status === "completed";
+}
+
+export function isDeclinedRequestState(request: CompletionRequestLike) {
+  if (isCompletedRequestState(request)) return false;
+
   return (
-    request.booking_status === "completed" ||
     request.booking_status === "client_declined" ||
     request.status === "declined" ||
     request.client_status === "declined"
+  );
+}
+
+export function isActiveRequestState(request: CompletionRequestLike) {
+  return !isTerminalRequestState(request);
+}
+
+export function isConfirmedUpcomingRequest(
+  request: CompletionRequestLike,
+  now = new Date()
+) {
+  return (
+    isActiveRequestState(request) &&
+    request.status === "accepted" &&
+    request.client_status === "confirmed" &&
+    request.booking_status === "booked" &&
+    !appointmentTimeHasPassed(request, now)
+  );
+}
+
+export function canMarkBookingLiteCompleted(
+  request: CompletionRequestLike,
+  now = new Date()
+) {
+  return (
+    request.completion_protocol_version === 3 &&
+    request.status === "accepted" &&
+    request.client_status === "confirmed" &&
+    request.booking_status === "booked" &&
+    !request.appointment_exception_reason &&
+    appointmentTimeHasPassed(request, now)
   );
 }
 
