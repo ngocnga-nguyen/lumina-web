@@ -50,7 +50,7 @@ export function getClientNotificationDestination(
   }
 
   if (notification.title === "Appointment Completed" && request?.artist_id) {
-    return `/artist/${request.artist_id}?tab=reviews&request=${notification.request_id}`;
+    return `/client/reviews?request=${notification.request_id}`;
   }
 
   return `/my-requests?request=${notification.request_id}`;

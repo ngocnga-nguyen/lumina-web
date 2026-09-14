@@ -79,7 +79,7 @@ export default function ClientOverviewMobileHome({
       label: "Review",
       supportingLabel: "ready",
       value: reviewReadyCount,
-      href: "/my-requests",
+      href: "/client/reviews",
       icon: Star,
     },
   ];

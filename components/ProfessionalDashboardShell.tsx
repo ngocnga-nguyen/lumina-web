@@ -32,6 +32,7 @@ type ShellProps = {
 const pageTitles: Array<{ path: string; title: string }> = [
   { path: "/dashboard/onboarding", title: "Profile setup" },
   { path: "/dashboard/messages", title: "Messages" },
+  { path: "/dashboard/reviews", title: "Reviews" },
   { path: "/dashboard/requests", title: "Requests" },
   { path: "/dashboard/clients", title: "Clients" },
   { path: "/dashboard/services", title: "Services" },
@@ -126,7 +127,6 @@ export default function ProfessionalDashboardShell({ children }: ShellProps) {
   );
 
   const isSelected = (label: string, href: string) => {
-    if (label === "Reviews") return false;
     if (href === "/dashboard") return pathname === href;
     return pathname.startsWith(href);
   };

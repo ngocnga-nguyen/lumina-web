@@ -34,6 +34,7 @@ type ClientWorkspaceShellProps = {
 
 const pageTitles: Array<{ path: string; title: string }> = [
   { path: "/client/messages", title: "Messages" },
+  { path: "/client/reviews", title: "Reviews" },
   { path: "/my-requests", title: "My Requests" },
   { path: "/saved", title: "Saved" },
   { path: "/account", title: "Profile / Settings" },
@@ -143,7 +144,6 @@ export default function ClientWorkspaceShell({
     if (label === "Compare") {
       return pathname.startsWith("/saved") && locationHash === "#compare";
     }
-    if (label === "Reviews") return false;
     if (href === "/client") return pathname === href;
     if (label === "Saved") {
       return pathname.startsWith("/saved") && locationHash !== "#compare";

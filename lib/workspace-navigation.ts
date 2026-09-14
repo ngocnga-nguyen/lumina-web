@@ -25,6 +25,7 @@ export type WorkspaceNavigationItem = {
 export function getProfessionalWorkspaceNavigation(
   professionalId?: string | null
 ): WorkspaceNavigationItem[] {
+  void professionalId;
   return [
     { id: "dashboard", label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
     { id: "requests", label: "Requests", href: "/dashboard/requests", icon: Inbox },
@@ -39,11 +40,8 @@ export function getProfessionalWorkspaceNavigation(
     {
       id: "reviews",
       label: "Reviews",
-      href: professionalId
-        ? `/artist/${professionalId}?tab=reviews`
-        : "/dashboard",
+      href: "/dashboard/reviews",
       icon: Star,
-      external: true,
     },
     {
       id: "messages",
@@ -75,9 +73,8 @@ export const clientWorkspaceNavigation: WorkspaceNavigationItem[] = [
   {
     id: "reviews",
     label: "Reviews",
-    href: "/my-requests",
+    href: "/client/reviews",
     icon: Star,
-    supportingText: "After completion",
   },
   { id: "settings", label: "Profile / Settings", href: "/account", icon: Settings },
 ];

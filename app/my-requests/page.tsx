@@ -1122,7 +1122,7 @@ visibleRequests.map((request) => {
                   latestMessagePreview={mobileMessagePreview}
                   unreadCount={unreadCount}
                   action={mobileStatus.action}
-                  reviewHref={`/artist/${request.artist_id}?tab=reviews&request=${request.id}`}
+                  reviewHref={`/client/reviews?request=${request.id}`}
                   expanded={expandedRequestId === request.id}
                   archived={requestView === "archived"}
                   onExpand={toggleRequestDetails}
@@ -1230,7 +1230,7 @@ visibleRequests.map((request) => {
   <div className="flex items-center gap-3">
   {actionState?.key === "review_ready" ? (
     <Link
-      href={`/artist/${request.artist_id}?tab=reviews&request=${request.id}`}
+      href={`/client/reviews?request=${request.id}`}
       onClick={(event) => {
         event.preventDefault();
         event.stopPropagation();
@@ -1239,7 +1239,7 @@ visibleRequests.map((request) => {
           kind: "action",
         }).then(() => {
           router.push(
-            `/artist/${request.artist_id}?tab=reviews&request=${request.id}`
+            `/client/reviews?request=${request.id}`
           );
         });
       }}
@@ -1603,7 +1603,7 @@ request.client_status !== "declined" && (
     </div>
 
     <Link
-      href={`/artist/${request.artist_id}?tab=reviews&request=${request.id}`}
+      href={`/client/reviews?request=${request.id}`}
       onClick={(event) => {
         event.preventDefault();
         void acknowledgeNotifications({
@@ -1611,7 +1611,7 @@ request.client_status !== "declined" && (
           kind: "action",
         }).then(() => {
           router.push(
-            `/artist/${request.artist_id}?tab=reviews&request=${request.id}`
+            `/client/reviews?request=${request.id}`
           );
         });
       }}

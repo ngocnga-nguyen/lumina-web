@@ -13,6 +13,10 @@ import ProfessionalProfileMediaEditor from "@/components/ProfessionalProfileMedi
 import { useClientOnboarding } from "@/lib/use-client-onboarding";
 import { useLuminaAdminAccess } from "@/lib/use-lumina-admin-access";
 import {
+  setProfessionalReviewResponse,
+  submitVerifiedReview,
+} from "@/lib/review-actions";
+import {
   canLeaveBookingLiteReview,
   isReviewEligibleCompletion,
 } from "@/lib/request-completion";
@@ -794,10 +798,11 @@ if (!user) {
 
   setSavingArtistResponse(true);
 
-  const { data, error } = await supabase.rpc("set_artist_review_response", {
-    p_review_id: review.id,
-    p_response: response,
+  const { data: responseData, error } = await setProfessionalReviewResponse({
+    reviewId: review.id,
+    response,
   });
+  const data = responseData as Review | null;
 
   setSavingArtistResponse(false);
 
@@ -814,6 +819,8 @@ if (!user) {
   alert("We couldn't save your response. Please try again.");
   return;
 }
+
+  if (!data) return;
 
   setReviews((currentReviews) =>
     currentReviews.map((currentReview) =>
@@ -839,10 +846,11 @@ const removeArtistResponse = async (review: Review) => {
 
   setSavingArtistResponse(true);
 
-  const { data, error } = await supabase.rpc("set_artist_review_response", {
-    p_review_id: review.id,
-    p_response: null,
+  const { data: responseData, error } = await setProfessionalReviewResponse({
+    reviewId: review.id,
+    response: null,
   });
+  const data = responseData as Review | null;
 
   setSavingArtistResponse(false);
 
@@ -859,6 +867,8 @@ const removeArtistResponse = async (review: Review) => {
   alert("We couldn't remove your response. Please try again.");
   return;
 }
+
+  if (!data) return;
 
   setReviews((currentReviews) =>
     currentReviews.map((currentReview) =>
@@ -906,11 +916,11 @@ if (!eligibleRequest) {
       return;
     }
 
-    const { data, error } = await supabase.rpc("submit_booking_lite_review", {
-      p_request_id: eligibleRequest.id,
-      p_reviewer_name: reviewerName,
-      p_rating: reviewForm.rating,
-      p_comment: reviewForm.comment.trim(),
+    const { data: submittedReview, error } = await submitVerifiedReview({
+      requestId: eligibleRequest.id,
+      reviewerName,
+      rating: reviewForm.rating,
+      comment: reviewForm.comment.trim(),
     });
 
     if (error) {
@@ -933,6 +943,8 @@ if (!eligibleRequest) {
   return;
 }
 
+    const data = submittedReview as Review | null;
+    if (!data) return;
     const reviewIsPending = data.moderation_status === "pending";
     const updatedReviews = reviewIsPending ? reviews : [data, ...reviews];
 
