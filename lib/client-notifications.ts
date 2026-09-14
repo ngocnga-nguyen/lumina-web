@@ -22,6 +22,8 @@ export type ClientNotificationRequest = {
 
 export type ClientNotificationReadKind = "all" | "action" | "message";
 
+export const CLIENT_REVIEW_NOTIFICATION_TITLE = "Appointment Completed";
+
 const CLIENT_ACTION_NOTIFICATION_TITLES = [
   "New Proposal",
   "Proposal Updated",
@@ -37,6 +39,12 @@ export function isClientActionNotification(
   return CLIENT_ACTION_NOTIFICATION_TITLES.includes(
     notification.title as (typeof CLIENT_ACTION_NOTIFICATION_TITLES)[number]
   );
+}
+
+export function isClientReviewNotification(
+  notification: Pick<ClientNotification, "title">
+) {
+  return notification.title === CLIENT_REVIEW_NOTIFICATION_TITLE;
 }
 
 export function getClientNotificationDestination(
@@ -58,10 +66,12 @@ export function getClientNotificationDestination(
 
 export async function markClientNotificationsRead({
   notificationId,
+  notificationIds,
   requestId,
   kind = "all",
 }: {
   notificationId?: string;
+  notificationIds?: string[];
   requestId?: string;
   kind?: ClientNotificationReadKind;
 }) {
@@ -85,6 +95,7 @@ export async function markClientNotificationsRead({
     .or("is_read.eq.false,is_read.is.null");
 
   if (notificationId) query = query.eq("id", notificationId);
+  if (notificationIds?.length) query = query.in("id", notificationIds);
   if (requestId) query = query.eq("request_id", requestId);
   if (kind === "message") query = query.eq("title", "New Message");
   if (kind === "action") {

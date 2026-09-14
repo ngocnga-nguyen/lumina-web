@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   CLIENT_NOTIFICATION_READ_STATE_EVENT,
+  isClientReviewNotification,
   markClientNotificationsRead,
   type ClientNotification,
   type ClientNotificationReadKind,
@@ -173,6 +174,7 @@ export function useClientNotifications(userId: string | null | undefined) {
   const acknowledge = useCallback(
     async (input: {
       notificationId?: string;
+      notificationIds?: string[];
       requestId?: string;
       kind?: ClientNotificationReadKind;
     }) => {
@@ -201,11 +203,20 @@ export function useClientNotifications(userId: string | null | undefined) {
     () => notifications.filter((notification) => !notification.is_read).length,
     [notifications]
   );
+  const reviewUnreadCount = useMemo(
+    () =>
+      notifications.filter(
+        (notification) =>
+          !notification.is_read && isClientReviewNotification(notification)
+      ).length,
+    [notifications]
+  );
 
   return {
     notifications,
     requestsById,
     unreadCount,
+    reviewUnreadCount,
     error,
     acknowledge,
     clearAll,

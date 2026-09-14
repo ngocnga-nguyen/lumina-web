@@ -5,6 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { BadgeCheck, ChevronDown, Star } from "lucide-react";
 import { useClientWorkspace } from "@/components/ClientWorkspaceContext";
 import ReviewStars from "@/components/ReviewStars";
+import { isClientReviewNotification } from "@/lib/client-notifications";
 import { submitVerifiedReview } from "@/lib/review-actions";
 import {
   formatReviewWorkspaceDate,
@@ -191,6 +192,23 @@ export default function ClientReviewsWorkspace() {
     () => getReviewReadyRequests(requests, reviews),
     [requests, reviews]
   );
+  const unreadReviewNotificationIds = useMemo(
+    () =>
+      notifications
+        .filter(
+          (notification) =>
+            !notification.is_read && isClientReviewNotification(notification)
+        )
+        .map((notification) => notification.id),
+    [notifications]
+  );
+
+  useEffect(() => {
+    if (unreadReviewNotificationIds.length === 0) return;
+    void acknowledgeNotifications({
+      notificationIds: unreadReviewNotificationIds,
+    });
+  }, [acknowledgeNotifications, unreadReviewNotificationIds]);
 
   useEffect(() => {
     const requestedId = searchParams.get("request");

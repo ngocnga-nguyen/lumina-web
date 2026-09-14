@@ -12,6 +12,12 @@ test("client notifications use one shell-level authoritative source", () => {
   const requests = source("../app/my-requests/page.tsx");
 
   assert.match(shell, /useClientNotifications\(accountId\)/);
+  assert.match(shell, /count: clientNotifications\.reviewUnreadCount/);
+  assert.match(shell, /reviewReadyCount: actionCounts\.reviews/);
+  assert.doesNotMatch(
+    shell,
+    /item\.id === "reviews"[\s\S]{0,120}count: actionCounts\.reviews/
+  );
   assert.match(shell, /<ClientNotificationCenter/);
   assert.match(
     hook,
@@ -22,6 +28,26 @@ test("client notifications use one shell-level authoritative source", () => {
     requests,
     /table: "notifications"|setNotifications|showNotifications/
   );
+});
+
+test("opening Client Reviews persists acknowledgement without resolving eligibility", () => {
+  const reviews = source("../components/ClientReviewsWorkspace.tsx");
+  const notifications = source("../lib/client-notifications.ts");
+  const hook = source("../lib/use-client-notifications.ts");
+
+  assert.match(reviews, /isClientReviewNotification\(notification\)/);
+  assert.match(
+    reviews,
+    /acknowledgeNotifications\(\{\s*notificationIds: unreadReviewNotificationIds/
+  );
+  assert.match(notifications, /\.eq\("user_id", user\.id\)/);
+  assert.match(notifications, /query = query\.in\("id", notificationIds\)/);
+  assert.match(hook, /reviewUnreadCount/);
+  assert.match(
+    hook,
+    /!notification\.is_read && isClientReviewNotification\(notification\)/
+  );
+  assert.match(reviews, /getReviewReadyRequests\(requests, reviews\)/);
 });
 
 test("persisted acknowledgement is scoped to the signed-in client", () => {

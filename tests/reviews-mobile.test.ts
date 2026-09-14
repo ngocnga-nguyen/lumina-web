@@ -29,6 +29,7 @@ test("client Reviews separates persisted attention from review eligibility", () 
   assert.match(client, /getReviewReadyRequests\(requests, reviews\)/);
   assert.match(client, /notification\.title === "Appointment Completed"/);
   assert.match(client, /acknowledgeNotifications\(\{ requestId, kind: "action" \}\)/);
+  assert.match(client, /notificationIds: unreadReviewNotificationIds/);
   assert.match(client, /Review ready/);
   assert.match(client, /Past reviews/);
   assert.match(client, /submitVerifiedReview/);

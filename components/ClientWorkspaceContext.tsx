@@ -15,6 +15,7 @@ type ClientWorkspaceValue = {
   notifications: ClientNotification[];
   acknowledgeNotifications: (input: {
     notificationId?: string;
+    notificationIds?: string[];
     requestId?: string;
     kind?: ClientNotificationReadKind;
   }) => Promise<{ error: { message: string } | null }>;
