@@ -19,6 +19,7 @@ type SavedCollectionsBarProps = {
   onCreate: (name: string) => Promise<string | null>;
   onRename: (collectionId: string, name: string) => Promise<string | null>;
   onDelete: (collectionId: string) => Promise<string | null>;
+  compactMobile?: boolean;
 };
 
 export default function SavedCollectionsBar({
@@ -30,6 +31,7 @@ export default function SavedCollectionsBar({
   onCreate,
   onRename,
   onDelete,
+  compactMobile = false,
 }: SavedCollectionsBarProps) {
   const activeCollection =
     collections.find((collection) => collection.id === activeCollectionId) || null;
@@ -87,7 +89,7 @@ export default function SavedCollectionsBar({
   };
 
   return (
-    <div className="mb-8">
+    <div className={compactMobile ? "mb-4 lg:mb-8" : "mb-8"}>
       <div
         className="-mx-1 overflow-x-auto px-1 pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
         aria-label="Saved collections"
@@ -97,7 +99,9 @@ export default function SavedCollectionsBar({
             type="button"
             onClick={() => selectCollection(null)}
             aria-pressed={activeCollectionId === null}
-            className={`rounded-full border px-4 py-2 text-[13px] font-medium transition ${
+            className={`rounded-full border font-medium transition ${
+              compactMobile ? "min-h-9 px-3 py-1.5 text-[12px] lg:px-4 lg:py-2 lg:text-[13px]" : "px-4 py-2 text-[13px]"
+            } ${
               activeCollectionId === null
                 ? "border-lumina-black bg-lumina-black text-white"
                 : "border-lumina-border bg-lumina-surface text-lumina-text-muted hover:border-lumina-text-muted/40 hover:bg-lumina-blush/45 hover:text-lumina-text"
@@ -114,7 +118,9 @@ export default function SavedCollectionsBar({
                 type="button"
                 onClick={() => selectCollection(collection.id)}
                 aria-pressed={active}
-                className={`rounded-full border px-4 py-2 text-[13px] font-medium transition ${
+                className={`rounded-full border font-medium transition ${
+                  compactMobile ? "min-h-9 px-3 py-1.5 text-[12px] lg:px-4 lg:py-2 lg:text-[13px]" : "px-4 py-2 text-[13px]"
+                } ${
                   active
                     ? "border-lumina-black bg-lumina-black text-white"
                     : "border-lumina-border bg-lumina-surface text-lumina-text-muted hover:border-lumina-text-muted/40 hover:bg-lumina-blush/45 hover:text-lumina-text"
@@ -135,7 +141,9 @@ export default function SavedCollectionsBar({
               setName("");
               setError("");
             }}
-            className="inline-flex items-center gap-1.5 rounded-full border border-lumina-border bg-lumina-surface px-4 py-2 text-[13px] font-medium text-lumina-text transition hover:border-lumina-text-muted/40 hover:bg-lumina-blush/45"
+            className={`inline-flex items-center gap-1.5 rounded-full border border-lumina-border bg-lumina-surface font-medium text-lumina-text transition hover:border-lumina-text-muted/40 hover:bg-lumina-blush/45 ${
+              compactMobile ? "min-h-9 px-3 py-1.5 text-[12px] lg:px-4 lg:py-2 lg:text-[13px]" : "px-4 py-2 text-[13px]"
+            }`}
           >
             <Plus size={14} aria-hidden="true" />
             New collection
@@ -144,7 +152,7 @@ export default function SavedCollectionsBar({
       </div>
 
       {activeCollection && editorMode === null && (
-        <div className="mt-1 flex flex-wrap items-center gap-4 text-[12px] text-lumina-text-muted">
+        <div className={`mt-1 flex flex-wrap items-center text-[12px] text-lumina-text-muted ${compactMobile ? "gap-3 lg:gap-4" : "gap-4"}`}>
           <button
             type="button"
             onClick={() => {

@@ -10,6 +10,7 @@ type SavedCollectionPickerProps = {
   selectedCollectionIds: string[];
   onToggle: (collectionId: string, selected: boolean) => Promise<string | null>;
   onCreate: (name: string) => Promise<string | null>;
+  compact?: boolean;
 };
 
 export default function SavedCollectionPicker({
@@ -18,6 +19,7 @@ export default function SavedCollectionPicker({
   selectedCollectionIds,
   onToggle,
   onCreate,
+  compact = false,
 }: SavedCollectionPickerProps) {
   const rootRef = useRef<HTMLDivElement | null>(null);
   const newCollectionInputId = useId();
@@ -75,7 +77,12 @@ export default function SavedCollectionPicker({
   };
 
   return (
-    <div ref={rootRef} className="relative mt-4">
+    <div
+      ref={rootRef}
+      className={compact ? "relative" : "relative mt-4"}
+      onClick={(event) => event.stopPropagation()}
+      onKeyDown={(event) => event.stopPropagation()}
+    >
       <button
         type="button"
         onClick={() => {
@@ -84,9 +91,11 @@ export default function SavedCollectionPicker({
         }}
         aria-expanded={open}
         aria-haspopup="dialog"
-        className="inline-flex items-center gap-2 rounded-full border border-lumina-border bg-lumina-surface px-4 py-2 text-[12px] font-medium text-lumina-text-muted transition hover:border-lumina-text-muted/40 hover:bg-lumina-blush/45 hover:text-lumina-text"
+        className={`inline-flex items-center rounded-full border border-lumina-border bg-lumina-surface font-medium text-lumina-text-muted transition hover:border-lumina-text-muted/40 hover:bg-lumina-blush/45 hover:text-lumina-text ${
+          compact ? "min-h-8 gap-1.5 px-2.5 py-1 text-[10px]" : "gap-2 px-4 py-2 text-[12px]"
+        }`}
       >
-        <FolderPlus size={14} aria-hidden="true" />
+        <FolderPlus size={compact ? 12 : 14} aria-hidden="true" />
         {selectedCollectionIds.length > 0 ? "Organize" : "Add to collection"}
         {selectedCollectionIds.length > 0 && (
           <span className="rounded-full bg-lumina-pearl px-1.5 py-0.5 text-[10px] text-lumina-text">
@@ -99,7 +108,7 @@ export default function SavedCollectionPicker({
         <div
           role="dialog"
           aria-label={`Organize ${artistName}`}
-          className="absolute left-0 z-30 mt-2 w-[min(310px,calc(100vw-2.5rem))] rounded-[20px] border border-lumina-glass-border bg-lumina-glass p-3 text-lumina-text shadow-[0_12px_35px_rgba(39,36,40,0.10)] backdrop-blur-xl"
+          className={`absolute z-30 mt-2 w-[min(310px,calc(100vw-2rem))] rounded-[20px] border border-lumina-glass-border bg-lumina-glass p-3 text-lumina-text shadow-[0_12px_35px_rgba(39,36,40,0.10)] backdrop-blur-xl ${compact ? "right-0" : "left-0"}`}
         >
           <div className="flex items-center justify-between gap-3 px-1 pb-2">
             <div>

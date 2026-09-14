@@ -10,6 +10,7 @@ type SaveArtistButtonProps = {
   className?: string;
   onChange?: (saved: boolean) => void;
   viewerIsArtist?: boolean;
+  compactGlass?: boolean;
 };
 
 export default function SaveArtistButton({
@@ -18,14 +19,14 @@ export default function SaveArtistButton({
   className = "",
   onChange,
   viewerIsArtist = false,
+  compactGlass = false,
 }: SaveArtistButtonProps) {
   const [isSaved, setIsSaved] = useState(false);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(() => !viewerIsArtist);
   const [toast, setToast] = useState("");
 
   useEffect(() => {
     if (viewerIsArtist) {
-      setLoading(false);
       return;
     }
 
@@ -125,17 +126,41 @@ export default function SaveArtistButton({
             : `Save ${artistName}`
         }
         aria-pressed={isSaved}
-        className={`flex h-10 w-10 items-center justify-center rounded-full border shadow-sm backdrop-blur transition hover:scale-105 disabled:opacity-50 ${
-          isSaved
-            ? "border-lumina-border bg-lumina-bg-soft/95"
-            : "border-white/60 bg-white/90"
+        className={`flex h-10 w-10 items-center justify-center rounded-full transition hover:scale-105 disabled:opacity-50 ${
+          compactGlass
+            ? "border border-transparent bg-transparent shadow-none"
+            : `border shadow-sm backdrop-blur ${
+                isSaved
+                  ? "border-lumina-border bg-lumina-bg-soft/95"
+                  : "border-white/60 bg-white/90"
+              }`
         } ${className}`}
       >
-        <Heart
-          size={19}
-          strokeWidth={1.8}
-          className={isSaved ? "fill-lumina-attention text-lumina-attention" : "text-lumina-text"}
-        />
+        {compactGlass ? (
+          <span
+            className={`flex h-[34px] w-[34px] items-center justify-center rounded-full border backdrop-blur-md shadow-[0_2px_8px_rgba(39,36,40,0.07)] ${
+              isSaved
+                ? "border-white/65 bg-lumina-glass/90"
+                : "border-white/55 bg-white/72"
+            }`}
+          >
+            <Heart
+              size={16}
+              strokeWidth={1.75}
+              className={
+                isSaved
+                  ? "fill-lumina-attention text-lumina-attention"
+                  : "text-lumina-text"
+              }
+            />
+          </span>
+        ) : (
+          <Heart
+            size={19}
+            strokeWidth={1.8}
+            className={isSaved ? "fill-lumina-attention text-lumina-attention" : "text-lumina-text"}
+          />
+        )}
       </button>
 
       {toast && (
