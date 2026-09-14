@@ -26,6 +26,9 @@ test("Saved keeps mobile and desktop presentations separated at lg", () => {
   assert.match(page, /SavedCompareMobile/);
   assert.match(page, /Search saved professionals/);
   assert.match(page, /Select to compare/);
+  assert.match(page, /Tip: Press and hold a saved professional to compare\./);
+  assert.match(page, /aria-label="Dismiss compare tip"/);
+  assert.match(page, /beginMobileCompareSelection[\s\S]*dismissTip\("saved_compare"\)/);
   assert.match(page, /Compare \{selectedCompareIds\.length\}/);
   assert.match(page, /from\("portfolio_images"\)/);
 });

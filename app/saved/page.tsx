@@ -524,6 +524,7 @@ export default function SavedPage() {
   };
 
   const beginMobileCompareSelection = (artistId: string) => {
+    void clientOnboarding.dismissTip("saved_compare");
     setMobileCompareOpen(false);
     setMobileSelectionMode(true);
     setSelectedCompareIds((current) =>
@@ -612,6 +613,7 @@ export default function SavedPage() {
                       if (mobileSelectionMode) {
                         cancelMobileCompare();
                       } else {
+                        void clientOnboarding.dismissTip("saved_compare");
                         setMobileSelectionMode(true);
                         window.history.replaceState(null, "", "#compare");
                       }
@@ -673,13 +675,18 @@ export default function SavedPage() {
                 clientOnboarding.ready &&
                 clientOnboarding.isClient &&
                 !clientOnboarding.hasDismissedTip("saved_compare") && (
-                  <div className="mb-4">
-                    <ClientGuidanceTip
-                      title="Save now, compare when ready"
-                      onDismiss={() => clientOnboarding.dismissTip("saved_compare")}
+                  <div className="mb-3 flex items-center justify-between gap-3 rounded-[12px] bg-lumina-blush/30 px-3 py-2 text-[11px] leading-[1.4] text-lumina-text-muted">
+                    <p>Tip: Press and hold a saved professional to compare.</p>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        void clientOnboarding.dismissTip("saved_compare")
+                      }
+                      aria-label="Dismiss compare tip"
+                      className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-lumina-text-muted transition hover:bg-white/55 hover:text-lumina-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lumina-text/20"
                     >
-                      Select two or up to three professionals when you want a closer look.
-                    </ClientGuidanceTip>
+                      <X size={13} aria-hidden="true" />
+                    </button>
                   </div>
                 )}
 
