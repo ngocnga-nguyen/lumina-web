@@ -15,6 +15,10 @@ const saveButton = readFileSync(
   new URL("../components/SaveArtistButton.tsx", import.meta.url),
   "utf8"
 );
+const publicArtistImage = readFileSync(
+  new URL("../components/PublicArtistImage.tsx", import.meta.url),
+  "utf8"
+);
 
 test("Saved keeps mobile and desktop presentations separated at lg", () => {
   assert.match(page, /className="lg:hidden"/);
@@ -23,6 +27,7 @@ test("Saved keeps mobile and desktop presentations separated at lg", () => {
   assert.match(page, /Search saved professionals/);
   assert.match(page, /Select to compare/);
   assert.match(page, /Compare \{selectedCompareIds\.length\}/);
+  assert.match(page, /from\("portfolio_images"\)/);
 });
 
 test("mobile saved rows are dense, selectable, and keep direct profile navigation", () => {
@@ -33,8 +38,13 @@ test("mobile saved rows are dense, selectable, and keep direct profile navigatio
   assert.match(row, /compactGlass/);
   assert.match(row, /From \$\{artist\.price_start\}/);
   assert.match(saveButton, /h-10 w-10/);
-  assert.match(saveButton, /h-\[34px\] w-\[34px\]/);
-  assert.match(saveButton, /size=\{16\}/);
+  assert.match(saveButton, /h-\[30px\] w-\[30px\]/);
+  assert.match(saveButton, /size=\{14\}/);
+  assert.match(publicArtistImage, /profileSource \|\| portfolioSource/);
+  assert.match(publicArtistImage, /onError=\{tryFallback\}/);
+  assert.match(publicArtistImage, /image\?\.complete/);
+  assert.match(publicArtistImage, /image\.naturalWidth > 0/);
+  assert.match(publicArtistImage, /imageLoaded \? "opacity-100" : "opacity-0"/);
 });
 
 test("mobile comparison uses two columns and a snap rail for three", () => {

@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { ArrowLeft, MapPin, Star, X } from "lucide-react";
 import type {
@@ -8,6 +7,7 @@ import type {
   SavedServiceSummary,
 } from "@/lib/saved-professional-view";
 import type { SavedMobileArtist } from "@/components/SavedArtistMobileRow";
+import PublicArtistImage from "@/components/PublicArtistImage";
 
 export type SavedCompareArtist = SavedMobileArtist & {
   distance: number | null;
@@ -78,19 +78,11 @@ export default function SavedCompareMobile({
             }`}
           >
             <div className="relative aspect-[4/3] overflow-hidden rounded-[13px] bg-lumina-pearl">
-              {artist.profile_image_url ? (
-                <Image
-                  src={artist.profile_image_url}
-                  alt={`${artist.name} profile`}
-                  fill
-                  sizes="(max-width: 767px) 45vw, 180px"
-                  className="object-cover"
-                />
-              ) : (
-                <div className="flex h-full items-center justify-center text-[24px] font-medium text-lumina-text-muted">
-                  {artist.name.charAt(0).toUpperCase()}
-                </div>
-              )}
+              <PublicArtistImage
+                artistName={artist.name}
+                profileImageUrl={artist.profile_image_url}
+                portfolioImageUrl={artist.portfolio_image_url}
+              />
               <button
                 type="button"
                 onClick={() => onRemove(artist.id)}

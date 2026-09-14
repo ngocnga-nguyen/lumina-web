@@ -1,9 +1,9 @@
 "use client";
 
-import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { Check, MapPin, Star } from "lucide-react";
 import SaveArtistButton from "@/components/SaveArtistButton";
+import PublicArtistImage from "@/components/PublicArtistImage";
 import type { SavedReviewSummary } from "@/lib/saved-professional-view";
 
 export type SavedMobileArtist = {
@@ -14,6 +14,7 @@ export type SavedMobileArtist = {
   location: string;
   price_start: number;
   profile_image_url?: string | null;
+  portfolio_image_url?: string | null;
 };
 
 type SavedArtistMobileRowProps = {
@@ -66,19 +67,11 @@ export default function SavedArtistMobileRow({
       }`}
     >
       <div className="relative h-[104px] overflow-hidden rounded-[16px] bg-lumina-pearl sm:h-[112px]">
-        {artist.profile_image_url ? (
-          <Image
-            src={artist.profile_image_url}
-            alt={`${artist.name} profile`}
-            fill
-            sizes="104px"
-            className="object-cover"
-          />
-        ) : (
-          <div className="flex h-full items-center justify-center text-[24px] font-medium text-lumina-text-muted">
-            {artist.name.charAt(0).toUpperCase()}
-          </div>
-        )}
+        <PublicArtistImage
+          artistName={artist.name}
+          profileImageUrl={artist.profile_image_url}
+          portfolioImageUrl={artist.portfolio_image_url}
+        />
 
         <div
           className="absolute right-1.5 top-1.5"

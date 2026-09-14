@@ -38,6 +38,7 @@ type Artist = {
   longitude: number | null;
   distance?: number | null;
   availability?: string | null;
+  portfolio_image_url?: string | null;
 };
 
 type SavedArtistRecord = {
@@ -48,6 +49,11 @@ type SavedArtistRecord = {
 type SavedCollectionMembership = {
   collection_id: string;
   saved_artist_id: string;
+};
+
+type SavedPortfolioImage = {
+  artist_id: string;
+  image_url: string;
 };
 
 function getDistanceMiles(
@@ -181,7 +187,7 @@ export default function SavedPage() {
         return;
       }
 
-      const [artistsResult, servicesResult, reviewsResult] = await Promise.all([
+      const [artistsResult, servicesResult, reviewsResult, portfolioResult] = await Promise.all([
         supabase
           .from("artists")
           .select("*")
@@ -196,6 +202,11 @@ export default function SavedPage() {
           .select("artist_id, rating")
           .in("artist_id", artistIds)
           .eq("moderation_status", "published"),
+        supabase
+          .from("portfolio_images")
+          .select("artist_id, image_url, created_at")
+          .in("artist_id", artistIds)
+          .order("created_at", { ascending: false }),
       ]);
 
       if (cancelled) return;
@@ -206,7 +217,23 @@ export default function SavedPage() {
         return;
       }
 
-      setSavedArtists((artistsResult.data || []) as Artist[]);
+      const portfolioImageByArtist = new Map<string, string>();
+      if (portfolioResult.error) {
+        console.log(portfolioResult.error);
+      } else {
+        ((portfolioResult.data || []) as SavedPortfolioImage[]).forEach((image) => {
+          if (!portfolioImageByArtist.has(image.artist_id) && image.image_url) {
+            portfolioImageByArtist.set(image.artist_id, image.image_url);
+          }
+        });
+      }
+
+      setSavedArtists(
+        ((artistsResult.data || []) as Artist[]).map((artist) => ({
+          ...artist,
+          portfolio_image_url: portfolioImageByArtist.get(artist.id) || null,
+        }))
+      );
 
       if (servicesResult.error) {
         console.log(servicesResult.error);
