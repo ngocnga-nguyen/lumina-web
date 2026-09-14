@@ -1,5 +1,6 @@
 "use client";
 
+import { useRef } from "react";
 import { useRouter } from "next/navigation";
 import { Check, MapPin, Star } from "lucide-react";
 import SaveArtistButton from "@/components/SaveArtistButton";
@@ -24,6 +25,7 @@ type SavedArtistMobileRowProps = {
   selectionMode: boolean;
   selected: boolean;
   onSelect: () => void;
+  onLongPressSelect: () => void;
   onRemoved: () => void;
   organizeControl?: React.ReactNode;
 };
@@ -35,10 +37,24 @@ export default function SavedArtistMobileRow({
   selectionMode,
   selected,
   onSelect,
+  onLongPressSelect,
   onRemoved,
   organizeControl,
 }: SavedArtistMobileRowProps) {
   const router = useRouter();
+  const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pressStart = useRef<{ x: number; y: number } | null>(null);
+  const suppressNextClick = useRef(false);
+
+  const cancelLongPress = () => {
+    if (longPressTimer.current) clearTimeout(longPressTimer.current);
+    longPressTimer.current = null;
+    pressStart.current = null;
+  };
+
+  const isInteractiveTarget = (target: EventTarget | null) =>
+    target instanceof Element &&
+    Boolean(target.closest("button, a, input, textarea, select, [role='dialog']"));
 
   const activateRow = () => {
     if (selectionMode) {
@@ -53,16 +69,44 @@ export default function SavedArtistMobileRow({
       role={selectionMode ? "checkbox" : "link"}
       aria-checked={selectionMode ? selected : undefined}
       tabIndex={0}
-      onClick={activateRow}
+      onClick={() => {
+        if (suppressNextClick.current) {
+          suppressNextClick.current = false;
+          return;
+        }
+        activateRow();
+      }}
+      onPointerDown={(event) => {
+        if (selectionMode || event.button !== 0 || isInteractiveTarget(event.target)) return;
+        cancelLongPress();
+        pressStart.current = { x: event.clientX, y: event.clientY };
+        longPressTimer.current = setTimeout(() => {
+          suppressNextClick.current = true;
+          longPressTimer.current = null;
+          pressStart.current = null;
+          onLongPressSelect();
+        }, 550);
+      }}
+      onPointerMove={(event) => {
+        const start = pressStart.current;
+        if (!start) return;
+        const horizontalMovement = event.clientX - start.x;
+        const verticalMovement = event.clientY - start.y;
+        if (Math.hypot(horizontalMovement, verticalMovement) > 12) cancelLongPress();
+      }}
+      onPointerUp={cancelLongPress}
+      onPointerCancel={cancelLongPress}
+      onPointerLeave={cancelLongPress}
+      onContextMenu={(event) => event.preventDefault()}
       onKeyDown={(event) => {
         if (event.key === "Enter" || event.key === " ") {
           event.preventDefault();
           activateRow();
         }
       }}
-      className={`group grid cursor-pointer grid-cols-[96px_minmax(0,1fr)] gap-3 border-b px-0 py-3 outline-none transition last:border-b-0 focus-visible:ring-2 focus-visible:ring-lumina-text/20 sm:grid-cols-[104px_minmax(0,1fr)] ${
+      className={`group grid touch-pan-y select-none cursor-pointer grid-cols-[96px_minmax(0,1fr)] gap-3 border-b px-0 py-3 outline-none transition last:border-b-0 focus-visible:ring-2 focus-visible:ring-lumina-text/20 sm:grid-cols-[104px_minmax(0,1fr)] ${
         selected
-          ? "border-lumina-border bg-lumina-blush/35"
+          ? "border-lumina-border bg-lumina-blush/50 ring-1 ring-inset ring-lumina-attention/20"
           : "border-lumina-border/75 bg-transparent hover:bg-lumina-pearl/45"
       }`}
     >
@@ -88,14 +132,10 @@ export default function SavedArtistMobileRow({
           />
         </div>
 
-        {selectionMode && (
+        {selectionMode && selected && (
           <span
             aria-hidden="true"
-            className={`absolute bottom-1.5 left-1.5 flex h-7 w-7 items-center justify-center rounded-full border backdrop-blur-sm ${
-              selected
-                ? "border-lumina-black bg-lumina-black text-white"
-                : "border-white/80 bg-white/85 text-transparent"
-            }`}
+            className="absolute bottom-1.5 left-1.5 flex h-7 w-7 items-center justify-center rounded-full border border-white/45 bg-lumina-black text-white shadow-[0_2px_7px_rgba(20,18,20,0.14)] backdrop-blur-sm"
           >
             <Check size={15} strokeWidth={2.2} />
           </span>

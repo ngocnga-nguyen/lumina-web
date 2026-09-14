@@ -523,6 +523,21 @@ export default function SavedPage() {
     setSelectedCompareIds(nextSelection.ids);
   };
 
+  const beginMobileCompareSelection = (artistId: string) => {
+    setMobileCompareOpen(false);
+    setMobileSelectionMode(true);
+    setSelectedCompareIds((current) =>
+      current.includes(artistId)
+        ? current
+        : current.length < 3
+          ? [...current, artistId]
+          : current
+    );
+    if (window.location.hash !== "#compare") {
+      window.history.replaceState(null, "", "#compare");
+    }
+  };
+
   const clearCompare = () => {
     setSelectedCompareIds([]);
   };
@@ -749,6 +764,9 @@ export default function SavedPage() {
                         selectionMode={mobileSelectionMode}
                         selected={selectedCompareIds.includes(artist.id)}
                         onSelect={() => toggleCompare(artist.id)}
+                        onLongPressSelect={() =>
+                          beginMobileCompareSelection(artist.id)
+                        }
                         onRemoved={() => removeSavedArtist(artist.id)}
                         organizeControl={
                           savedArtistRecord ? (

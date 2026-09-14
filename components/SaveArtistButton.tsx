@@ -138,15 +138,15 @@ export default function SaveArtistButton({
       >
         {compactGlass ? (
           <span
-            className={`flex h-[30px] w-[30px] items-center justify-center rounded-full border shadow-none backdrop-blur-sm ${
+            className={`flex h-7 w-7 items-center justify-center rounded-full border shadow-none backdrop-blur-sm ${
               isSaved
-                ? "border-white/45 bg-[rgba(250,247,249,0.66)]"
-                : "border-white/40 bg-[rgba(255,255,255,0.58)]"
+                ? "border-white/35 bg-[rgba(250,247,249,0.54)]"
+                : "border-white/30 bg-[rgba(255,255,255,0.46)]"
             }`}
           >
             <Heart
-              size={14}
-              strokeWidth={1.75}
+              size={13}
+              strokeWidth={1.7}
               className={
                 isSaved
                   ? "fill-lumina-attention text-lumina-attention"
