@@ -13,6 +13,7 @@ import {
   MessageCircle,
   NotebookPen,
   Pencil,
+  Plus,
   Save,
   Settings2,
   SlidersHorizontal,
@@ -23,6 +24,7 @@ import ClientNotesPreview from "@/components/ClientNotesPreview";
 import ClientTagEditor from "@/components/ClientTagEditor";
 import ConsultationSnapshot from "@/components/ConsultationSnapshot";
 import IdentityAvatar from "@/components/IdentityAvatar";
+import { normalizeManualClientEmail, normalizeManualClientName } from "@/lib/artist-client-records";
 import {
   resolveClientIdentity,
   type ClientIdentityProfile,
@@ -74,6 +76,13 @@ type ClientRequest = {
 type ClientProfile = ClientIdentityProfile;
 
 type ClientCardDetails = {
+  id: string;
+  client_id: string | null;
+  source: "lumina_request" | "manual";
+  manual_name: string | null;
+  manual_phone: string | null;
+  manual_email: string | null;
+  archived_at: string | null;
   private_notes: string;
   preferences: string;
   tags: string[];
@@ -82,13 +91,34 @@ type ClientCardDetails = {
 
 type LinkedResult = {
   id: string;
-  request_id: string;
+  request_id: string | null;
   image_url: string;
   before_image_url: string | null;
   caption: string | null;
   service_name: string | null;
   result_date: string | null;
   created_at: string;
+};
+
+type ManualServiceEntry = {
+  id: string;
+  client_card_id: string;
+  service_name: string;
+  service_date: string;
+  price: number | null;
+  created_at: string;
+};
+
+type ManualServiceDraft = {
+  serviceName: string;
+  serviceDate: string;
+  price: string;
+};
+
+const EMPTY_MANUAL_SERVICE: ManualServiceDraft = {
+  serviceName: "",
+  serviceDate: "",
+  price: "",
 };
 
 const MOBILE_SECTION_LABELS: Record<ClientCardSectionId, string> = {
@@ -171,9 +201,12 @@ export default function ClientCardPage() {
   const router = useRouter();
   const clientId = Array.isArray(params.clientId) ? params.clientId[0] : params.clientId;
   const [artistId, setArtistId] = useState<string | null>(null);
+  const [card, setCard] = useState<ClientCardDetails | null>(null);
   const [requests, setRequests] = useState<ClientRequest[]>([]);
   const [profile, setProfile] = useState<ClientProfile | null>(null);
   const [results, setResults] = useState<LinkedResult[]>([]);
+  const [portfolioChoices, setPortfolioChoices] = useState<LinkedResult[]>([]);
+  const [manualServices, setManualServices] = useState<ManualServiceEntry[]>([]);
   const [clientNotes, setClientNotes] = useState<ClientNote[]>([]);
   const [consultationUrls, setConsultationUrls] = useState<Record<string, string[]>>({});
   const [preferences, setPreferences] = useState("");
@@ -195,6 +228,16 @@ export default function ClientCardPage() {
   const [customizingWorkspace, setCustomizingWorkspace] = useState(false);
   const [mobileSection, setMobileSection] = useState<"overview" | ClientCardSectionId>("overview");
   const [editingMobileTags, setEditingMobileTags] = useState(false);
+  const [editingManualService, setEditingManualService] = useState(false);
+  const [manualServiceDraft, setManualServiceDraft] = useState<ManualServiceDraft>(EMPTY_MANUAL_SERVICE);
+  const [savingManualService, setSavingManualService] = useState(false);
+  const [manualServiceMessage, setManualServiceMessage] = useState("");
+  const [selectedPortfolioResult, setSelectedPortfolioResult] = useState("");
+  const [linkingResult, setLinkingResult] = useState(false);
+  const [resultLinkMessage, setResultLinkMessage] = useState("");
+  const [editingManualIdentity, setEditingManualIdentity] = useState(false);
+  const [manualIdentityDraft, setManualIdentityDraft] = useState({ name: "", phone: "", email: "" });
+  const [manualIdentityMessage, setManualIdentityMessage] = useState("");
 
   useEffect(() => {
     let cancelled = false;
@@ -208,70 +251,105 @@ export default function ClientCardPage() {
         return;
       }
 
-      const { data: requestData, error: requestError } = await supabase
-        .from("client_requests")
-        .select("id, client_id, client_name, service_requested, requested_services, consultation_snapshot, preferred_date, preferred_time, proposed_date, proposed_time, proposed_price, scheduled_for, expected_end_at, booking_status, completed_at, created_at")
+      const { data: cardData, error: cardError } = await supabase
+        .from("artist_client_cards")
+        .select("id, client_id, source, manual_name, manual_phone, manual_email, archived_at, private_notes, preferences, tags, workspace_preferences")
         .eq("artist_id", user.id)
-        .eq("client_id", clientId)
-        .order("created_at", { ascending: false });
+        .or(`id.eq.${clientId},client_id.eq.${clientId}`)
+        .maybeSingle();
       if (cancelled) return;
-      if (requestError) {
+      if (cardError) {
+        setErrorMessage("We couldn't load this client record. Please try again.");
+        setLoading(false);
+        return;
+      }
+      if (!cardData) {
+        setUnavailable(true);
+        setLoading(false);
+        return;
+      }
+
+      const loadedCard = cardData as ClientCardDetails;
+      const linkedClientId = loadedCard.client_id;
+      const requestResponse = linkedClientId
+        ? await supabase
+            .from("client_requests")
+            .select("id, client_id, client_name, service_requested, requested_services, consultation_snapshot, preferred_date, preferred_time, proposed_date, proposed_time, proposed_price, scheduled_for, expected_end_at, booking_status, completed_at, created_at")
+            .eq("artist_id", user.id)
+            .eq("client_id", linkedClientId)
+            .order("created_at", { ascending: false })
+        : { data: [], error: null };
+      if (cancelled) return;
+      if (requestResponse.error) {
         setErrorMessage("We couldn't load this client record. Please try again.");
         setLoading(false);
         return;
       }
 
-      const relatedRequests = (requestData || []) as ClientRequest[];
-      if (relatedRequests.length === 0) {
-        setUnavailable(true);
-        setLoading(false);
-        return;
-      }
+      const relatedRequests = (requestResponse.data || []) as ClientRequest[];
       setArtistId(user.id);
+      setCard(loadedCard);
+      setManualIdentityDraft({
+        name: loadedCard.manual_name || "",
+        phone: loadedCard.manual_phone || "",
+        email: loadedCard.manual_email || "",
+      });
       setRequests(relatedRequests);
       setLoadedAt(new Date().toISOString());
 
-      const [{ data: profileData, error: profileError }, { data: cardData, error: cardError }, { data: noteData, error: noteError }] = await Promise.all([
-        loadRelatedClientIdentities([clientId]).then(({ data, error }) => ({ data: data[0] || null, error })),
-        supabase.from("artist_client_cards").select("private_notes, preferences, tags, workspace_preferences").eq("artist_id", user.id).eq("client_id", clientId).maybeSingle(),
-        supabase.from("artist_client_notes").select("id, artist_id, client_id, request_id, note_type, title, body, is_pinned, reminder_due_on, reminder_due_time, reminder_completed_at, created_at, updated_at").eq("artist_id", user.id).eq("client_id", clientId).order("is_pinned", { ascending: false }).order("updated_at", { ascending: false }),
+      const [{ data: profileData, error: profileError }, { data: noteData, error: noteError }, manualServiceResponse] = await Promise.all([
+        linkedClientId
+          ? loadRelatedClientIdentities([linkedClientId]).then(({ data, error }) => ({ data: data[0] || null, error }))
+          : Promise.resolve({ data: null, error: null }),
+        supabase.from("artist_client_notes").select("id, artist_id, client_id, client_card_id, request_id, note_type, title, body, is_pinned, reminder_due_on, reminder_due_time, reminder_completed_at, created_at, updated_at").eq("client_card_id", loadedCard.id).order("is_pinned", { ascending: false }).order("updated_at", { ascending: false }),
+        supabase.from("artist_client_service_entries").select("id, client_card_id, service_name, service_date, price, created_at").eq("client_card_id", loadedCard.id).order("service_date", { ascending: false }),
       ]);
       if (cancelled) return;
       if (profileError) console.log("Client profile fetch error:", profileError);
       else setProfile((profileData as ClientProfile | null) || null);
-      if (cardError) {
-        setErrorMessage("We couldn't load the private client details. Please try again.");
-        setLoading(false);
-        return;
-      }
-      if (noteError) {
+      if (noteError || manualServiceResponse.error) {
         console.error("Client Notes preview load failed:", noteError);
         setErrorMessage("We couldn't load the private client notes. Please try again.");
         setLoading(false);
         return;
       }
 
-      const card = cardData as ClientCardDetails | null;
-      const savedPreferenceValue = card?.preferences || "";
+      const savedPreferenceValue = loadedCard.preferences || "";
       setPreferences(savedPreferenceValue);
       setSavedPreferences(savedPreferenceValue);
       setEditingPreferences(false);
       setPreferencesMessage("");
-      setTags(Array.isArray(card?.tags) ? card.tags : []);
-      setWorkspacePreferences(parseClientCardWorkspacePreferences(card?.workspace_preferences));
+      setTags(Array.isArray(loadedCard.tags) ? loadedCard.tags : []);
+      setWorkspacePreferences(parseClientCardWorkspacePreferences(loadedCard.workspace_preferences));
       setClientNotes(sortClientNotes((noteData || []) as ClientNote[]));
+      setManualServices((manualServiceResponse.data || []) as ManualServiceEntry[]);
 
       const completedRequestIds = relatedRequests.filter((request) => request.booking_status === "completed").map((request) => request.id);
       const consultationRequests = relatedRequests.filter((request) => parseConsultationSnapshot(request.consultation_snapshot));
-      const [resultResponse, signedUrlEntries] = await Promise.all([
+      const [requestResultResponse, resultLinkResponse, portfolioResponse, signedUrlEntries] = await Promise.all([
         completedRequestIds.length > 0
           ? supabase.from("portfolio_images").select("id, request_id, image_url, before_image_url, caption, service_name, result_date, created_at").eq("artist_id", user.id).eq("entry_type", "before_after").in("request_id", completedRequestIds).order("created_at", { ascending: false })
+          : Promise.resolve({ data: [], error: null }),
+        loadedCard.source === "manual"
+          ? supabase.from("artist_client_result_links").select("portfolio_image_id").eq("client_card_id", loadedCard.id)
+          : Promise.resolve({ data: [], error: null }),
+        loadedCard.source === "manual"
+          ? supabase.from("portfolio_images").select("id, request_id, image_url, before_image_url, caption, service_name, result_date, created_at").eq("artist_id", user.id).order("created_at", { ascending: false })
           : Promise.resolve({ data: [], error: null }),
         Promise.all(consultationRequests.map(async (request) => [request.id, await createConsultationSignedUrls(request.consultation_snapshot)] as const)),
       ]);
       if (cancelled) return;
-      if (resultResponse.error) console.log("Linked Results fetch error:", resultResponse.error);
-      else setResults((resultResponse.data || []) as LinkedResult[]);
+      if (requestResultResponse.error || resultLinkResponse.error || portfolioResponse.error) {
+        console.log("Linked Results fetch error:", requestResultResponse.error || resultLinkResponse.error || portfolioResponse.error);
+      } else if (loadedCard.source === "manual") {
+        const portfolioRows = (portfolioResponse.data || []) as LinkedResult[];
+        const linkedIds = new Set((resultLinkResponse.data || []).map((link) => link.portfolio_image_id as string));
+        setResults(portfolioRows.filter((result) => linkedIds.has(result.id)));
+        setPortfolioChoices(portfolioRows.filter((result) => !linkedIds.has(result.id)));
+      } else {
+        setResults((requestResultResponse.data || []) as LinkedResult[]);
+        setPortfolioChoices([]);
+      }
       setConsultationUrls(Object.fromEntries(signedUrlEntries));
       setLoading(false);
     };
@@ -280,12 +358,13 @@ export default function ClientCardPage() {
   }, [clientId, router]);
 
   useEffect(() => {
+    if (!card?.client_id) return;
     let cancelled = false;
     let loadSequence = 0;
 
     const refreshIdentity = async () => {
       const sequence = ++loadSequence;
-      const { data, error } = await loadRelatedClientIdentities([clientId]);
+      const { data, error } = await loadRelatedClientIdentities([card.client_id!]);
       if (cancelled || sequence !== loadSequence || error) return;
       setProfile(data[0] || null);
     };
@@ -302,11 +381,18 @@ export default function ClientCardPage() {
       window.removeEventListener("focus", handleFocus);
       document.removeEventListener("visibilitychange", handleVisibility);
     };
-  }, [clientId]);
+  }, [card?.client_id]);
 
   const completedRequests = useMemo(
     () => requests.filter((request) => request.booking_status === "completed").sort((a, b) => getCompletedVisitTimestamp(b) - getCompletedVisitTimestamp(a)),
     [requests]
+  );
+  const sortedManualServices = useMemo(
+    () => [...manualServices].sort((first, second) =>
+      (parseDate(second.service_date)?.getTime() || 0) -
+      (parseDate(first.service_date)?.getTime() || 0)
+    ),
+    [manualServices]
   );
   const consultationRequests = useMemo(
     () => requests.filter((request) => parseConsultationSnapshot(request.consultation_snapshot)),
@@ -322,17 +408,29 @@ export default function ClientCardPage() {
   }, [loadedAt, requests]);
 
   const latestCompleted = completedRequests[0] || null;
+  const latestManualService = sortedManualServices[0] || null;
+  const completedVisitCount = completedRequests.length + sortedManualServices.length;
   const fallbackName = requests.find((request) => request.client_name?.trim())?.client_name;
-  const clientIdentity = resolveClientIdentity(clientId, profile, fallbackName);
+  const clientIdentity = card?.client_id
+    ? resolveClientIdentity(card.client_id, profile, fallbackName || card.manual_name)
+    : {
+        id: card?.id || clientId,
+        name: card?.manual_name?.trim() || "Manual client",
+        avatarUrl: null,
+        initials: "MC",
+      };
   const clientName = clientIdentity.name;
   const requestById = useMemo(() => new Map(requests.map((request) => [request.id, request])), [requests]);
-  const primarySections = workspacePreferences.order.filter((section) =>
-    PRIMARY_CLIENT_CARD_SECTIONS.includes(section)
+  const availableSections = workspacePreferences.order.filter(
+    (section) => card?.source !== "manual" || section !== "consultation"
   );
-  const supportingSections = workspacePreferences.order.filter((section) =>
-    SUPPORTING_CLIENT_CARD_SECTIONS.includes(section)
+  const primarySections = availableSections.filter((section) =>
+    PRIMARY_CLIENT_CARD_SECTIONS.includes(section) && !workspacePreferences.hidden.includes(section)
   );
-  const visibleMobileSections = workspacePreferences.order.filter(
+  const supportingSections = availableSections.filter((section) =>
+    SUPPORTING_CLIENT_CARD_SECTIONS.includes(section) && !workspacePreferences.hidden.includes(section)
+  );
+  const visibleMobileSections = availableSections.filter(
     (section) => !workspacePreferences.hidden.includes(section)
   );
   const selectedMobileSection =
@@ -341,12 +439,138 @@ export default function ClientCardPage() {
       : "overview";
 
   const persistCardPatch = async (patch: Record<string, unknown>) => {
-    if (!artistId || !clientId || unavailable) {
+    if (!artistId || !card?.id || unavailable) {
       return { data: null, error: new Error("Client Card unavailable") };
     }
     return supabase.from("artist_client_cards")
-      .upsert({ artist_id: artistId, client_id: clientId, ...patch }, { onConflict: "artist_id,client_id" })
+      .update(patch)
+      .eq("id", card.id)
+      .eq("artist_id", artistId)
       .select("private_notes, preferences, tags, workspace_preferences").single();
+  };
+
+  const saveManualService = async () => {
+    if (!card || card.source !== "manual" || savingManualService) return;
+    const serviceName = manualServiceDraft.serviceName.trim();
+    if (!serviceName || !manualServiceDraft.serviceDate) {
+      setManualServiceMessage("Add a service name and date.");
+      return;
+    }
+    const price = manualServiceDraft.price.trim() === ""
+      ? null
+      : Number(manualServiceDraft.price);
+    if (price !== null && (!Number.isFinite(price) || price < 0)) {
+      setManualServiceMessage("Enter a valid price or leave it blank.");
+      return;
+    }
+    setSavingManualService(true);
+    setManualServiceMessage("");
+    const { data, error } = await supabase
+      .from("artist_client_service_entries")
+      .insert({
+        client_card_id: card.id,
+        service_name: serviceName,
+        service_date: manualServiceDraft.serviceDate,
+        price,
+      })
+      .select("id, client_card_id, service_name, service_date, price, created_at")
+      .single();
+    setSavingManualService(false);
+    if (error) {
+      setManualServiceMessage("This service record couldn't be saved.");
+      return;
+    }
+    setManualServices((current) => [data as ManualServiceEntry, ...current]);
+    setManualServiceDraft(EMPTY_MANUAL_SERVICE);
+    setEditingManualService(false);
+    setManualServiceMessage("Completed service added.");
+  };
+
+  const linkManualResult = async () => {
+    if (!card || card.source !== "manual" || !selectedPortfolioResult || linkingResult) return;
+    setLinkingResult(true);
+    setResultLinkMessage("");
+    const { error } = await supabase.from("artist_client_result_links").insert({
+      client_card_id: card.id,
+      portfolio_image_id: selectedPortfolioResult,
+    });
+    setLinkingResult(false);
+    if (error) {
+      setResultLinkMessage("This result couldn't be linked.");
+      return;
+    }
+    const linked = portfolioChoices.find((result) => result.id === selectedPortfolioResult);
+    if (linked) {
+      setResults((current) => [linked, ...current]);
+      setPortfolioChoices((current) => current.filter((result) => result.id !== linked.id));
+    }
+    setSelectedPortfolioResult("");
+    setResultLinkMessage("Result linked to this Client Card.");
+  };
+
+  const unlinkManualResult = async (result: LinkedResult) => {
+    if (!card || card.source !== "manual") return;
+    const { error } = await supabase
+      .from("artist_client_result_links")
+      .delete()
+      .eq("client_card_id", card.id)
+      .eq("portfolio_image_id", result.id);
+    if (error) {
+      setResultLinkMessage("This result couldn't be unlinked.");
+      return;
+    }
+    setResults((current) => current.filter((item) => item.id !== result.id));
+    setPortfolioChoices((current) => [result, ...current]);
+    setResultLinkMessage("Result removed from this Client Card.");
+  };
+
+  const saveManualIdentity = async () => {
+    if (!card || card.source !== "manual" || !artistId) return;
+    const name = normalizeManualClientName(manualIdentityDraft.name);
+    const email = normalizeManualClientEmail(manualIdentityDraft.email);
+    if (!name) {
+      setManualIdentityMessage("Name is required.");
+      return;
+    }
+    if (email && !/^\S+@\S+\.\S+$/.test(email)) {
+      setManualIdentityMessage("Enter a valid email or leave it blank.");
+      return;
+    }
+    const patch = {
+      manual_name: name,
+      manual_phone: manualIdentityDraft.phone.trim() || null,
+      manual_email: email || null,
+    };
+    const { data, error } = await supabase
+      .from("artist_client_cards")
+      .update(patch)
+      .eq("id", card.id)
+      .eq("artist_id", artistId)
+      .select("manual_name, manual_phone, manual_email")
+      .single();
+    if (error) {
+      setManualIdentityMessage("Contact details couldn't be saved.");
+      return;
+    }
+    setCard((current) => current ? { ...current, ...data } : current);
+    setManualIdentityDraft({ name: data.manual_name || "", phone: data.manual_phone || "", email: data.manual_email || "" });
+    setEditingManualIdentity(false);
+    setManualIdentityMessage("Private contact details saved.");
+  };
+
+  const changeCardArchiveState = async () => {
+    if (!card || !artistId) return;
+    const archivedAt = card.archived_at ? null : new Date().toISOString();
+    const { error } = await supabase
+      .from("artist_client_cards")
+      .update({ archived_at: archivedAt })
+      .eq("id", card.id)
+      .eq("artist_id", artistId);
+    if (error) {
+      setErrorMessage(`We couldn't ${card.archived_at ? "restore" : "archive"} this client.`);
+      return;
+    }
+    setCard((current) => current ? { ...current, archived_at: archivedAt } : current);
   };
 
   const savePreferences = async () => {
@@ -429,6 +653,50 @@ export default function ClientCardPage() {
     const collapsed = workspacePreferences.collapsed.includes(section);
 
     if (section === "service_history") {
+      if (card?.source === "manual") {
+        return (
+          <ClientCardSection key={`${variant}-${section}`} id={variant === "mobile" ? "mobile-service-history" : "service-history"} title="Service History" icon={<History size={17} aria-hidden="true" />} description={sortedManualServices.length === 0 ? "Completed off-platform services can be recorded here." : undefined} collapsed={collapsed} onToggle={() => toggleCollapsed(section)} variant={variant}>
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <p className="text-[11px] text-lumina-text-muted">Professional-private off-platform history. It does not create requests or reviews.</p>
+              <button type="button" onClick={() => { setEditingManualService(true); setManualServiceMessage(""); }} className="inline-flex min-h-9 items-center gap-2 rounded-full border border-lumina-border px-3.5 text-[11px] font-medium">
+                <Plus size={13} aria-hidden="true" /> Add service
+              </button>
+            </div>
+            {editingManualService && (
+              <div className="mt-4 grid gap-3 rounded-[15px] bg-lumina-surface-soft p-4 sm:grid-cols-3">
+                <label className="grid gap-1.5 text-[11px] font-medium">Service
+                  <input value={manualServiceDraft.serviceName} maxLength={120} onChange={(event) => setManualServiceDraft((current) => ({ ...current, serviceName: event.target.value }))} className="min-h-10 rounded-[12px] border border-lumina-border bg-lumina-surface px-3 text-[13px] outline-none" />
+                </label>
+                <label className="grid gap-1.5 text-[11px] font-medium">Date
+                  <input type="date" value={manualServiceDraft.serviceDate} onChange={(event) => setManualServiceDraft((current) => ({ ...current, serviceDate: event.target.value }))} className="min-h-10 rounded-[12px] border border-lumina-border bg-lumina-surface px-3 text-[13px] outline-none" />
+                </label>
+                <label className="grid gap-1.5 text-[11px] font-medium">Price <span className="font-normal text-lumina-text-muted">Optional</span>
+                  <input type="number" min="0" step="0.01" value={manualServiceDraft.price} onChange={(event) => setManualServiceDraft((current) => ({ ...current, price: event.target.value }))} className="min-h-10 rounded-[12px] border border-lumina-border bg-lumina-surface px-3 text-[13px] outline-none" />
+                </label>
+                <div className="flex items-center gap-2 sm:col-span-3">
+                  <button type="button" disabled={savingManualService} onClick={() => void saveManualService()} className="min-h-10 rounded-full bg-lumina-black px-4 text-[12px] font-medium text-white disabled:opacity-50">{savingManualService ? "Saving..." : "Save service"}</button>
+                  <button type="button" disabled={savingManualService} onClick={() => { setEditingManualService(false); setManualServiceDraft(EMPTY_MANUAL_SERVICE); }} className="min-h-10 px-3 text-[12px] text-lumina-text-muted">Cancel</button>
+                </div>
+              </div>
+            )}
+            <p aria-live="polite" className={`mt-2 text-[11px] ${manualServiceMessage.includes("couldn't") || manualServiceMessage.startsWith("Add ") || manualServiceMessage.startsWith("Enter ") ? "text-lumina-attention" : "text-lumina-text-muted"}`}>{manualServiceMessage}</p>
+            {sortedManualServices.length === 0 ? (
+              <EmptyModule title="No completed services yet" copy="Add completed off-platform work as it happens." />
+            ) : (
+              <div className="mt-3 divide-y divide-lumina-border/60 border-y border-lumina-border/60">
+                {sortedManualServices.map((entry) => (
+                  <article key={entry.id} className="py-3.5">
+                    <div className="min-w-0">
+                      <p className="truncate text-[13px] font-medium">{entry.service_name}</p>
+                      <p className="mt-1 text-[11px] text-lumina-text-muted">{formatDate(entry.service_date)}{formatPrice(entry.price) ? ` · ${formatPrice(entry.price)}` : ""}</p>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            )}
+          </ClientCardSection>
+        );
+      }
       return (
         <ClientCardSection key={`${variant}-${section}`} id={variant === "mobile" ? "mobile-service-history" : "service-history"} title="Service History" icon={<History size={17} aria-hidden="true" />} description={completedRequests.length === 0 ? "Completed visits and their original service details will appear here." : undefined} collapsed={collapsed} onToggle={() => toggleCollapsed(section)} variant={variant}>
           {completedRequests.length === 0 ? <EmptyModule title="No completed visits yet" copy="Upcoming appointments still keep this client in your list." /> : (
@@ -473,10 +741,22 @@ export default function ClientCardPage() {
     if (section === "results") {
       return (
         <ClientCardSection key={`${variant}-${section}`} id={variant === "mobile" ? "mobile-results" : "results"} title="Results / Photos" icon={<Images size={17} aria-hidden="true" />} description={results.length === 0 ? "Before & After Results linked to completed services will appear here." : undefined} collapsed={collapsed} onToggle={() => toggleCollapsed(section)} variant={variant}>
+          {card?.source === "manual" && (
+            <div className="mb-4 flex flex-wrap items-end gap-2.5">
+              <label className="grid min-w-[210px] flex-1 gap-1.5 text-[11px] font-medium">Link existing work
+                <select value={selectedPortfolioResult} onChange={(event) => setSelectedPortfolioResult(event.target.value)} className="min-h-10 rounded-[12px] border border-lumina-border bg-lumina-surface px-3 text-[12px] outline-none">
+                  <option value="">Choose portfolio or result image</option>
+                  {portfolioChoices.map((result) => <option key={result.id} value={result.id}>{result.service_name || result.caption || "Untitled work"}</option>)}
+                </select>
+              </label>
+              <button type="button" disabled={!selectedPortfolioResult || linkingResult} onClick={() => void linkManualResult()} className="min-h-10 rounded-full border border-lumina-border px-4 text-[11px] font-medium disabled:opacity-45">{linkingResult ? "Linking..." : "Link result"}</button>
+              <p aria-live="polite" className="w-full text-[11px] text-lumina-text-muted">{resultLinkMessage}</p>
+            </div>
+          )}
           {results.length === 0 ? <EmptyModule title="No linked results yet" copy="Results linked to completed services will appear here without duplicate uploads." /> : (
             <div className={`grid lg:grid-cols-2 ${variant === "mobile" ? "grid-cols-2 gap-2.5" : "gap-5"}`}>
               {results.map((result) => {
-                const linkedRequest = requestById.get(result.request_id);
+                const linkedRequest = result.request_id ? requestById.get(result.request_id) : undefined;
                 return (
                   <article key={result.id} className="overflow-hidden rounded-[18px] border border-lumina-border/65 bg-lumina-surface">
                     <div className="grid grid-cols-2"><ResultImage label="Before" src={result.before_image_url || ""} /><ResultImage label="After" src={result.image_url} /></div>
@@ -490,6 +770,7 @@ export default function ClientCardPage() {
                         <span className="inline-flex items-center gap-2"><CalendarDays size={14} />{formatDate(result.result_date || (linkedRequest ? getCompletedVisitDate(linkedRequest) : null))}</span>
                         {linkedRequest && formatTime(getAppointmentTime(linkedRequest)) && <span className="inline-flex items-center gap-2"><Clock3 size={14} />{formatTime(getAppointmentTime(linkedRequest))}</span>}
                       </div>
+                      {card?.source === "manual" && <button type="button" onClick={() => void unlinkManualResult(result)} className="mt-3 text-[11px] text-lumina-text-muted underline decoration-lumina-border underline-offset-4">Unlink from client</button>}
                     </div>
                   </article>
                 );
@@ -501,6 +782,7 @@ export default function ClientCardPage() {
     }
 
     if (section === "consultation") {
+      if (card?.source === "manual") return null;
       return (
         <ClientCardSection key={`${variant}-${section}`} id={variant === "mobile" ? "mobile-consultation" : "consultation"} title="Consultation" icon={<ClipboardList size={17} aria-hidden="true" />} description={consultationRequests.length === 0 ? "Read-only snapshots submitted with requests will appear here." : undefined} collapsed={collapsed} onToggle={() => toggleCollapsed(section)} variant={variant}>
           {consultationRequests.length === 0 ? <EmptyModule title="No Consultation Snapshots" copy="Optional consultation details submitted with future requests will stay grouped here by request." /> : (
@@ -523,7 +805,7 @@ export default function ClientCardPage() {
     if (section === "notes") {
       return (
         <ClientCardSection key={`${variant}-${section}`} id={variant === "mobile" ? "mobile-professional-notes" : "professional-notes"} title={variant === "mobile" ? "Private notes" : "Notes"} icon={<NotebookPen size={17} aria-hidden="true" />} description={clientNotes.length === 0 ? variant === "mobile" ? "Professional-only service notes, follow-up context, and ideas." : "Private service notes, follow-up context, and ideas." : undefined} collapsed={collapsed} onToggle={() => toggleCollapsed(section)} variant={variant}>
-          <ClientNotesPreview clientId={clientId} notes={clientNotes} />
+          <ClientNotesPreview clientId={card?.id || clientId} notes={clientNotes} />
         </ClientCardSection>
       );
     }
@@ -558,10 +840,14 @@ export default function ClientCardPage() {
   const messageHref = relevantRequest
     ? `/dashboard/messages?request=${relevantRequest.id}`
     : "/dashboard/messages";
-  const relationshipSummary = nextAppointment
+  const relationshipSummary = card?.source === "manual"
+    ? latestManualService
+      ? `${latestManualService.service_name} · ${completedVisitCount} completed ${completedVisitCount === 1 ? "visit" : "visits"}`
+      : "Off-platform client relationship"
+    : nextAppointment
     ? formatRequestServiceSummary(nextAppointment) || "Upcoming appointment"
     : latestCompleted
-      ? `${formatRequestServiceSummary(latestCompleted) || "Completed service"} · ${completedRequests.length} completed ${completedRequests.length === 1 ? "visit" : "visits"}`
+      ? `${formatRequestServiceSummary(latestCompleted) || "Completed service"} · ${completedVisitCount} completed ${completedVisitCount === 1 ? "visit" : "visits"}`
       : formatRequestServiceSummary(requests[0]) || "New Lumina client";
 
   return (
@@ -579,7 +865,7 @@ export default function ClientCardPage() {
               />
               <div className="min-w-0 flex-1">
                 <p className="text-[10px] font-semibold uppercase tracking-[0.15em] text-lumina-text-muted">
-                  Client relationship
+                  {card?.source === "manual" ? "Added manually" : "Lumina client"}
                 </p>
                 <h1 className="mt-1 truncate font-serif text-[28px] font-semibold leading-[1.05] text-lumina-text">
                   {clientName}
@@ -590,14 +876,16 @@ export default function ClientCardPage() {
               </div>
             </div>
 
-            <div className="mt-4 flex items-center gap-2.5">
-              <Link href={messageHref} className="inline-flex min-h-10 items-center justify-center gap-2 rounded-full bg-lumina-black px-4 text-[12px] font-medium text-white transition hover:bg-lumina-text focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-lumina-text">
-                <MessageCircle size={14} aria-hidden="true" /> Message client
-              </Link>
-              <Link href={requestWorkspaceHref} className="inline-flex min-h-10 items-center justify-center rounded-full border border-lumina-border bg-lumina-surface px-4 text-[12px] font-medium text-lumina-text transition hover:bg-lumina-surface-soft focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-lumina-text">
-                View requests
-              </Link>
-            </div>
+            {card?.source !== "manual" && relevantRequest && (
+              <div className="mt-4 flex items-center gap-2.5">
+                <Link href={messageHref} className="inline-flex min-h-10 items-center justify-center gap-2 rounded-full bg-lumina-black px-4 text-[12px] font-medium text-white transition hover:bg-lumina-text focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-lumina-text">
+                  <MessageCircle size={14} aria-hidden="true" /> Message client
+                </Link>
+                <Link href={requestWorkspaceHref} className="inline-flex min-h-10 items-center justify-center rounded-full border border-lumina-border bg-lumina-surface px-4 text-[12px] font-medium text-lumina-text transition hover:bg-lumina-surface-soft focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-lumina-text">
+                  View requests
+                </Link>
+              </div>
+            )}
 
             <div className="mt-3.5 border-y border-lumina-border/55 py-2.5">
               {nextAppointment ? (
@@ -611,13 +899,13 @@ export default function ClientCardPage() {
                     <p className="mt-0.5 text-[11px] text-lumina-text-muted">{formatDate(getAppointmentDate(nextAppointment))}{formatTime(getAppointmentTime(nextAppointment)) ? ` · ${formatTime(getAppointmentTime(nextAppointment))}` : ""}</p>
                   </div>
                 </div>
-              ) : latestCompleted ? (
+              ) : latestCompleted || latestManualService ? (
                 <div className="flex items-start gap-3">
                   <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-lumina-pearl/75 text-lumina-text"><History size={15} aria-hidden="true" /></span>
                   <div className="min-w-0">
                     <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-lumina-text-muted">Most recent service</p>
-                    <p className="mt-1 truncate text-[13px] font-medium">{formatRequestServiceSummary(latestCompleted) || "Completed service"}</p>
-                    <p className="mt-0.5 text-[11px] text-lumina-text-muted">{formatDate(getCompletedVisitDate(latestCompleted))}</p>
+                    <p className="mt-1 truncate text-[13px] font-medium">{latestManualService?.service_name || (latestCompleted ? formatRequestServiceSummary(latestCompleted) : "") || "Completed service"}</p>
+                    <p className="mt-0.5 text-[11px] text-lumina-text-muted">{formatDate(latestManualService?.service_date || (latestCompleted ? getCompletedVisitDate(latestCompleted) : null))}</p>
                   </div>
                 </div>
               ) : (
@@ -641,13 +929,21 @@ export default function ClientCardPage() {
                 <section aria-labelledby="mobile-relationship-overview">
                   <div className="flex items-center justify-between gap-3">
                     <h2 id="mobile-relationship-overview" className="text-[16px] font-semibold">Relationship overview</h2>
-                    <span className="text-[10px] text-lumina-text-muted/80">{completedRequests.length} completed {completedRequests.length === 1 ? "visit" : "visits"}</span>
+                    <span className="text-[10px] text-lumina-text-muted/80">{completedVisitCount} completed {completedVisitCount === 1 ? "visit" : "visits"}</span>
                   </div>
                   <dl className="mt-3 divide-y divide-lumina-border/50 border-y border-lumina-border/50">
                     <MobileOverviewRow label="Next appointment" value={nextAppointment ? formatDate(getAppointmentDate(nextAppointment)) : "None scheduled"} detail={nextAppointment ? formatRequestServiceSummary(nextAppointment) : null} />
-                    <MobileOverviewRow label="Recent service" value={latestCompleted ? formatDate(getCompletedVisitDate(latestCompleted)) : "No completed visits"} detail={latestCompleted ? formatRequestServiceSummary(latestCompleted) : null} />
+                    <MobileOverviewRow label="Recent service" value={latestManualService ? formatDate(latestManualService.service_date) : latestCompleted ? formatDate(getCompletedVisitDate(latestCompleted)) : "No completed visits"} detail={latestManualService?.service_name || (latestCompleted ? formatRequestServiceSummary(latestCompleted) : null)} />
                   </dl>
                 </section>
+
+                {card?.source === "manual" && (
+                  <section aria-labelledby="mobile-private-contact" className="border-t border-lumina-border/50 pt-4">
+                    <div className="flex items-center justify-between gap-3"><h2 id="mobile-private-contact" className="text-[13px] font-medium text-lumina-text-muted">Private contact</h2><button type="button" onClick={() => setEditingManualIdentity((current) => !current)} className="min-h-8 px-2 text-[10px] text-lumina-text-muted underline decoration-lumina-border underline-offset-4">{editingManualIdentity ? "Cancel" : "Edit"}</button></div>
+                    {editingManualIdentity ? <ManualIdentityEditor draft={manualIdentityDraft} message={manualIdentityMessage} onChange={setManualIdentityDraft} onSave={() => void saveManualIdentity()} /> : <div className="mt-2 space-y-1 text-[12px] text-lumina-text"><p>{card.manual_phone || "No phone saved"}</p><p className="break-all">{card.manual_email || "No email saved"}</p></div>}
+                    <p className="mt-1.5 text-[10px] text-lumina-text-muted">Visible only in your professional workspace.</p>
+                  </section>
+                )}
 
                 <section aria-labelledby="mobile-client-tags">
                   <div className="flex items-center justify-between gap-3">
@@ -681,6 +977,7 @@ export default function ClientCardPage() {
           <button type="button" onClick={() => setCustomizingWorkspace(true)} className="mt-5 inline-flex min-h-9 items-center gap-2 text-[11px] font-medium text-lumina-text-muted transition hover:text-lumina-text">
             <Settings2 size={14} aria-hidden="true" /> Customize workspace
           </button>
+          {card?.source === "manual" && <button type="button" onClick={() => void changeCardArchiveState()} className="ml-4 min-h-9 text-[11px] text-lumina-text-muted underline decoration-lumina-border underline-offset-4">{card.archived_at ? "Restore client" : "Archive client"}</button>}
         </div>
 
         <div className="hidden lg:block">
@@ -693,18 +990,19 @@ export default function ClientCardPage() {
                 imageUrl={clientIdentity.avatarUrl}
                 className="flex h-20 w-20 shrink-0 rounded-full bg-lumina-pearl text-[24px] font-medium md:h-24 md:w-24"
               />
-              <div className="min-w-0"><p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-lumina-text-muted">Client overview</p><h1 className="mt-2 break-words text-[36px] font-semibold leading-[1.08] font-serif md:text-[46px]">{clientName}</h1></div>
+              <div className="min-w-0"><p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-lumina-text-muted">{card?.source === "manual" ? "Added manually" : "Client overview"}</p><h1 className="mt-2 break-words text-[36px] font-semibold leading-[1.08] font-serif md:text-[46px]">{clientName}</h1>{card?.source === "manual" && (card.manual_phone || card.manual_email) && <p className="mt-2 text-[12px] text-lumina-text-muted">{[card.manual_phone, card.manual_email].filter(Boolean).join(" · ")}</p>}</div>
             </div>
             <div className="grid gap-3 sm:grid-cols-3 lg:w-[620px]">
-              <OverviewStat label="Last appointment" value={latestCompleted ? formatDate(getCompletedVisitDate(latestCompleted)) : "No visits yet"} detail={latestCompleted ? formatRequestServiceSummary(latestCompleted) : null} />
+              <OverviewStat label="Last appointment" value={latestManualService ? formatDate(latestManualService.service_date) : latestCompleted ? formatDate(getCompletedVisitDate(latestCompleted)) : "No visits yet"} detail={latestManualService?.service_name || (latestCompleted ? formatRequestServiceSummary(latestCompleted) : null)} />
               <OverviewStat label="Next appointment" value={nextAppointment ? formatDate(getAppointmentDate(nextAppointment)) : "None scheduled"} detail={nextAppointment ? formatTime(getAppointmentTime(nextAppointment)) : null} />
-              <OverviewStat label="Completed visits" value={String(completedRequests.length)} detail={completedRequests.length === 1 ? "Lumina visit" : "Lumina visits"} />
+              <OverviewStat label="Completed visits" value={String(completedVisitCount)} detail={card?.source === "manual" ? "Off-platform history" : completedVisitCount === 1 ? "Lumina visit" : "Lumina visits"} />
             </div>
           </div>
         </div>
 
         <ClientTagEditor instanceId="desktop-client-tags" tags={tags} saving={savingTags} onChange={updateTags} />
         <p aria-live="polite" className={`mt-2 min-h-4 text-[11px] ${tagSaveMessage.includes("couldn't") ? "text-lumina-attention" : "text-lumina-text-muted"}`}>{tagSaveMessage}</p>
+        {card?.source === "manual" && <div className="mt-4 flex items-start justify-between gap-4 border-y border-lumina-border/55 py-4"><div><p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-lumina-text-muted">Private contact</p>{editingManualIdentity ? <ManualIdentityEditor draft={manualIdentityDraft} message={manualIdentityMessage} onChange={setManualIdentityDraft} onSave={() => void saveManualIdentity()} /> : <p className="mt-2 text-[13px] text-lumina-text">{[card.manual_phone, card.manual_email].filter(Boolean).join(" · ") || "No private contact details saved."}</p>}</div><div className="flex items-center gap-3"><button type="button" onClick={() => setEditingManualIdentity((current) => !current)} className="min-h-9 text-[11px] text-lumina-text-muted underline decoration-lumina-border underline-offset-4">{editingManualIdentity ? "Cancel" : "Edit contact"}</button><button type="button" onClick={() => void changeCardArchiveState()} className="min-h-9 text-[11px] text-lumina-text-muted underline decoration-lumina-border underline-offset-4">{card.archived_at ? "Restore client" : "Archive client"}</button></div></div>}
 
         <div className="mt-6 flex flex-wrap items-end justify-between gap-3">
           <div>
@@ -828,4 +1126,8 @@ function ModuleSaveRow({ saving, disabled, label, message, onSave, onCancel }: {
 
 function ResultImage({ label, src }: { label: string; src: string }) {
   return <div className="relative aspect-[4/3] overflow-hidden bg-lumina-pearl">{src ? <img src={src} alt={`${label} result`} className="h-full w-full object-cover" /> : <div className="flex h-full items-center justify-center text-[12px] text-lumina-text-muted">Image unavailable</div>}<span className="absolute bottom-3 left-3 rounded-full bg-lumina-surface/90 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.1em]">{label}</span></div>;
+}
+
+function ManualIdentityEditor({ draft, message, onChange, onSave }: { draft: { name: string; phone: string; email: string }; message: string; onChange: (draft: { name: string; phone: string; email: string }) => void; onSave: () => void }) {
+  return <div className="mt-3 grid gap-2.5 sm:grid-cols-3"><label className="grid gap-1 text-[10px] font-medium text-lumina-text-muted">Name<input value={draft.name} maxLength={120} onChange={(event) => onChange({ ...draft, name: event.target.value })} className="min-h-10 rounded-[11px] border border-lumina-border bg-lumina-surface px-3 text-[12px] text-lumina-text outline-none" /></label><label className="grid gap-1 text-[10px] font-medium text-lumina-text-muted">Phone<input type="tel" value={draft.phone} maxLength={40} onChange={(event) => onChange({ ...draft, phone: event.target.value })} className="min-h-10 rounded-[11px] border border-lumina-border bg-lumina-surface px-3 text-[12px] text-lumina-text outline-none" /></label><label className="grid gap-1 text-[10px] font-medium text-lumina-text-muted">Email<input type="email" value={draft.email} maxLength={254} onChange={(event) => onChange({ ...draft, email: event.target.value })} className="min-h-10 rounded-[11px] border border-lumina-border bg-lumina-surface px-3 text-[12px] text-lumina-text outline-none" /></label><div className="flex items-center gap-3 sm:col-span-3"><button type="button" onClick={onSave} className="min-h-9 rounded-full bg-lumina-black px-4 text-[11px] font-medium text-white">Save contact</button><p aria-live="polite" className="text-[10px] text-lumina-text-muted">{message}</p></div></div>;
 }

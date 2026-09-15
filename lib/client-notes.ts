@@ -12,7 +12,8 @@ export type ClientNoteType = (typeof CLIENT_NOTE_TYPES)[number];
 export type ClientNote = {
   id: string;
   artist_id: string;
-  client_id: string;
+  client_id: string | null;
+  client_card_id?: string;
   request_id: string | null;
   note_type: ClientNoteType;
   title: string;

@@ -6,15 +6,22 @@ import { useRouter } from "next/navigation";
 import ProfessionalClientListControls from "@/components/ProfessionalClientListControls";
 import ProfessionalClientRowMenu from "@/components/ProfessionalClientRowMenu";
 import ProfessionalClientsMobileList from "@/components/ProfessionalClientsMobileList";
+import AddProfessionalClientDialog from "@/components/AddProfessionalClientDialog";
 import IdentityAvatar from "@/components/IdentityAvatar";
+import {
+  normalizeManualClientEmail,
+  normalizeManualClientName,
+  type ManualClientDraft,
+} from "@/lib/artist-client-records";
 import { loadRelatedClientIdentities } from "@/lib/client-identity-query";
 import {
   applyProfessionalClientControls,
   buildProfessionalClientSummaries,
   formatProfessionalClientDate,
   orderProfessionalClientsForMobile,
-  type ProfessionalClientArchiveState,
+  type ProfessionalClientCardRecord,
   type ProfessionalClientFilter,
+  type ProfessionalManualServiceEntry,
   type ProfessionalClientProfile,
   type ProfessionalClientRequest,
   type ProfessionalClientSort,
@@ -38,6 +45,9 @@ export default function DashboardClientsPage() {
   const [errorMessage, setErrorMessage] = useState("");
   const [actionError, setActionError] = useState("");
   const [changingClientId, setChangingClientId] = useState<string | null>(null);
+  const [addClientOpen, setAddClientOpen] = useState(false);
+  const [addingClient, setAddingClient] = useState(false);
+  const [addClientError, setAddClientError] = useState("");
 
   useEffect(() => {
     let cancelled = false;
@@ -58,16 +68,27 @@ export default function DashboardClientsPage() {
 
       setArtistId(user.id);
 
-      const { data: requestData, error: requestError } = await supabase
-        .from("client_requests")
-        .select(
-          "id, client_id, client_name, service_requested, requested_services, preferred_date, preferred_time, proposed_date, proposed_time, scheduled_for, booking_status, completed_at, created_at"
-        )
-        .eq("artist_id", user.id)
-        .not("client_id", "is", null)
-        .order("created_at", { ascending: false });
+      const [requestResult, cardResult, manualServiceResult] = await Promise.all([
+        supabase
+          .from("client_requests")
+          .select(
+            "id, client_id, client_name, service_requested, requested_services, preferred_date, preferred_time, proposed_date, proposed_time, scheduled_for, booking_status, completed_at, created_at"
+          )
+          .eq("artist_id", user.id)
+          .not("client_id", "is", null)
+          .order("created_at", { ascending: false }),
+        supabase
+          .from("artist_client_cards")
+          .select("id, client_id, source, manual_name, manual_phone, manual_email, archived_at, created_at")
+          .eq("artist_id", user.id)
+          .order("created_at", { ascending: false }),
+        supabase
+          .from("artist_client_service_entries")
+          .select("id, client_card_id, service_name, service_date, price, created_at")
+          .order("service_date", { ascending: false }),
+      ]);
 
-      if (requestError) {
+      if (requestResult.error || cardResult.error || manualServiceResult.error) {
         if (canCommit()) {
           setErrorMessage("We couldn't load your clients. Please try again.");
           setLoading(false);
@@ -75,20 +96,14 @@ export default function DashboardClientsPage() {
         return;
       }
 
-      const requests = (requestData || []) as ProfessionalClientRequest[];
-      const clientIds = [...new Set(requests.map((request) => request.client_id))];
+      const requests = (requestResult.data || []) as ProfessionalClientRequest[];
+      const cards = (cardResult.data || []) as ProfessionalClientCardRecord[];
+      const manualServices = (manualServiceResult.data || []) as ProfessionalManualServiceEntry[];
+      const clientIds = [...new Set(cards.map((card) => card.client_id).filter((id): id is string => Boolean(id)))];
       let profiles: ProfessionalClientProfile[] = [];
-      let archiveStates: ProfessionalClientArchiveState[] = [];
 
       if (clientIds.length > 0) {
-        const [profileResult, archiveResult] = await Promise.all([
-          loadRelatedClientIdentities(clientIds),
-          supabase
-            .from("artist_client_cards")
-            .select("client_id, archived_at")
-            .eq("artist_id", user.id)
-            .in("client_id", clientIds),
-        ]);
+        const profileResult = await loadRelatedClientIdentities(clientIds);
 
         if (!canCommit()) return;
         if (profileResult.error) {
@@ -97,20 +112,11 @@ export default function DashboardClientsPage() {
           profiles = (profileResult.data || []) as ProfessionalClientProfile[];
         }
 
-        if (archiveResult.error) {
-          if (canCommit()) {
-            setErrorMessage("We couldn't load your client organization. Please try again.");
-            setLoading(false);
-          }
-          return;
-        } else {
-          archiveStates = (archiveResult.data || []) as ProfessionalClientArchiveState[];
-        }
       }
 
       if (canCommit()) {
         setClients(
-          buildProfessionalClientSummaries(requests, profiles, archiveStates)
+          buildProfessionalClientSummaries(requests, profiles, cards, new Date(), manualServices)
         );
         setErrorMessage("");
         setLoading(false);
@@ -163,14 +169,11 @@ export default function DashboardClientsPage() {
     setActionError("");
 
     const archivedAt = archived ? new Date().toISOString() : null;
-    const { error } = await supabase.from("artist_client_cards").upsert(
-      {
-        artist_id: artistId,
-        client_id: clientId,
-        archived_at: archivedAt,
-      },
-      { onConflict: "artist_id,client_id" }
-    );
+    const { error } = await supabase
+      .from("artist_client_cards")
+      .update({ archived_at: archivedAt })
+      .eq("id", clientId)
+      .eq("artist_id", artistId);
 
     if (error) {
       console.error("Client archive update failed:", error);
@@ -190,9 +193,43 @@ export default function DashboardClientsPage() {
     setChangingClientId(null);
   };
 
+  const createManualClient = async (draft: ManualClientDraft) => {
+    if (!artistId || addingClient) return;
+    setAddingClient(true);
+    setAddClientError("");
+    const { data, error } = await supabase
+      .from("artist_client_cards")
+      .insert({
+        artist_id: artistId,
+        client_id: null,
+        source: "manual",
+        manual_name: normalizeManualClientName(draft.name),
+        manual_phone: draft.phone.trim() || null,
+        manual_email: normalizeManualClientEmail(draft.email) || null,
+      })
+      .select("id, client_id, source, manual_name, manual_phone, manual_email, archived_at, created_at")
+      .single();
+    setAddingClient(false);
+
+    if (error) {
+      setAddClientError("We couldn't add this client. Please try again.");
+      return;
+    }
+
+    const [created] = buildProfessionalClientSummaries(
+      [],
+      [],
+      [data as ProfessionalClientCardRecord]
+    );
+    setClients((current) => [created, ...current]);
+    setAddClientOpen(false);
+    router.push(`/dashboard/clients/${created.clientId}`);
+  };
+
   return (
     <div className="bg-lumina-surface text-lumina-text">
       <section className="mx-auto max-w-[1280px] px-5 py-6 md:px-10 md:py-9 lg:py-14">
+        <div className="flex items-end justify-between gap-4">
         <div className="max-w-[720px]">
           <p className="text-[12px] font-semibold uppercase tracking-[0.18em] text-lumina-text-muted">
             Professional dashboard
@@ -204,8 +241,16 @@ export default function DashboardClientsPage() {
             Clients
           </h1>
           <p className="mt-2.5 text-[14px] leading-[1.55] text-lumina-text-muted lg:mt-4 lg:text-[16px] lg:leading-[1.6]">
-            A simple view of the clients who have connected with you through Lumina.
+            Keep Lumina-linked and off-platform client relationships organized in one private workspace.
           </p>
+        </div>
+          <button
+            type="button"
+            onClick={() => { setAddClientError(""); setAddClientOpen(true); }}
+            className="mb-0.5 inline-flex min-h-10 shrink-0 items-center rounded-full bg-lumina-black px-4 text-[12px] font-medium text-white lg:min-h-11 lg:px-5 lg:text-[13px]"
+          >
+            Add client
+          </button>
         </div>
 
         {!loading && !errorMessage && clients.length > 0 && (
@@ -265,7 +310,7 @@ export default function DashboardClientsPage() {
             <div className="rounded-[22px] border border-lumina-border bg-lumina-surface p-6">
               <h2 className="text-[16px] font-medium text-lumina-text">No clients yet</h2>
               <p className="mt-1 text-[14px] leading-[1.55] text-lumina-text-muted">
-                Clients will appear here after they send you a request through Lumina.
+                Add an off-platform client or wait for a client to connect through Lumina.
               </p>
             </div>
           ) : visibleClients.length === 0 ? (
@@ -371,6 +416,16 @@ export default function DashboardClientsPage() {
             </>
           )}
         </div>
+      <AddProfessionalClientDialog
+        key={addClientOpen ? "add-client-open" : "add-client-closed"}
+          open={addClientOpen}
+          clients={clients}
+          saving={addingClient}
+          errorMessage={addClientError}
+          onClose={() => setAddClientOpen(false)}
+          onOpenExisting={(cardId) => router.push(`/dashboard/clients/${cardId}`)}
+          onCreate={createManualClient}
+        />
       </section>
     </div>
   );
@@ -384,7 +439,12 @@ function ClientIdentity({ client }: { client: ProfessionalClientSummary }) {
         imageUrl={client.profileImageUrl}
         className="flex h-12 w-12 shrink-0 rounded-full bg-lumina-pearl text-[15px] font-medium text-lumina-text"
       />
-      <p className="truncate text-[16px] font-medium">{client.name}</p>
+      <span className="min-w-0">
+        <span className="block truncate text-[16px] font-medium">{client.name}</span>
+        <span className="mt-0.5 block text-[9px] font-semibold uppercase tracking-[0.1em] text-lumina-text-muted">
+          {client.source === "manual" ? "Added manually" : "Lumina client"}
+        </span>
+      </span>
     </div>
   );
 }

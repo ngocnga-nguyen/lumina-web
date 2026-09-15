@@ -32,7 +32,8 @@ test("both presentations preserve the existing Client Card destination", () => {
 test("list controls and restrained row menus are outside the historical data model", () => {
   assert.match(clientsPage, /ProfessionalClientListControls/);
   assert.match(clientsPage, /ProfessionalClientRowMenu/);
-  assert.match(clientsPage, /onConflict: "artist_id,client_id"/);
+  assert.match(clientsPage, /\.update\(\{ archived_at: archivedAt \}\)[\s\S]*\.eq\("id", clientId\)/);
+  assert.match(clientsPage, /source: "manual"/);
   assert.match(clientsPage, /archived_at: archivedAt/);
   assert.doesNotMatch(clientsPage, /Delete client/);
 });

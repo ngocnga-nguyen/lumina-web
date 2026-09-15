@@ -92,7 +92,10 @@ export default function ProfessionalClientsMobileList({
                 <span className="block truncate text-[15px] font-semibold text-lumina-text">
                   {client.name}
                 </span>
-                <span className="mt-1 block truncate text-[13px] leading-[1.4] text-lumina-text">
+                <span className="mt-0.5 block text-[9px] font-semibold uppercase tracking-[0.1em] text-lumina-text-muted/80">
+                  {client.source === "manual" ? "Added manually" : "Lumina client"}
+                </span>
+                <span className="mt-0.5 block truncate text-[13px] leading-[1.4] text-lumina-text">
                   {context.service}
                 </span>
                 <span className="mt-1.5 flex min-w-0 items-center gap-1.5 text-[11px] leading-[1.35] text-lumina-text-muted">

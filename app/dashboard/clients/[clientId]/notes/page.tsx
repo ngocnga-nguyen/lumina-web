@@ -41,7 +41,7 @@ const filters: Array<{ value: Filter; label: string }> = [
   ...CLIENT_NOTE_TYPES.map((type) => ({ value: type, label: CLIENT_NOTE_TYPE_LABELS[type] })),
 ];
 
-const NOTE_SELECT = "id, artist_id, client_id, request_id, note_type, title, body, is_pinned, reminder_due_on, reminder_due_time, reminder_completed_at, created_at, updated_at";
+const NOTE_SELECT = "id, artist_id, client_id, client_card_id, request_id, note_type, title, body, is_pinned, reminder_due_on, reminder_due_time, reminder_completed_at, created_at, updated_at";
 const ATTACHMENT_SELECT = "id, note_id, storage_path, caption, sort_order, created_at";
 
 const NOTE_CREATION_COPY: Record<ClientNoteType, { action: string; emptyTitle: string; emptyCopy: string }> = {
@@ -99,6 +99,8 @@ export default function ClientNotesWorkspacePage() {
   const router = useRouter();
   const clientId = Array.isArray(params.clientId) ? params.clientId[0] : params.clientId;
   const [artistId, setArtistId] = useState<string | null>(null);
+  const [clientCardId, setClientCardId] = useState<string | null>(null);
+  const [linkedClientId, setLinkedClientId] = useState<string | null>(null);
   const [clientName, setClientName] = useState("Lumina client");
   const [requests, setRequests] = useState<NoteRequest[]>([]);
   const [notes, setNotes] = useState<ClientNote[]>([]);
@@ -134,30 +136,47 @@ export default function ClientNotesWorkspacePage() {
         return;
       }
 
-      const { data: requestData, error: requestError } = await supabase
-        .from("client_requests")
-        .select("id, client_name, service_requested, requested_services, preferred_date, proposed_date, scheduled_for, created_at")
+      const { data: cardData, error: cardError } = await supabase
+        .from("artist_client_cards")
+        .select("id, client_id, source, manual_name")
         .eq("artist_id", user.id)
-        .eq("client_id", clientId)
-        .order("created_at", { ascending: false });
+        .or(`id.eq.${clientId},client_id.eq.${clientId}`)
+        .maybeSingle();
 
       if (cancelled) return;
-      if (requestError) {
+      if (cardError) {
         setErrorMessage("We couldn't load this client relationship. Please try again.");
         setLoading(false);
         return;
       }
-
-      const relatedRequests = (requestData || []) as NoteRequest[];
-      if (relatedRequests.length === 0) {
+      if (!cardData) {
         setUnavailable(true);
         setLoading(false);
         return;
       }
 
+      const card = cardData as { id: string; client_id: string | null; source: "lumina_request" | "manual"; manual_name: string | null };
+      const requestResponse = card.client_id
+        ? await supabase
+            .from("client_requests")
+            .select("id, client_name, service_requested, requested_services, preferred_date, proposed_date, scheduled_for, created_at")
+            .eq("artist_id", user.id)
+            .eq("client_id", card.client_id)
+            .order("created_at", { ascending: false })
+        : { data: [], error: null };
+      if (cancelled) return;
+      if (requestResponse.error) {
+        setErrorMessage("We couldn't load this client relationship. Please try again.");
+        setLoading(false);
+        return;
+      }
+      const relatedRequests = (requestResponse.data || []) as NoteRequest[];
+
       const [{ data: profileData }, { data: noteData, error: notesError }] = await Promise.all([
-        supabase.from("profiles").select("full_name").eq("id", clientId).maybeSingle(),
-        supabase.from("artist_client_notes").select(NOTE_SELECT).eq("artist_id", user.id).eq("client_id", clientId).order("is_pinned", { ascending: false }).order("updated_at", { ascending: false }),
+        card.client_id
+          ? supabase.from("profiles").select("full_name").eq("id", card.client_id).maybeSingle()
+          : Promise.resolve({ data: null, error: null }),
+        supabase.from("artist_client_notes").select(NOTE_SELECT).eq("client_card_id", card.id).order("is_pinned", { ascending: false }).order("updated_at", { ascending: false }),
       ]);
 
       if (cancelled) return;
@@ -188,13 +207,15 @@ export default function ClientNotesWorkspacePage() {
       const fallbackName = relatedRequests.find((request) => request.client_name?.trim())?.client_name?.trim();
 
       setArtistId(user.id);
+      setClientCardId(card.id);
+      setLinkedClientId(card.client_id);
       setRequests(relatedRequests);
       setNotes(loadedNotes);
       setAttachmentsByNote(loadedAttachments.reduce<Record<string, ClientNoteAttachment[]>>((grouped, attachment) => {
         (grouped[attachment.note_id] ||= []).push(attachment);
         return grouped;
       }, {}));
-      setClientName(profileName || fallbackName || "Lumina client");
+      setClientName(profileName || card.manual_name?.trim() || fallbackName || "Lumina client");
       setLoading(false);
 
       const query = new URLSearchParams(window.location.search);
@@ -338,7 +359,7 @@ export default function ClientNotesWorkspacePage() {
     existing: ClientNoteAttachment[],
     images: ClientNoteDraft["new_images"]
   ) => {
-    if (!artistId || !clientId || images.length === 0) return [];
+    if (!artistId || !clientCardId || images.length === 0) return [];
     const usedSlots = new Set(existing.map((attachment) => attachment.sort_order));
     const created: ClientNoteAttachment[] = [];
 
@@ -348,7 +369,7 @@ export default function ClientNotesWorkspacePage() {
         if (sortOrder === undefined) throw new Error("An Inspiration note can include up to 4 images.");
         usedSlots.add(sortOrder);
 
-        const storagePath = `${artistId}/${clientId}/${noteId}/${crypto.randomUUID()}.${getClientNoteImageExtension(image.file)}`;
+        const storagePath = `${artistId}/${clientCardId}/${noteId}/${crypto.randomUUID()}.${getClientNoteImageExtension(image.file)}`;
         const { data: metadata, error: metadataError } = await supabase
           .from("artist_client_note_attachments")
           .insert({ note_id: noteId, storage_path: storagePath, caption: image.caption || null, sort_order: sortOrder })
@@ -378,7 +399,7 @@ export default function ClientNotesWorkspacePage() {
   };
 
   const saveNote = async (draft: ClientNoteDraft) => {
-    if (!artistId || !clientId) return;
+    if (!artistId || !clientCardId) return;
     setSaving(true);
     setEditorError("");
 
@@ -401,7 +422,7 @@ export default function ClientNotesWorkspacePage() {
 
       const response = editingNote
         ? await supabase.from("artist_client_notes").update(payload).eq("id", editingNote.id).eq("artist_id", artistId).select(NOTE_SELECT).single()
-        : await supabase.from("artist_client_notes").insert({ artist_id: artistId, client_id: clientId, ...payload }).select(NOTE_SELECT).single();
+        : await supabase.from("artist_client_notes").insert({ artist_id: artistId, client_id: linkedClientId, client_card_id: clientCardId, ...payload }).select(NOTE_SELECT).single();
       if (response.error) throw response.error;
 
       const saved = response.data as ClientNote;

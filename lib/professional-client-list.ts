@@ -26,8 +26,33 @@ export type ProfessionalClientArchiveState = {
   archived_at: string | null;
 };
 
+export type ProfessionalClientCardRecord = {
+  id: string;
+  client_id: string | null;
+  source: "lumina_request" | "manual";
+  manual_name: string | null;
+  manual_phone: string | null;
+  manual_email: string | null;
+  archived_at: string | null;
+  created_at: string;
+};
+
+export type ProfessionalManualServiceEntry = {
+  id: string;
+  client_card_id: string;
+  service_name: string;
+  service_date: string;
+  price: number | null;
+  created_at: string;
+};
+
 export type ProfessionalClientSummary = {
+  /** Stable Client Card route identifier. */
   clientId: string;
+  linkedClientId: string | null;
+  source: "lumina_request" | "manual";
+  manualPhone: string | null;
+  manualEmail: string | null;
   name: string;
   profileImageUrl: string | null;
   lastService: string | null;
@@ -194,13 +219,11 @@ function getUpcomingAppointmentTimestamp(
 export function buildProfessionalClientSummaries(
   requests: ProfessionalClientRequest[],
   profiles: ProfessionalClientProfile[],
-  archiveStates: ProfessionalClientArchiveState[] = [],
-  now = new Date()
+  relationships: Array<ProfessionalClientCardRecord | ProfessionalClientArchiveState> = [],
+  now = new Date(),
+  manualServiceEntries: ProfessionalManualServiceEntry[] = []
 ) {
   const profileById = new Map(profiles.map((profile) => [profile.id, profile]));
-  const archiveByClientId = new Map(
-    archiveStates.map((state) => [state.client_id, state.archived_at])
-  );
   const requestsByClient = new Map<string, ProfessionalClientRequest[]>();
 
   requests.forEach((request) => {
@@ -210,8 +233,39 @@ export function buildProfessionalClientSummaries(
     requestsByClient.set(request.client_id, current);
   });
 
-  return Array.from(requestsByClient.entries()).map(
-    ([clientId, clientRequests]) => {
+  const hasCanonicalCards = relationships.some(
+    (relationship) => "id" in relationship && "source" in relationship
+  );
+  const cards: ProfessionalClientCardRecord[] = hasCanonicalCards
+    ? relationships as ProfessionalClientCardRecord[]
+    : Array.from(requestsByClient.keys()).map((linkedClientId) => {
+        const archive = (relationships as ProfessionalClientArchiveState[]).find(
+          (state) => state.client_id === linkedClientId
+        );
+        return {
+          id: linkedClientId,
+          client_id: linkedClientId,
+          source: "lumina_request",
+          manual_name: null,
+          manual_phone: null,
+          manual_email: null,
+          archived_at: archive?.archived_at || null,
+          created_at: requestsByClient.get(linkedClientId)?.[0]?.created_at || new Date(0).toISOString(),
+        };
+      });
+
+  const manualServicesByCard = new Map<string, ProfessionalManualServiceEntry[]>();
+  manualServiceEntries.forEach((entry) => {
+    const current = manualServicesByCard.get(entry.client_card_id) || [];
+    current.push(entry);
+    manualServicesByCard.set(entry.client_card_id, current);
+  });
+
+  return cards.map((card) => {
+      const linkedClientId = card.client_id;
+      const clientRequests = linkedClientId
+        ? requestsByClient.get(linkedClientId) || []
+        : [];
       const completedRequests = clientRequests
         .filter((request) => request.booking_status === "completed")
         .sort((first, second) => {
@@ -239,6 +293,19 @@ export function buildProfessionalClientSummaries(
         .sort((first, second) => first.timestamp - second.timestamp);
 
       const latestCompleted = completedRequests[0] || null;
+      const manualServices = [...(manualServicesByCard.get(card.id) || [])].sort(
+        (first, second) =>
+          (parseProfessionalClientDate(second.service_date)?.getTime() || 0) -
+          (parseProfessionalClientDate(first.service_date)?.getTime() || 0)
+      );
+      const latestManualService = manualServices[0] || null;
+      const latestRequestVisitTimestamp = latestCompleted
+        ? parseProfessionalClientDate(getHistoricalVisitDate(latestCompleted))?.getTime() || 0
+        : 0;
+      const latestManualVisitTimestamp = latestManualService
+        ? parseProfessionalClientDate(latestManualService.service_date)?.getTime() || 0
+        : 0;
+      const latestVisitIsManual = latestManualVisitTimestamp > latestRequestVisitTimestamp;
       const nextAppointment = upcomingRequests[0] || null;
       const newestRequest = [...clientRequests].sort(
         (first, second) =>
@@ -248,32 +315,56 @@ export function buildProfessionalClientSummaries(
       const fallbackName = clientRequests.find((request) =>
         request.client_name?.trim()
       )?.client_name;
-      const identity = resolveClientIdentity(
-        clientId,
-        profileById.get(clientId),
-        fallbackName
-      );
-      const lastVisit = latestCompleted
-        ? getHistoricalVisitDate(latestCompleted)
-        : null;
+      const identity = linkedClientId
+        ? resolveClientIdentity(
+            linkedClientId,
+            profileById.get(linkedClientId),
+            fallbackName || card.manual_name
+          )
+        : {
+            id: card.id,
+            name: card.manual_name?.trim() || "Manual client",
+            avatarUrl: null,
+            initials: "MC",
+          };
+      const lastVisit = latestVisitIsManual
+        ? latestManualService?.service_date || null
+        : latestCompleted
+          ? getHistoricalVisitDate(latestCompleted)
+          : latestManualService?.service_date || null;
       const completedVisitTimestamps = completedRequests
         .map(
           (request) =>
             parseProfessionalClientDate(getHistoricalVisitDate(request))?.getTime() ||
             0
         )
-        .filter((timestamp) => timestamp > 0);
+        .filter((timestamp) => timestamp > 0)
+        .concat(
+          manualServices
+            .map((entry) => parseProfessionalClientDate(entry.service_date)?.getTime() || 0)
+            .filter((timestamp) => timestamp > 0)
+        )
+        .sort((first, second) => second - first);
       const serviceNames = Array.from(
-        new Set(clientRequests.flatMap(getClientRequestServiceNames))
+        new Set([
+          ...clientRequests.flatMap(getClientRequestServiceNames),
+          ...manualServices.map((entry) => entry.service_name),
+        ])
       );
 
       return {
-        clientId,
+        clientId: card.id,
+        linkedClientId,
+        source: card.source,
+        manualPhone: card.manual_phone,
+        manualEmail: card.manual_email,
         name: identity.name,
         profileImageUrl: identity.avatarUrl,
-        lastService: latestCompleted
-          ? formatClientRequestServiceSummary(latestCompleted) || null
-          : null,
+        lastService: latestVisitIsManual
+          ? latestManualService?.service_name || null
+          : latestCompleted
+            ? formatClientRequestServiceSummary(latestCompleted) || null
+            : latestManualService?.service_name || null,
         lastVisit,
         lastVisitTimestamp: completedVisitTimestamps[0] || null,
         completedVisitTimestamps,
@@ -291,16 +382,15 @@ export function buildProfessionalClientSummaries(
           : null,
         newestRequestTimestamp: newestRequest
           ? parseProfessionalClientDate(newestRequest.created_at)?.getTime() || null
-          : null,
+          : parseProfessionalClientDate(card.created_at)?.getTime() || null,
         newestRequestService: newestRequest
           ? formatClientRequestServiceSummary(newestRequest) || null
           : null,
         serviceNames,
-        totalCompletedVisits: completedRequests.length,
-        archivedAt: archiveByClientId.get(clientId) || null,
+        totalCompletedVisits: completedRequests.length + manualServices.length,
+        archivedAt: card.archived_at,
       } satisfies ProfessionalClientSummary;
-    }
-  );
+    });
 }
 
 function compareNullableTimestamps(
