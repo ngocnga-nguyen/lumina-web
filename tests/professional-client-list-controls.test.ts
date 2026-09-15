@@ -5,6 +5,7 @@ import test from "node:test";
 import {
   applyProfessionalClientControls,
   buildProfessionalClientSummaries,
+  orderProfessionalClientsForMobile,
   type ProfessionalClientRequest,
 } from "../lib/professional-client-list.ts";
 
@@ -142,6 +143,55 @@ test("search, archive view, filter, and sort compose without changing source dat
   assert.deepEqual(summaries, sourceSnapshot);
 });
 
+test("client search matches structured and legacy service names without private fields", () => {
+  const serviceSummaries = buildProfessionalClientSummaries(
+    [
+      request({
+        id: "service-1",
+        client_id: "service-client",
+        client_name: "Morgan",
+        service_requested: "Legacy fallback",
+        requested_services: [
+          { service_name: "Structured gel extensions" },
+          { service_name: "Nail art" },
+        ],
+      }),
+    ],
+    []
+  );
+
+  assert.deepEqual(
+    applyProfessionalClientControls(serviceSummaries, {
+      view: "active",
+      searchQuery: "gel extensions",
+      filter: "all",
+      sort: "name-asc",
+      now,
+    }).map((client) => client.name),
+    ["Morgan"]
+  );
+});
+
+test("mobile default order prioritizes nearest upcoming, then recent visits, then newest relationships", () => {
+  const mobileSummaries = buildProfessionalClientSummaries(
+    [
+      request({ id: "new-older", client_id: "new-older", client_name: "New Older", created_at: "2026-08-01T12:00:00.000Z" }),
+      request({ id: "new-newer", client_id: "new-newer", client_name: "New Newer", created_at: "2026-09-01T12:00:00.000Z" }),
+      request({ id: "visit", client_id: "visit", client_name: "Recent Visit", booking_status: "completed", scheduled_for: "2026-09-10T12:00:00.000Z" }),
+      request({ id: "upcoming-later", client_id: "upcoming-later", client_name: "Later Appointment", booking_status: "booked", scheduled_for: "2026-09-25T12:00:00.000Z" }),
+      request({ id: "upcoming-sooner", client_id: "upcoming-sooner", client_name: "Sooner Appointment", booking_status: "booked", scheduled_for: "2026-09-20T12:00:00.000Z" }),
+    ],
+    [],
+    [],
+    now
+  );
+
+  assert.deepEqual(
+    orderProfessionalClientsForMobile(mobileSummaries).map((client) => client.name),
+    ["Sooner Appointment", "Later Appointment", "Recent Visit", "New Newer", "New Older"]
+  );
+});
+
 test("scheduled_for takes precedence over proposal and completion timestamps", () => {
   const ava = summaries.find((client) => client.clientId === "a");
   assert.equal(ava?.lastVisit, "2026-09-08T15:00:00.000Z");
@@ -183,4 +233,3 @@ test("only a genuinely new request restores the exact archived relationship", ()
   assert.match(migration, /and card\.archived_at is not null/i);
   assert.doesNotMatch(migration, /set\s+(private_notes|preferences|tags|workspace_preferences)/i);
 });
-

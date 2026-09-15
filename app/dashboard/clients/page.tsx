@@ -7,10 +7,12 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import ProfessionalClientListControls from "@/components/ProfessionalClientListControls";
 import ProfessionalClientRowMenu from "@/components/ProfessionalClientRowMenu";
+import ProfessionalClientsMobileList from "@/components/ProfessionalClientsMobileList";
 import {
   applyProfessionalClientControls,
   buildProfessionalClientSummaries,
   formatProfessionalClientDate,
+  orderProfessionalClientsForMobile,
   type ProfessionalClientArchiveState,
   type ProfessionalClientFilter,
   type ProfessionalClientProfile,
@@ -29,6 +31,7 @@ export default function DashboardClientsPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [clientSort, setClientSort] =
     useState<ProfessionalClientSort>("most-recent");
+  const [useMobileDefaultOrder, setUseMobileDefaultOrder] = useState(true);
   const [clientFilter, setClientFilter] =
     useState<ProfessionalClientFilter>("all");
   const [loading, setLoading] = useState(true);
@@ -54,7 +57,7 @@ export default function DashboardClientsPage() {
       const { data: requestData, error: requestError } = await supabase
         .from("client_requests")
         .select(
-          "id, client_id, client_name, service_requested, preferred_date, preferred_time, proposed_date, proposed_time, scheduled_for, booking_status, completed_at, created_at"
+          "id, client_id, client_name, service_requested, requested_services, preferred_date, preferred_time, proposed_date, proposed_time, scheduled_for, booking_status, completed_at, created_at"
         )
         .eq("artist_id", user.id)
         .not("client_id", "is", null)
@@ -130,6 +133,13 @@ export default function DashboardClientsPage() {
       }),
     [clientFilter, clientSort, clientView, clients, searchQuery]
   );
+  const mobileVisibleClients = useMemo(
+    () =>
+      useMobileDefaultOrder
+        ? orderProfessionalClientsForMobile(visibleClients)
+        : visibleClients,
+    [useMobileDefaultOrder, visibleClients]
+  );
 
   const changeArchiveState = async (clientId: string, archived: boolean) => {
     if (!artistId || changingClientId) return;
@@ -167,18 +177,18 @@ export default function DashboardClientsPage() {
 
   return (
     <div className="bg-lumina-surface text-lumina-text">
-      <section className="mx-auto max-w-[1280px] px-5 py-10 md:px-10 md:py-14">
+      <section className="mx-auto max-w-[1280px] px-5 py-6 md:px-10 md:py-9 lg:py-14">
         <div className="max-w-[720px]">
           <p className="text-[12px] font-semibold uppercase tracking-[0.18em] text-lumina-text-muted">
             Professional dashboard
           </p>
           <h1
-            className="mt-3 text-[42px] font-semibold leading-[1.02] md:text-[56px]"
+            className="mt-2 text-[34px] font-semibold leading-[1.04] lg:mt-3 lg:text-[56px] lg:leading-[1.02]"
             style={{ fontFamily: "Georgia, Times New Roman, serif" }}
           >
             Clients
           </h1>
-          <p className="mt-4 text-[16px] leading-[1.6] text-lumina-text-muted">
+          <p className="mt-2.5 text-[14px] leading-[1.55] text-lumina-text-muted lg:mt-4 lg:text-[16px] lg:leading-[1.6]">
             A simple view of the clients who have connected with you through Lumina.
           </p>
         </div>
@@ -193,14 +203,23 @@ export default function DashboardClientsPage() {
             onSearchQueryChange={setSearchQuery}
             sort={clientSort}
             onSortChange={setClientSort}
+            mobileSortValue={useMobileDefaultOrder ? "mobile-default" : clientSort}
+            onMobileSortChange={(value) => {
+              if (value === "mobile-default") {
+                setUseMobileDefaultOrder(true);
+                return;
+              }
+              setUseMobileDefaultOrder(false);
+              setClientSort(value);
+            }}
             filter={clientFilter}
             onFilterChange={setClientFilter}
           />
         )}
 
-        <div className="mt-10">
-          <div className="mb-4 flex items-center justify-between gap-4">
-            <h2 className="text-[18px] font-medium">
+        <div className="mt-6 lg:mt-10">
+          <div className="mb-2.5 flex items-center justify-between gap-4 lg:mb-4">
+            <h2 className="text-[15px] font-medium lg:text-[18px]">
               {clientView === "active" ? "Active clients" : "Archived clients"}
             </h2>
             {!loading && !errorMessage && (
@@ -249,6 +268,14 @@ export default function DashboardClientsPage() {
             </div>
           ) : (
             <>
+              <ProfessionalClientsMobileList
+                clients={mobileVisibleClients}
+                changingClientId={changingClientId}
+                onOpen={(clientId) => router.push(`/dashboard/clients/${clientId}`)}
+                onArchiveChange={changeArchiveState}
+              />
+
+              <div className="hidden lg:block">
               <div className="hidden overflow-hidden rounded-[24px] border border-lumina-border xl:block">
                 <div role="region" aria-label="Client list" tabIndex={0} className="max-h-[65dvh] min-h-[220px] overflow-y-auto overscroll-contain focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-lumina-text-muted">
                   <div className="sticky top-0 z-10 grid grid-cols-[minmax(180px,1.6fr)_minmax(140px,1.2fr)_minmax(110px,1fr)_minmax(160px,1.25fr)_80px] gap-5 border-b border-lumina-surface/15 bg-lumina-black/85 px-6 py-4 text-[11px] font-semibold uppercase tracking-[0.12em] text-lumina-pearl backdrop-blur-[12px]">
@@ -324,6 +351,7 @@ export default function DashboardClientsPage() {
                     </div>
                   ))}
                 </div>
+              </div>
               </div>
             </>
           )}

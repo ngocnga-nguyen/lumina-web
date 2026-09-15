@@ -3,6 +3,7 @@ export type ProfessionalClientRequest = {
   client_id: string;
   client_name: string | null;
   service_requested: string | null;
+  requested_services?: unknown;
   preferred_date: string | null;
   preferred_time: string | null;
   proposed_date: string | null;
@@ -34,6 +35,10 @@ export type ProfessionalClientSummary = {
   nextAppointment: string | null;
   nextAppointmentTime: string | null;
   nextAppointmentTimestamp: number | null;
+  nextAppointmentService: string | null;
+  newestRequestTimestamp: number | null;
+  newestRequestService: string | null;
+  serviceNames: string[];
   totalCompletedVisits: number;
   archivedAt: string | null;
 };
@@ -101,6 +106,28 @@ function getHistoricalVisitDate(request: ProfessionalClientRequest) {
 
 function getAppointmentDate(request: ProfessionalClientRequest) {
   return request.scheduled_for || request.proposed_date || request.preferred_date;
+}
+
+function getClientRequestServiceNames(request: ProfessionalClientRequest) {
+  if (Array.isArray(request.requested_services)) {
+    const names = request.requested_services
+      .map((service) => {
+        if (!service || typeof service !== "object") return "";
+        const value = service as Record<string, unknown>;
+        return typeof value.service_name === "string"
+          ? value.service_name.trim()
+          : "";
+      })
+      .filter(Boolean);
+    if (names.length > 0) return names;
+  }
+
+  const legacyName = request.service_requested?.trim();
+  return legacyName ? [legacyName] : [];
+}
+
+function formatClientRequestServiceSummary(request: ProfessionalClientRequest) {
+  return getClientRequestServiceNames(request).join(", ");
 }
 
 function parseLegacyAppointmentTimestamp(
@@ -211,6 +238,11 @@ export function buildProfessionalClientSummaries(
 
       const latestCompleted = completedRequests[0] || null;
       const nextAppointment = upcomingRequests[0] || null;
+      const newestRequest = [...clientRequests].sort(
+        (first, second) =>
+          (parseProfessionalClientDate(second.created_at)?.getTime() || 0) -
+          (parseProfessionalClientDate(first.created_at)?.getTime() || 0)
+      )[0] || null;
       const profile = profileById.get(clientId);
       const fallbackName = clientRequests.find((request) =>
         request.client_name?.trim()
@@ -225,6 +257,9 @@ export function buildProfessionalClientSummaries(
             0
         )
         .filter((timestamp) => timestamp > 0);
+      const serviceNames = Array.from(
+        new Set(clientRequests.flatMap(getClientRequestServiceNames))
+      );
 
       return {
         clientId,
@@ -233,7 +268,9 @@ export function buildProfessionalClientSummaries(
           fallbackName?.trim() ||
           "Lumina client",
         profileImageUrl: null,
-        lastService: latestCompleted?.service_requested || null,
+        lastService: latestCompleted
+          ? formatClientRequestServiceSummary(latestCompleted) || null
+          : null,
         lastVisit,
         lastVisitTimestamp: completedVisitTimestamps[0] || null,
         completedVisitTimestamps,
@@ -246,6 +283,16 @@ export function buildProfessionalClientSummaries(
             null
           : null,
         nextAppointmentTimestamp: nextAppointment?.timestamp || null,
+        nextAppointmentService: nextAppointment
+          ? formatClientRequestServiceSummary(nextAppointment.request) || null
+          : null,
+        newestRequestTimestamp: newestRequest
+          ? parseProfessionalClientDate(newestRequest.created_at)?.getTime() || null
+          : null,
+        newestRequestService: newestRequest
+          ? formatClientRequestServiceSummary(newestRequest) || null
+          : null,
+        serviceNames,
         totalCompletedVisits: completedRequests.length,
         archivedAt: archiveByClientId.get(clientId) || null,
       } satisfies ProfessionalClientSummary;
@@ -293,10 +340,15 @@ export function applyProfessionalClientControls(
     .filter((client) =>
       options.view === "archived" ? !!client.archivedAt : !client.archivedAt
     )
-    .filter(
-      (client) =>
-        !query || client.name.toLocaleLowerCase().includes(query)
-    )
+    .filter((client) => {
+      if (!query) return true;
+      return (
+        client.name.toLocaleLowerCase().includes(query) ||
+        client.serviceNames.some((service) =>
+          service.toLocaleLowerCase().includes(query)
+        )
+      );
+    })
     .filter((client) => {
       switch (options.filter) {
         case "upcoming":
@@ -345,4 +397,34 @@ export function applyProfessionalClientControls(
 
       return result || first.name.localeCompare(second.name);
     });
+}
+
+export function orderProfessionalClientsForMobile(
+  clients: ProfessionalClientSummary[]
+) {
+  return [...clients].sort((first, second) => {
+    const firstUpcoming = first.nextAppointmentTimestamp;
+    const secondUpcoming = second.nextAppointmentTimestamp;
+
+    if (firstUpcoming !== null || secondUpcoming !== null) {
+      if (firstUpcoming === null) return 1;
+      if (secondUpcoming === null) return -1;
+      const upcomingOrder = firstUpcoming - secondUpcoming;
+      if (upcomingOrder !== 0) return upcomingOrder;
+    }
+
+    const visitOrder = compareNullableTimestamps(
+      first.lastVisitTimestamp,
+      second.lastVisitTimestamp,
+      "desc"
+    );
+    if (visitOrder !== 0) return visitOrder;
+
+    const requestOrder = compareNullableTimestamps(
+      first.newestRequestTimestamp,
+      second.newestRequestTimestamp,
+      "desc"
+    );
+    return requestOrder || first.name.localeCompare(second.name);
+  });
 }

@@ -8,9 +8,10 @@ type ClientTagEditorProps = {
   tags: string[];
   saving: boolean;
   onChange: (tags: string[]) => Promise<boolean>;
+  instanceId?: string;
 };
 
-export default function ClientTagEditor({ tags, saving, onChange }: ClientTagEditorProps) {
+export default function ClientTagEditor({ tags, saving, onChange, instanceId = "client-tags" }: ClientTagEditorProps) {
   const [draft, setDraft] = useState("");
   const [message, setMessage] = useState("");
 
@@ -25,10 +26,10 @@ export default function ClientTagEditor({ tags, saving, onChange }: ClientTagEdi
   };
 
   return (
-    <section aria-labelledby="client-tags-title" className="mt-4 border-y border-lumina-border/65 px-1 py-3.5">
+    <section aria-labelledby={`${instanceId}-title`} className="mt-4 border-y border-lumina-border/65 px-1 py-3.5">
       <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
         <div>
-          <h2 id="client-tags-title" className="text-[15px] font-semibold text-lumina-text">
+          <h2 id={`${instanceId}-title`} className="text-[15px] font-semibold text-lumina-text">
             Client tags
           </h2>
           <p className="mt-0.5 max-w-[620px] text-[11px] leading-[1.5] text-lumina-text-muted">

@@ -10,6 +10,7 @@ import {
   Clock3,
   History,
   Images,
+  MessageCircle,
   NotebookPen,
   Pencil,
   Save,
@@ -83,6 +84,20 @@ type LinkedResult = {
   result_date: string | null;
   created_at: string;
 };
+
+const MOBILE_SECTION_LABELS: Record<ClientCardSectionId, string> = {
+  service_history: "Service history",
+  consultation: "Consultation",
+  notes: "Private notes",
+  preferences: "Preferences",
+  results: "Results / Photos",
+};
+
+function getInitials(name: string) {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return "L";
+  return `${parts[0][0] || ""}${parts.length > 1 ? parts.at(-1)?.[0] || "" : ""}`.toUpperCase();
+}
 
 function parseDate(value: string | null) {
   if (!value) return null;
@@ -178,6 +193,8 @@ export default function ClientCardPage() {
   const [tagSaveMessage, setTagSaveMessage] = useState("");
   const [workspaceMessage, setWorkspaceMessage] = useState("");
   const [customizingWorkspace, setCustomizingWorkspace] = useState(false);
+  const [mobileSection, setMobileSection] = useState<"overview" | ClientCardSectionId>("overview");
+  const [editingMobileTags, setEditingMobileTags] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -289,6 +306,13 @@ export default function ClientCardPage() {
   const supportingSections = workspacePreferences.order.filter((section) =>
     SUPPORTING_CLIENT_CARD_SECTIONS.includes(section)
   );
+  const visibleMobileSections = workspacePreferences.order.filter(
+    (section) => !workspacePreferences.hidden.includes(section)
+  );
+  const selectedMobileSection =
+    mobileSection === "overview" || visibleMobileSections.includes(mobileSection)
+      ? mobileSection
+      : "overview";
 
   const persistCardPatch = async (patch: Record<string, unknown>) => {
     if (!artistId || !clientId || unavailable) {
@@ -371,16 +395,19 @@ export default function ClientCardPage() {
     void updateWorkspace(toggleClientCardSection(workspacePreferences, section, "collapsed"));
   };
 
-  const renderSection = (section: ClientCardSectionId) => {
+  const renderSection = (
+    section: ClientCardSectionId,
+    variant: "default" | "mobile" = "default"
+  ) => {
     if (workspacePreferences.hidden.includes(section)) return null;
     const collapsed = workspacePreferences.collapsed.includes(section);
 
     if (section === "service_history") {
       return (
-        <ClientCardSection key={section} id="service-history" title="Service History" icon={<History size={17} aria-hidden="true" />} description={completedRequests.length === 0 ? "Completed visits and their original service details will appear here." : undefined} collapsed={collapsed} onToggle={() => toggleCollapsed(section)}>
+        <ClientCardSection key={`${variant}-${section}`} id={variant === "mobile" ? "mobile-service-history" : "service-history"} title="Service History" icon={<History size={17} aria-hidden="true" />} description={completedRequests.length === 0 ? "Completed visits and their original service details will appear here." : undefined} collapsed={collapsed} onToggle={() => toggleCollapsed(section)} variant={variant}>
           {completedRequests.length === 0 ? <EmptyModule title="No completed visits yet" copy="Upcoming appointments still keep this client in your list." /> : (
             <div className="overflow-hidden rounded-[16px] border border-lumina-border/65">
-              <div className="hidden grid-cols-[minmax(120px,0.8fr)_minmax(190px,1.5fr)_minmax(160px,1fr)_minmax(90px,0.55fr)] gap-5 bg-lumina-surface-soft px-5 py-3 text-[10px] font-semibold uppercase tracking-[0.12em] text-lumina-text-muted md:grid">
+              <div className={`${variant === "mobile" ? "hidden" : "hidden md:grid"} grid-cols-[minmax(120px,0.8fr)_minmax(190px,1.5fr)_minmax(160px,1fr)_minmax(90px,0.55fr)] gap-5 bg-lumina-surface-soft px-5 py-3 text-[10px] font-semibold uppercase tracking-[0.12em] text-lumina-text-muted`}>
                 <span>Date</span><span>Services</span><span>Appointment</span><span>Final price</span>
               </div>
               <div className="divide-y divide-lumina-border">
@@ -388,9 +415,9 @@ export default function ClientCardPage() {
                   const services = getRequestServices(request);
                   const appointment = getAppointmentWindow(request);
                   return (
-                    <article key={request.id} className="grid gap-4 bg-lumina-surface px-4 py-5 md:grid-cols-[minmax(120px,0.8fr)_minmax(190px,1.5fr)_minmax(160px,1fr)_minmax(90px,0.55fr)] md:items-start md:gap-5 md:px-5">
-                      <HistoryField label="Date">{formatDate(getCompletedVisitDate(request))}</HistoryField>
-                      <HistoryField label="Services">
+                    <article key={request.id} className={variant === "mobile" ? "grid gap-2.5 bg-lumina-surface px-3 py-3.5" : "grid gap-4 bg-lumina-surface px-4 py-5 md:grid-cols-[minmax(120px,0.8fr)_minmax(190px,1.5fr)_minmax(160px,1fr)_minmax(90px,0.55fr)] md:items-start md:gap-5 md:px-5"}>
+                      <HistoryField label="Date" mobile={variant === "mobile"}>{formatDate(getCompletedVisitDate(request))}</HistoryField>
+                      <HistoryField label="Services" mobile={variant === "mobile"}>
                         <span className="space-y-1">
                           {services.length > 0 ? services.map((service) => (
                             <span key={`${request.id}-${service.service_id || service.service_name}`} className="block">
@@ -400,8 +427,13 @@ export default function ClientCardPage() {
                           )) : <span>Service not specified</span>}
                         </span>
                       </HistoryField>
-                      <HistoryField label="Appointment">{appointment.time}{appointment.duration && <span className="mt-1 block text-[11px] text-lumina-text-muted">{appointment.duration} expected</span>}</HistoryField>
-                      <HistoryField label="Final price">{formatPrice(request.proposed_price) || "—"}</HistoryField>
+                      <HistoryField label="Appointment" mobile={variant === "mobile"}>{appointment.time}{appointment.duration && <span className="mt-1 block text-[11px] text-lumina-text-muted">{appointment.duration} expected</span>}</HistoryField>
+                      <HistoryField label="Final price" mobile={variant === "mobile"}>{formatPrice(request.proposed_price) || "—"}</HistoryField>
+                      {variant === "mobile" && (
+                        <Link href={`/dashboard/requests?request=${request.id}`} className="text-[12px] font-medium text-lumina-text underline decoration-lumina-border underline-offset-4">
+                          View request
+                        </Link>
+                      )}
                     </article>
                   );
                 })}
@@ -414,20 +446,20 @@ export default function ClientCardPage() {
 
     if (section === "results") {
       return (
-        <ClientCardSection key={section} id="results" title="Results / Photos" icon={<Images size={17} aria-hidden="true" />} description={results.length === 0 ? "Before & After Results linked to completed services will appear here." : undefined} collapsed={collapsed} onToggle={() => toggleCollapsed(section)}>
+        <ClientCardSection key={`${variant}-${section}`} id={variant === "mobile" ? "mobile-results" : "results"} title="Results / Photos" icon={<Images size={17} aria-hidden="true" />} description={results.length === 0 ? "Before & After Results linked to completed services will appear here." : undefined} collapsed={collapsed} onToggle={() => toggleCollapsed(section)} variant={variant}>
           {results.length === 0 ? <EmptyModule title="No linked results yet" copy="Results linked to completed services will appear here without duplicate uploads." /> : (
-            <div className="grid gap-5 lg:grid-cols-2">
+            <div className={`grid lg:grid-cols-2 ${variant === "mobile" ? "grid-cols-2 gap-2.5" : "gap-5"}`}>
               {results.map((result) => {
                 const linkedRequest = requestById.get(result.request_id);
                 return (
                   <article key={result.id} className="overflow-hidden rounded-[18px] border border-lumina-border/65 bg-lumina-surface">
                     <div className="grid grid-cols-2"><ResultImage label="Before" src={result.before_image_url || ""} /><ResultImage label="After" src={result.image_url} /></div>
-                    <div className="p-5">
+                    <div className={variant === "mobile" ? "p-3" : "p-5"}>
                       <div className="flex flex-wrap items-center justify-between gap-3">
                         <h3 className="text-[16px] font-medium">{result.service_name || (linkedRequest ? formatRequestServiceSummary(linkedRequest) : "") || "Result"}</h3>
                         <span className="rounded-full bg-lumina-surface-soft px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.1em] text-lumina-text-muted">Professional result</span>
                       </div>
-                      {result.caption && <p className="mt-3 text-[13px] leading-[1.6] text-lumina-text-muted">{result.caption}</p>}
+                      {result.caption && <p className={`${variant === "mobile" ? "mt-2 line-clamp-2 text-[11px]" : "mt-3 text-[13px]"} leading-[1.6] text-lumina-text-muted`}>{result.caption}</p>}
                       <div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-2 text-[12px] text-lumina-text-muted">
                         <span className="inline-flex items-center gap-2"><CalendarDays size={14} />{formatDate(result.result_date || (linkedRequest ? getCompletedVisitDate(linkedRequest) : null))}</span>
                         {linkedRequest && formatTime(getAppointmentTime(linkedRequest)) && <span className="inline-flex items-center gap-2"><Clock3 size={14} />{formatTime(getAppointmentTime(linkedRequest))}</span>}
@@ -444,7 +476,7 @@ export default function ClientCardPage() {
 
     if (section === "consultation") {
       return (
-        <ClientCardSection key={section} id="consultation" title="Consultation" icon={<ClipboardList size={17} aria-hidden="true" />} description={consultationRequests.length === 0 ? "Read-only snapshots submitted with requests will appear here." : undefined} collapsed={collapsed} onToggle={() => toggleCollapsed(section)}>
+        <ClientCardSection key={`${variant}-${section}`} id={variant === "mobile" ? "mobile-consultation" : "consultation"} title="Consultation" icon={<ClipboardList size={17} aria-hidden="true" />} description={consultationRequests.length === 0 ? "Read-only snapshots submitted with requests will appear here." : undefined} collapsed={collapsed} onToggle={() => toggleCollapsed(section)} variant={variant}>
           {consultationRequests.length === 0 ? <EmptyModule title="No Consultation Snapshots" copy="Optional consultation details submitted with future requests will stay grouped here by request." /> : (
             <div className="space-y-5">
               {consultationRequests.map((request) => (
@@ -464,14 +496,14 @@ export default function ClientCardPage() {
 
     if (section === "notes") {
       return (
-        <ClientCardSection key={section} id="professional-notes" title="Notes" icon={<NotebookPen size={17} aria-hidden="true" />} description={clientNotes.length === 0 ? "Private service notes, follow-up context, and ideas." : undefined} collapsed={collapsed} onToggle={() => toggleCollapsed(section)}>
+        <ClientCardSection key={`${variant}-${section}`} id={variant === "mobile" ? "mobile-professional-notes" : "professional-notes"} title={variant === "mobile" ? "Private notes" : "Notes"} icon={<NotebookPen size={17} aria-hidden="true" />} description={clientNotes.length === 0 ? variant === "mobile" ? "Professional-only service notes, follow-up context, and ideas." : "Private service notes, follow-up context, and ideas." : undefined} collapsed={collapsed} onToggle={() => toggleCollapsed(section)} variant={variant}>
           <ClientNotesPreview clientId={clientId} notes={clientNotes} />
         </ClientCardSection>
       );
     }
 
     return (
-      <ClientCardSection key={section} id="preferences" title="Service preferences" icon={<SlidersHorizontal size={17} aria-hidden="true" />} description={editingPreferences || !savedPreferences ? "Service, scheduling, or comfort preferences." : undefined} collapsed={collapsed} onToggle={() => toggleCollapsed(section)}>
+      <ClientCardSection key={`${variant}-${section}`} id={variant === "mobile" ? "mobile-preferences" : "preferences"} title="Service preferences" icon={<SlidersHorizontal size={17} aria-hidden="true" />} description={editingPreferences || !savedPreferences ? "Service, scheduling, or comfort preferences." : undefined} collapsed={collapsed} onToggle={() => toggleCollapsed(section)} variant={variant}>
         {editingPreferences ? (
           <>
             <textarea value={preferences} onChange={(event) => { setPreferences(event.target.value); setPreferencesMessage(""); }} rows={5} placeholder="Add simple service, scheduling, or comfort preferences." className="w-full resize-y rounded-[14px] border border-lumina-border bg-lumina-surface px-4 py-3 text-[14px] leading-[1.6] outline-none placeholder:text-lumina-text-muted/75 focus:border-lumina-text-muted" />
@@ -493,9 +525,137 @@ export default function ClientCardPage() {
   }
   if (errorMessage) return <PageMessage message={errorMessage} showBack />;
 
+  const relevantRequest = nextAppointment || requests[0] || null;
+  const requestWorkspaceHref = relevantRequest
+    ? `/dashboard/requests?request=${relevantRequest.id}`
+    : "/dashboard/requests";
+  const messageHref = relevantRequest
+    ? `/dashboard/messages?request=${relevantRequest.id}`
+    : "/dashboard/messages";
+  const relationshipSummary = nextAppointment
+    ? formatRequestServiceSummary(nextAppointment) || "Upcoming appointment"
+    : latestCompleted
+      ? `${formatRequestServiceSummary(latestCompleted) || "Completed service"} · ${completedRequests.length} completed ${completedRequests.length === 1 ? "visit" : "visits"}`
+      : formatRequestServiceSummary(requests[0]) || "New Lumina client";
+
   return (
     <div className="bg-lumina-surface text-lumina-text">
-      <section className="mx-auto max-w-[1280px] px-5 py-10 md:px-10 md:py-14">
+      <section className="mx-auto max-w-[1280px] px-5 py-6 md:px-10 md:py-9 lg:py-14">
+        <div className="lg:hidden">
+          <BackToClients />
+
+          <header className="mt-5">
+            <div className="flex min-w-0 items-center gap-3.5">
+              <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-lumina-pearl/80 text-[17px] font-semibold tracking-[0.04em] ring-1 ring-inset ring-lumina-border/55">
+                {getInitials(clientName)}
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.15em] text-lumina-text-muted">
+                  Client relationship
+                </p>
+                <h1 className="mt-1 truncate font-serif text-[28px] font-semibold leading-[1.05] text-lumina-text">
+                  {clientName}
+                </h1>
+                <p className="mt-1.5 line-clamp-2 text-[12px] leading-[1.4] text-lumina-text-muted">
+                  {relationshipSummary}
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-4 flex items-center gap-2.5">
+              <Link href={messageHref} className="inline-flex min-h-10 items-center justify-center gap-2 rounded-full bg-lumina-black px-4 text-[12px] font-medium text-white transition hover:bg-lumina-text focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-lumina-text">
+                <MessageCircle size={14} aria-hidden="true" /> Message client
+              </Link>
+              <Link href={requestWorkspaceHref} className="inline-flex min-h-10 items-center justify-center rounded-full border border-lumina-border bg-lumina-surface px-4 text-[12px] font-medium text-lumina-text transition hover:bg-lumina-surface-soft focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-lumina-text">
+                View requests
+              </Link>
+            </div>
+
+            <div className="mt-3.5 border-y border-lumina-border/55 py-2.5">
+              {nextAppointment ? (
+                <div className="flex items-start gap-3">
+                  <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-lumina-blush/45 text-lumina-text">
+                    <CalendarDays size={15} aria-hidden="true" />
+                  </span>
+                  <div className="min-w-0">
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-lumina-text-muted">Next appointment</p>
+                    <p className="mt-1 truncate text-[13px] font-medium">{formatRequestServiceSummary(nextAppointment) || "Confirmed appointment"}</p>
+                    <p className="mt-0.5 text-[11px] text-lumina-text-muted">{formatDate(getAppointmentDate(nextAppointment))}{formatTime(getAppointmentTime(nextAppointment)) ? ` · ${formatTime(getAppointmentTime(nextAppointment))}` : ""}</p>
+                  </div>
+                </div>
+              ) : latestCompleted ? (
+                <div className="flex items-start gap-3">
+                  <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-lumina-pearl/75 text-lumina-text"><History size={15} aria-hidden="true" /></span>
+                  <div className="min-w-0">
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-lumina-text-muted">Most recent service</p>
+                    <p className="mt-1 truncate text-[13px] font-medium">{formatRequestServiceSummary(latestCompleted) || "Completed service"}</p>
+                    <p className="mt-0.5 text-[11px] text-lumina-text-muted">{formatDate(getCompletedVisitDate(latestCompleted))}</p>
+                  </div>
+                </div>
+              ) : (
+                <p className="text-[12px] text-lumina-text-muted">No completed services yet.</p>
+              )}
+            </div>
+          </header>
+
+          <div className="-mx-5 mt-5 overflow-x-auto px-5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" aria-label="Client Card sections">
+            <div role="tablist" className="flex w-max min-w-full items-center gap-1 border-b border-lumina-border/50">
+              <MobileSectionTab active={selectedMobileSection === "overview"} emphasized label="Overview" onClick={() => setMobileSection("overview")} />
+              {visibleMobileSections.map((section) => (
+                <MobileSectionTab key={section} active={selectedMobileSection === section} emphasized={section === "service_history"} label={MOBILE_SECTION_LABELS[section]} onClick={() => setMobileSection(section)} />
+              ))}
+            </div>
+          </div>
+
+          <div className="mt-4">
+            {selectedMobileSection === "overview" ? (
+              <div className="space-y-5">
+                <section aria-labelledby="mobile-relationship-overview">
+                  <div className="flex items-center justify-between gap-3">
+                    <h2 id="mobile-relationship-overview" className="text-[16px] font-semibold">Relationship overview</h2>
+                    <span className="text-[10px] text-lumina-text-muted/80">{completedRequests.length} completed {completedRequests.length === 1 ? "visit" : "visits"}</span>
+                  </div>
+                  <dl className="mt-3 divide-y divide-lumina-border/50 border-y border-lumina-border/50">
+                    <MobileOverviewRow label="Next appointment" value={nextAppointment ? formatDate(getAppointmentDate(nextAppointment)) : "None scheduled"} detail={nextAppointment ? formatRequestServiceSummary(nextAppointment) : null} />
+                    <MobileOverviewRow label="Recent service" value={latestCompleted ? formatDate(getCompletedVisitDate(latestCompleted)) : "No completed visits"} detail={latestCompleted ? formatRequestServiceSummary(latestCompleted) : null} />
+                  </dl>
+                </section>
+
+                <section aria-labelledby="mobile-client-tags">
+                  <div className="flex items-center justify-between gap-3">
+                    <h2 id="mobile-client-tags" className="text-[13px] font-medium text-lumina-text-muted">Client tags</h2>
+                    <button type="button" onClick={() => setEditingMobileTags((current) => !current)} className="min-h-8 rounded-full px-2 text-[10px] font-medium text-lumina-text-muted underline decoration-lumina-border underline-offset-4">
+                      {editingMobileTags ? "Done" : "Manage"}
+                    </button>
+                  </div>
+                  {editingMobileTags ? (
+                    <ClientTagEditor instanceId="mobile-client-tags-editor" tags={tags} saving={savingTags} onChange={updateTags} />
+                  ) : tags.length > 0 ? (
+                    <div className="mt-2 flex flex-wrap gap-1.5">{tags.map((tag) => <span key={tag.toLocaleLowerCase()} className="rounded-full bg-lumina-pearl/45 px-2.5 py-1 text-[10px] text-lumina-text-muted">{tag}</span>)}</div>
+                  ) : (
+                    <p className="mt-1.5 text-[12px] text-lumina-text-muted">No private client tags yet.</p>
+                  )}
+                  <p aria-live="polite" className={`mt-1.5 min-h-3 text-[10px] ${tagSaveMessage.includes("couldn't") ? "text-lumina-attention" : "text-lumina-text-muted"}`}>{tagSaveMessage}</p>
+                </section>
+
+                {!workspacePreferences.hidden.includes("preferences") && (
+                  <MobilePreviewBlock title="Preference preview" empty="No service preferences saved yet." value={savedPreferences} actionLabel="Open preferences" onOpen={() => setMobileSection("preferences")} />
+                )}
+                {!workspacePreferences.hidden.includes("notes") && (
+                  <MobilePreviewBlock title="Recent private note" empty="No private notes yet." value={clientNotes[0]?.title?.trim() || clientNotes[0]?.body?.trim() || ""} actionLabel="Open private notes" onOpen={() => setMobileSection("notes")} />
+                )}
+              </div>
+            ) : (
+              renderSection(selectedMobileSection, "mobile")
+            )}
+          </div>
+
+          <button type="button" onClick={() => setCustomizingWorkspace(true)} className="mt-5 inline-flex min-h-9 items-center gap-2 text-[11px] font-medium text-lumina-text-muted transition hover:text-lumina-text">
+            <Settings2 size={14} aria-hidden="true" /> Customize workspace
+          </button>
+        </div>
+
+        <div className="hidden lg:block">
         <BackToClients />
         <div className="mt-7 rounded-[22px] border border-lumina-border/60 bg-lumina-surface/80 p-5 md:p-7">
           <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
@@ -511,7 +671,7 @@ export default function ClientCardPage() {
           </div>
         </div>
 
-        <ClientTagEditor tags={tags} saving={savingTags} onChange={updateTags} />
+        <ClientTagEditor instanceId="desktop-client-tags" tags={tags} saving={savingTags} onChange={updateTags} />
         <p aria-live="polite" className={`mt-2 min-h-4 text-[11px] ${tagSaveMessage.includes("couldn't") ? "text-lumina-attention" : "text-lumina-text-muted"}`}>{tagSaveMessage}</p>
 
         <div className="mt-6 flex flex-wrap items-end justify-between gap-3">
@@ -523,11 +683,12 @@ export default function ClientCardPage() {
         </div>
         <div className="mt-4 grid gap-4 min-[1360px]:grid-cols-[minmax(0,1.55fr)_minmax(300px,0.75fr)] min-[1360px]:items-start min-[1360px]:gap-5">
           <div className="min-w-0 space-y-4" aria-label="Primary client workspace modules">
-            {primarySections.map(renderSection)}
+            {primarySections.map((section) => renderSection(section))}
           </div>
           <aside className="min-w-0 space-y-4" aria-label="Supporting client workspace modules">
-            {supportingSections.map(renderSection)}
+            {supportingSections.map((section) => renderSection(section))}
           </aside>
+        </div>
         </div>
         {customizingWorkspace && (
           <ClientCardWorkspaceCustomizer
@@ -552,6 +713,49 @@ function BackToClients() {
   return <Link href="/dashboard/clients" className="inline-flex items-center gap-2 text-[13px] font-medium text-lumina-text-muted transition hover:text-lumina-text"><ArrowLeft size={16} /> Back to clients</Link>;
 }
 
+function MobileSectionTab({ active, emphasized = false, label, onClick }: { active: boolean; emphasized?: boolean; label: string; onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      role="tab"
+      aria-selected={active}
+      onClick={onClick}
+      className={`relative min-h-10 shrink-0 px-3 text-[12px] transition focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-lumina-text ${active ? "font-semibold text-lumina-text" : emphasized ? "font-medium text-lumina-text/75" : "font-normal text-lumina-text-muted/80"}`}
+    >
+      {label}
+      {active && <span className="absolute inset-x-2 bottom-0 h-0.5 rounded-full bg-lumina-black" />}
+    </button>
+  );
+}
+
+function MobileOverviewRow({ label, value, detail }: { label: string; value: string; detail: string | null }) {
+  return (
+    <div className="grid grid-cols-[112px_minmax(0,1fr)] gap-3 py-3">
+      <dt className="text-[10px] font-semibold uppercase tracking-[0.1em] text-lumina-text-muted">{label}</dt>
+      <dd className="min-w-0 text-right">
+        <p className="text-[13px] font-semibold text-lumina-text">{value}</p>
+        {detail && <p className="mt-0.5 truncate text-[11px] text-lumina-text-muted">{detail}</p>}
+      </dd>
+    </div>
+  );
+}
+
+function MobilePreviewBlock({ title, value, empty, actionLabel, onOpen }: { title: string; value: string; empty: string; actionLabel: string; onOpen: () => void }) {
+  return (
+    <section className="border-t border-lumina-border/50 pt-4">
+      <div className="flex items-start justify-between gap-4">
+        <div className="min-w-0">
+          <h2 className="text-[13px] font-medium text-lumina-text-muted">{title}</h2>
+          <p className="mt-1 line-clamp-2 text-[12px] leading-[1.5] text-lumina-text-muted">{value || empty}</p>
+        </div>
+        <button type="button" onClick={onOpen} className="shrink-0 text-[11px] font-medium text-lumina-text-muted underline decoration-lumina-border underline-offset-4 transition hover:text-lumina-text">
+          {actionLabel}
+        </button>
+      </div>
+    </section>
+  );
+}
+
 function PageMessage({ message, showBack = false }: { message: string; showBack?: boolean }) {
   return <div className="bg-lumina-surface text-lumina-text"><section className="mx-auto max-w-[1280px] px-5 py-10 md:px-10 md:py-14">{showBack && <BackToClients />}<div className={`${showBack ? "mt-8" : ""} rounded-[22px] bg-lumina-surface-soft p-6 text-[14px] text-lumina-text-muted`}>{message}</div></section></div>;
 }
@@ -560,8 +764,8 @@ function OverviewStat({ label, value, detail }: { label: string; value: string; 
   return <div className="border-l border-lumina-border/70 py-1 pl-4"><p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-lumina-text-muted">{label}</p><p className="mt-1.5 text-[15px] font-medium">{value}</p>{detail && <p className="mt-1 truncate text-[12px] text-lumina-text-muted">{detail}</p>}</div>;
 }
 
-function HistoryField({ label, children }: { label: string; children: React.ReactNode }) {
-  return <div><p className="mb-1 text-[10px] font-semibold uppercase tracking-[0.1em] text-lumina-text-muted md:hidden">{label}</p><div className="text-[14px] leading-[1.5]">{children}</div></div>;
+function HistoryField({ label, children, mobile = false }: { label: string; children: React.ReactNode; mobile?: boolean }) {
+  return <div><p className={`mb-1 text-[10px] font-semibold uppercase tracking-[0.1em] text-lumina-text-muted ${mobile ? "" : "md:hidden"}`}>{label}</p><div className="text-[14px] leading-[1.5]">{children}</div></div>;
 }
 
 function EmptyModule({ title, copy }: { title: string; copy: string }) {
