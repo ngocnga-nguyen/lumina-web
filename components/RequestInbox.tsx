@@ -3,6 +3,7 @@
 import { MessageCircle, Search } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import RequestConversationPanel from "@/components/RequestConversationPanel";
+import IdentityAvatar from "@/components/IdentityAvatar";
 import {
   filterRequestConversations,
   getLatestRequestConversationUpdate,
@@ -290,13 +291,6 @@ export default function RequestInbox({ role }: RequestInboxProps) {
                     const services = getRequestServiceNames(request);
                     const timestamp = getRequestConversationTimestamp(request, updates);
                     const stateLabel = getRequestConversationStateLabel(request, role);
-                    const initials = request.participant_name
-                      .split(/\s+/)
-                      .map((part) => part[0])
-                      .join("")
-                      .slice(0, 2)
-                      .toUpperCase();
-
                     return (
                       <button
                         key={request.id}
@@ -310,17 +304,11 @@ export default function RequestInbox({ role }: RequestInboxProps) {
                             : "bg-lumina-surface hover:bg-lumina-surface-soft/70"
                         }`}
                       >
-                        <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-lumina-pearl text-[11px] font-semibold text-lumina-text md:h-11 md:w-11">
-                          {request.participant_image_url ? (
-                            <img
-                              src={request.participant_image_url}
-                              alt={request.participant_name}
-                              className="h-full w-full object-cover"
-                            />
-                          ) : (
-                            initials || "L"
-                          )}
-                        </div>
+                        <IdentityAvatar
+                          name={request.participant_name}
+                          imageUrl={request.participant_image_url}
+                          className="flex h-10 w-10 shrink-0 rounded-full bg-lumina-pearl text-[11px] font-semibold text-lumina-text md:h-11 md:w-11"
+                        />
                         <div className="min-w-0 flex-1">
                           <div className="flex items-start justify-between gap-3">
                             <p className={`truncate text-[14px] ${unread > 0 ? "font-semibold" : "font-medium"}`}>

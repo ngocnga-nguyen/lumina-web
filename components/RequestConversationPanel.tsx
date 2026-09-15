@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import IdentityAvatar from "@/components/IdentityAvatar";
 import { ArrowLeft, ExternalLink, ImagePlus, X } from "lucide-react";
 import {
   useCallback,
@@ -74,12 +75,6 @@ export default function RequestConversationPanel({
   const shouldFollowLatestRef = useRef(true);
   const canSend = Boolean(draft.trim() || selectedImage) && !isSending;
   const requestDate = formatRequestDate(context.requestDate);
-  const initials = context.participantName
-    .split(/\s+/)
-    .map((part) => part[0])
-    .join("")
-    .slice(0, 2)
-    .toUpperCase();
   const imagePreviewUrl = useMemo(
     () => (selectedImage ? URL.createObjectURL(selectedImage) : null),
     [selectedImage]
@@ -154,17 +149,11 @@ export default function RequestConversationPanel({
                 <ArrowLeft size={18} strokeWidth={1.7} />
               </button>
             )}
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-lumina-pearl text-[11px] font-semibold text-lumina-text md:h-11 md:w-11 md:text-[12px]">
-              {context.participantImageUrl ? (
-                <img
-                  src={context.participantImageUrl}
-                  alt={context.participantName}
-                  className="h-full w-full object-cover"
-                />
-              ) : (
-                initials || "L"
-              )}
-            </div>
+            <IdentityAvatar
+              name={context.participantName}
+              imageUrl={context.participantImageUrl}
+              className="flex h-10 w-10 shrink-0 rounded-full bg-lumina-pearl text-[11px] font-semibold text-lumina-text md:h-11 md:w-11 md:text-[12px]"
+            />
             <div className="min-w-0">
               <p className="truncate text-[15px] font-medium text-lumina-text">
                 {context.participantName}
@@ -272,17 +261,11 @@ export default function RequestConversationPanel({
                     }`}
                   >
                     {!isMe && hasMessage && (
-                      <div className="flex h-7 w-7 shrink-0 items-center justify-center overflow-hidden rounded-full bg-lumina-pearl text-[9px] font-semibold text-lumina-text md:h-8 md:w-8 md:text-[10px]">
-                        {context.participantImageUrl ? (
-                          <img
-                            src={context.participantImageUrl}
-                            alt={context.participantName}
-                            className="h-full w-full object-cover"
-                          />
-                        ) : (
-                          initials || "L"
-                        )}
-                      </div>
+                      <IdentityAvatar
+                        name={context.participantName}
+                        imageUrl={context.participantImageUrl}
+                        className="flex h-7 w-7 shrink-0 rounded-full bg-lumina-pearl text-[9px] font-semibold text-lumina-text md:h-8 md:w-8 md:text-[10px]"
+                      />
                     )}
 
                     <div

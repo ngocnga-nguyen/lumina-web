@@ -22,6 +22,12 @@ import ClientCardWorkspaceCustomizer from "@/components/ClientCardWorkspaceCusto
 import ClientNotesPreview from "@/components/ClientNotesPreview";
 import ClientTagEditor from "@/components/ClientTagEditor";
 import ConsultationSnapshot from "@/components/ConsultationSnapshot";
+import IdentityAvatar from "@/components/IdentityAvatar";
+import {
+  resolveClientIdentity,
+  type ClientIdentityProfile,
+} from "@/lib/client-identity";
+import { loadRelatedClientIdentities } from "@/lib/client-identity-query";
 import {
   type ClientCardSectionId,
   type ClientCardWorkspacePreferences,
@@ -65,7 +71,7 @@ type ClientRequest = {
   created_at: string;
 };
 
-type ClientProfile = { id: string; full_name: string | null };
+type ClientProfile = ClientIdentityProfile;
 
 type ClientCardDetails = {
   private_notes: string;
@@ -92,12 +98,6 @@ const MOBILE_SECTION_LABELS: Record<ClientCardSectionId, string> = {
   preferences: "Preferences",
   results: "Results / Photos",
 };
-
-function getInitials(name: string) {
-  const parts = name.trim().split(/\s+/).filter(Boolean);
-  if (parts.length === 0) return "L";
-  return `${parts[0][0] || ""}${parts.length > 1 ? parts.at(-1)?.[0] || "" : ""}`.toUpperCase();
-}
 
 function parseDate(value: string | null) {
   if (!value) return null;
@@ -232,7 +232,7 @@ export default function ClientCardPage() {
       setLoadedAt(new Date().toISOString());
 
       const [{ data: profileData, error: profileError }, { data: cardData, error: cardError }, { data: noteData, error: noteError }] = await Promise.all([
-        supabase.from("profiles").select("id, full_name").eq("id", clientId).maybeSingle(),
+        loadRelatedClientIdentities([clientId]).then(({ data, error }) => ({ data: data[0] || null, error })),
         supabase.from("artist_client_cards").select("private_notes, preferences, tags, workspace_preferences").eq("artist_id", user.id).eq("client_id", clientId).maybeSingle(),
         supabase.from("artist_client_notes").select("id, artist_id, client_id, request_id, note_type, title, body, is_pinned, reminder_due_on, reminder_due_time, reminder_completed_at, created_at, updated_at").eq("artist_id", user.id).eq("client_id", clientId).order("is_pinned", { ascending: false }).order("updated_at", { ascending: false }),
       ]);
@@ -279,6 +279,31 @@ export default function ClientCardPage() {
     return () => { cancelled = true; };
   }, [clientId, router]);
 
+  useEffect(() => {
+    let cancelled = false;
+    let loadSequence = 0;
+
+    const refreshIdentity = async () => {
+      const sequence = ++loadSequence;
+      const { data, error } = await loadRelatedClientIdentities([clientId]);
+      if (cancelled || sequence !== loadSequence || error) return;
+      setProfile(data[0] || null);
+    };
+
+    const handleFocus = () => void refreshIdentity();
+    const handleVisibility = () => {
+      if (document.visibilityState === "visible") void refreshIdentity();
+    };
+    window.addEventListener("focus", handleFocus);
+    document.addEventListener("visibilitychange", handleVisibility);
+    return () => {
+      cancelled = true;
+      loadSequence += 1;
+      window.removeEventListener("focus", handleFocus);
+      document.removeEventListener("visibilitychange", handleVisibility);
+    };
+  }, [clientId]);
+
   const completedRequests = useMemo(
     () => requests.filter((request) => request.booking_status === "completed").sort((a, b) => getCompletedVisitTimestamp(b) - getCompletedVisitTimestamp(a)),
     [requests]
@@ -298,7 +323,8 @@ export default function ClientCardPage() {
 
   const latestCompleted = completedRequests[0] || null;
   const fallbackName = requests.find((request) => request.client_name?.trim())?.client_name;
-  const clientName = profile?.full_name?.trim() || fallbackName?.trim() || "Lumina client";
+  const clientIdentity = resolveClientIdentity(clientId, profile, fallbackName);
+  const clientName = clientIdentity.name;
   const requestById = useMemo(() => new Map(requests.map((request) => [request.id, request])), [requests]);
   const primarySections = workspacePreferences.order.filter((section) =>
     PRIMARY_CLIENT_CARD_SECTIONS.includes(section)
@@ -546,9 +572,11 @@ export default function ClientCardPage() {
 
           <header className="mt-5">
             <div className="flex min-w-0 items-center gap-3.5">
-              <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-lumina-pearl/80 text-[17px] font-semibold tracking-[0.04em] ring-1 ring-inset ring-lumina-border/55">
-                {getInitials(clientName)}
-              </div>
+              <IdentityAvatar
+                name={clientName}
+                imageUrl={clientIdentity.avatarUrl}
+                className="flex h-14 w-14 shrink-0 rounded-full bg-lumina-pearl/80 text-[17px] font-semibold tracking-[0.04em] ring-1 ring-inset ring-lumina-border/55"
+              />
               <div className="min-w-0 flex-1">
                 <p className="text-[10px] font-semibold uppercase tracking-[0.15em] text-lumina-text-muted">
                   Client relationship
@@ -660,7 +688,11 @@ export default function ClientCardPage() {
         <div className="mt-7 rounded-[22px] border border-lumina-border/60 bg-lumina-surface/80 p-5 md:p-7">
           <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
             <div className="flex min-w-0 items-center gap-5">
-              <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-full bg-lumina-pearl text-[24px] font-medium md:h-24 md:w-24">{clientName.charAt(0).toUpperCase()}</div>
+              <IdentityAvatar
+                name={clientName}
+                imageUrl={clientIdentity.avatarUrl}
+                className="flex h-20 w-20 shrink-0 rounded-full bg-lumina-pearl text-[24px] font-medium md:h-24 md:w-24"
+              />
               <div className="min-w-0"><p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-lumina-text-muted">Client overview</p><h1 className="mt-2 break-words text-[36px] font-semibold leading-[1.08] font-serif md:text-[46px]">{clientName}</h1></div>
             </div>
             <div className="grid gap-3 sm:grid-cols-3 lg:w-[620px]">

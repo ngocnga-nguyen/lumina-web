@@ -15,6 +15,11 @@ import {
 import { supabase } from "@/lib/supabase";
 import { createRealtimeChannelTopic } from "@/lib/realtime-channel";
 import { markClientNotificationsRead } from "@/lib/client-notifications";
+import {
+  resolveClientIdentity,
+  type ClientIdentityProfile,
+} from "@/lib/client-identity";
+import { loadRelatedClientIdentities } from "@/lib/client-identity-query";
 
 const REQUEST_COLUMNS = [
   "id",
@@ -107,21 +112,19 @@ export function useRequestInbox(role: RequestConversationRole) {
     }
 
     const requestRows = (data || []) as unknown as RequestRow[];
-    const clientNames = new Map<string, string>();
+    const clientProfiles = new Map<string, ClientIdentityProfile>();
     const artistBusinessNames = new Map<string, string>();
 
     if (role === "artist") {
       const clientIds = [...new Set(requestRows.map((request) => request.client_id))];
       if (clientIds.length > 0) {
-        const { data: profiles, error: profilesError } = await supabase
-          .from("profiles")
-          .select("id, full_name")
-          .in("id", clientIds);
+        const { data: profiles, error: profilesError } =
+          await loadRelatedClientIdentities(clientIds);
 
         if (!canCommit()) return;
         if (!profilesError) {
-          (profiles || []).forEach((profile) => {
-            if (profile.full_name) clientNames.set(profile.id, profile.full_name);
+          ((profiles || []) as ClientIdentityProfile[]).forEach((profile) => {
+            clientProfiles.set(profile.id, profile);
           });
         }
       }
@@ -144,25 +147,36 @@ export function useRequestInbox(role: RequestConversationRole) {
       }
     }
 
-    const normalizedRequests = requestRows.map((request) => ({
-      ...request,
-      participant_name:
-        role === "client"
-          ? request.artist_name?.trim() || "Lumina professional"
-          : clientNames.get(request.client_id) ||
-            request.client_name?.trim() ||
-            "Lumina client",
-      participant_business_name:
-        role === "client"
-          ? artistBusinessNames.get(request.artist_id) || null
-          : null,
-      participant_image_url:
-        role === "client" ? request.artist_image_url || null : null,
-      participant_subtitle:
-        role === "client"
-          ? request.artist_category?.trim() || "Beauty professional"
-          : "Client",
-    }));
+    const normalizedRequests = requestRows.map((request) => {
+      const clientIdentity =
+        role === "artist"
+          ? resolveClientIdentity(
+              request.client_id,
+              clientProfiles.get(request.client_id),
+              request.client_name
+            )
+          : null;
+
+      return {
+        ...request,
+        participant_name:
+          role === "client"
+            ? request.artist_name?.trim() || "Lumina professional"
+            : clientIdentity?.name || "Lumina client",
+        participant_business_name:
+          role === "client"
+            ? artistBusinessNames.get(request.artist_id) || null
+            : null,
+        participant_image_url:
+          role === "client"
+            ? request.artist_image_url || null
+            : clientIdentity?.avatarUrl || null,
+        participant_subtitle:
+          role === "client"
+            ? request.artist_category?.trim() || "Beauty professional"
+            : "Client",
+      };
+    });
     const requestIds = normalizedRequests.map((request) => request.id);
     requestIdsRef.current = new Set(requestIds);
     setRequests(normalizedRequests);
@@ -227,6 +241,19 @@ export function useRequestInbox(role: RequestConversationRole) {
   useEffect(() => {
     const initialLoad = window.setTimeout(() => void loadInboxSafely(), 0);
     return () => window.clearTimeout(initialLoad);
+  }, [loadInboxSafely]);
+
+  useEffect(() => {
+    const handleFocus = () => void loadInboxSafely();
+    const handleVisibility = () => {
+      if (document.visibilityState === "visible") void loadInboxSafely();
+    };
+    window.addEventListener("focus", handleFocus);
+    document.addEventListener("visibilitychange", handleVisibility);
+    return () => {
+      window.removeEventListener("focus", handleFocus);
+      document.removeEventListener("visibilitychange", handleVisibility);
+    };
   }, [loadInboxSafely]);
 
   const markRead = useCallback(

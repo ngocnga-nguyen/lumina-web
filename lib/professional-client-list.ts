@@ -1,3 +1,8 @@
+import {
+  resolveClientIdentity,
+  type ClientIdentityProfile,
+} from "@/lib/client-identity";
+
 export type ProfessionalClientRequest = {
   id: string;
   client_id: string;
@@ -14,10 +19,7 @@ export type ProfessionalClientRequest = {
   created_at: string;
 };
 
-export type ProfessionalClientProfile = {
-  id: string;
-  full_name: string | null;
-};
+export type ProfessionalClientProfile = ClientIdentityProfile;
 
 export type ProfessionalClientArchiveState = {
   client_id: string;
@@ -243,10 +245,14 @@ export function buildProfessionalClientSummaries(
           (parseProfessionalClientDate(second.created_at)?.getTime() || 0) -
           (parseProfessionalClientDate(first.created_at)?.getTime() || 0)
       )[0] || null;
-      const profile = profileById.get(clientId);
       const fallbackName = clientRequests.find((request) =>
         request.client_name?.trim()
       )?.client_name;
+      const identity = resolveClientIdentity(
+        clientId,
+        profileById.get(clientId),
+        fallbackName
+      );
       const lastVisit = latestCompleted
         ? getHistoricalVisitDate(latestCompleted)
         : null;
@@ -263,11 +269,8 @@ export function buildProfessionalClientSummaries(
 
       return {
         clientId,
-        name:
-          profile?.full_name?.trim() ||
-          fallbackName?.trim() ||
-          "Lumina client",
-        profileImageUrl: null,
+        name: identity.name,
+        profileImageUrl: identity.avatarUrl,
         lastService: latestCompleted
           ? formatClientRequestServiceSummary(latestCompleted) || null
           : null,

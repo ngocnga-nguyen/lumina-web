@@ -7,6 +7,7 @@ import {
   ChevronUp,
   MessageCircle,
 } from "lucide-react";
+import IdentityAvatar from "@/components/IdentityAvatar";
 import type { ProfessionalMobileRequestStatus } from "@/lib/professional-request-mobile";
 
 type ProfessionalRequestMobileSummaryProps = {
@@ -52,12 +53,6 @@ export default function ProfessionalRequestMobileSummary({
   onPrimaryAction,
   onArchive,
 }: ProfessionalRequestMobileSummaryProps) {
-  const initials = clientName
-    .split(/\s+/)
-    .map((part) => part[0])
-    .join("")
-    .slice(0, 2)
-    .toUpperCase();
   const statusToneClass =
     status.label === "New request"
       ? "border border-lumina-blush/45 bg-lumina-surface-soft text-lumina-text-muted"
@@ -67,17 +62,11 @@ export default function ProfessionalRequestMobileSummary({
     <div className="lg:hidden">
       <div className="flex items-start justify-between gap-3">
         <div className="flex min-w-0 items-center gap-2.5">
-          <span className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-lumina-pearl text-[10px] font-medium text-lumina-text">
-            {clientImageUrl ? (
-              <img
-                src={clientImageUrl}
-                alt={clientName}
-                className="h-full w-full object-cover"
-              />
-            ) : (
-              initials || "C"
-            )}
-          </span>
+          <IdentityAvatar
+            name={clientName}
+            imageUrl={clientImageUrl}
+            className="flex h-10 w-10 shrink-0 rounded-full bg-lumina-pearl text-[10px] font-medium text-lumina-text"
+          />
           <span className="min-w-0">
             <span className="block truncate text-[13px] font-medium text-lumina-text">
               {clientName}

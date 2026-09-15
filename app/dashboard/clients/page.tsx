@@ -1,13 +1,13 @@
 "use client";
 
-/* eslint-disable @next/next/no-img-element -- Client avatars may come from authenticated profile storage URLs. */
-
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import ProfessionalClientListControls from "@/components/ProfessionalClientListControls";
 import ProfessionalClientRowMenu from "@/components/ProfessionalClientRowMenu";
 import ProfessionalClientsMobileList from "@/components/ProfessionalClientsMobileList";
+import IdentityAvatar from "@/components/IdentityAvatar";
+import { loadRelatedClientIdentities } from "@/lib/client-identity-query";
 import {
   applyProfessionalClientControls,
   buildProfessionalClientSummaries,
@@ -41,18 +41,22 @@ export default function DashboardClientsPage() {
 
   useEffect(() => {
     let cancelled = false;
+    let loadSequence = 0;
 
     const loadClients = async () => {
+      const sequence = ++loadSequence;
+      const canCommit = () => !cancelled && sequence === loadSequence;
       const {
         data: { user },
       } = await supabase.auth.getUser();
 
+      if (!canCommit()) return;
       if (!user) {
         router.replace("/login");
         return;
       }
 
-      if (!cancelled) setArtistId(user.id);
+      setArtistId(user.id);
 
       const { data: requestData, error: requestError } = await supabase
         .from("client_requests")
@@ -64,7 +68,7 @@ export default function DashboardClientsPage() {
         .order("created_at", { ascending: false });
 
       if (requestError) {
-        if (!cancelled) {
+        if (canCommit()) {
           setErrorMessage("We couldn't load your clients. Please try again.");
           setLoading(false);
         }
@@ -78,7 +82,7 @@ export default function DashboardClientsPage() {
 
       if (clientIds.length > 0) {
         const [profileResult, archiveResult] = await Promise.all([
-          supabase.from("profiles").select("id, full_name").in("id", clientIds),
+          loadRelatedClientIdentities(clientIds),
           supabase
             .from("artist_client_cards")
             .select("client_id, archived_at")
@@ -86,6 +90,7 @@ export default function DashboardClientsPage() {
             .in("client_id", clientIds),
         ]);
 
+        if (!canCommit()) return;
         if (profileResult.error) {
           console.log("Client profile fetch error:", profileResult.error);
         } else {
@@ -93,7 +98,7 @@ export default function DashboardClientsPage() {
         }
 
         if (archiveResult.error) {
-          if (!cancelled) {
+          if (canCommit()) {
             setErrorMessage("We couldn't load your client organization. Please try again.");
             setLoading(false);
           }
@@ -103,18 +108,28 @@ export default function DashboardClientsPage() {
         }
       }
 
-      if (!cancelled) {
+      if (canCommit()) {
         setClients(
           buildProfessionalClientSummaries(requests, profiles, archiveStates)
         );
+        setErrorMessage("");
         setLoading(false);
       }
     };
 
     void loadClients();
+    const handleFocus = () => void loadClients();
+    const handleVisibility = () => {
+      if (document.visibilityState === "visible") void loadClients();
+    };
+    window.addEventListener("focus", handleFocus);
+    document.addEventListener("visibilitychange", handleVisibility);
 
     return () => {
       cancelled = true;
+      loadSequence += 1;
+      window.removeEventListener("focus", handleFocus);
+      document.removeEventListener("visibilitychange", handleVisibility);
     };
   }, [router]);
 
@@ -364,13 +379,11 @@ export default function DashboardClientsPage() {
 function ClientIdentity({ client }: { client: ProfessionalClientSummary }) {
   return (
     <div className="flex min-w-0 items-center gap-4">
-      <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-full bg-lumina-pearl text-[15px] font-medium text-lumina-text">
-        {client.profileImageUrl ? (
-          <img src={client.profileImageUrl} alt={client.name} className="h-full w-full object-cover" />
-        ) : (
-          client.name.charAt(0).toUpperCase()
-        )}
-      </div>
+      <IdentityAvatar
+        name={client.name}
+        imageUrl={client.profileImageUrl}
+        className="flex h-12 w-12 shrink-0 rounded-full bg-lumina-pearl text-[15px] font-medium text-lumina-text"
+      />
       <p className="truncate text-[16px] font-medium">{client.name}</p>
     </div>
   );

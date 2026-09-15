@@ -41,12 +41,13 @@ export default function AccountPage() {
       setEmail(user.email || null);
       const { data: profile } = await supabase
         .from("profiles")
-        .select("full_name")
+        .select("full_name, avatar_url")
         .eq("id", user.id)
         .maybeSingle();
       const nextName =
         profile?.full_name || user.user_metadata?.full_name || "";
-      const nextProfileImage = user.user_metadata?.avatar_url || "";
+      const nextProfileImage =
+        profile?.avatar_url || user.user_metadata?.avatar_url || "";
 
       setName(nextName);
       setSavedName(nextName);
@@ -122,6 +123,7 @@ export default function AccountPage() {
         id: user.id,
         full_name: cleanName,
         email: user.email,
+        avatar_url: profileImageUrl || null,
       },
       { onConflict: "id" }
     );
@@ -143,6 +145,13 @@ export default function AccountPage() {
     setSaving(false);
 
     if (accountError) {
+      await supabase
+        .from("profiles")
+        .update({
+          full_name: savedName,
+          avatar_url: savedProfileImageUrl || null,
+        })
+        .eq("id", user.id);
       alert(accountError.message);
       return;
     }
@@ -258,6 +267,16 @@ export default function AccountPage() {
                 <p className="mt-1 text-[12px] text-lumina-text-muted">
                   {uploading ? "Uploading…" : "Shown on requests and notifications"}
                 </p>
+                {editing && profileImageUrl && (
+                  <button
+                    type="button"
+                    onClick={() => setProfileImageUrl("")}
+                    disabled={uploading}
+                    className="mt-2 text-[11px] font-medium text-lumina-text-muted underline decoration-lumina-border underline-offset-4 transition hover:text-lumina-text disabled:opacity-50"
+                  >
+                    Remove photo
+                  </button>
+                )}
               </div>
             </div>
 

@@ -25,6 +25,7 @@ import { clientWorkspaceNavigation } from "@/lib/workspace-navigation";
 
 type ClientProfile = {
   full_name: string | null;
+  avatar_url: string | null;
 };
 
 type ClientWorkspaceShellProps = {
@@ -87,7 +88,7 @@ export default function ClientWorkspaceShell({
         const [profileResult, artistResult] = await Promise.all([
           supabase
             .from("profiles")
-            .select("full_name")
+            .select("full_name, avatar_url")
             .eq("id", user.id)
             .maybeSingle(),
           supabase.from("artists").select("id").eq("id", user.id).maybeSingle(),
@@ -101,7 +102,9 @@ export default function ClientWorkspaceShell({
         }
 
         setProfile(profileResult.data);
-        setAvatarUrl(user.user_metadata?.avatar_url || "");
+        setAvatarUrl(
+          profileResult.data?.avatar_url || user.user_metadata?.avatar_url || ""
+        );
         setEmail(user.email || "");
         setAccountId(user.id);
         setAccountResolved(true);

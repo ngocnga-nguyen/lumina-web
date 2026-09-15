@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { CalendarDays, ChevronRight, History } from "lucide-react";
 import ProfessionalClientRowMenu from "@/components/ProfessionalClientRowMenu";
+import IdentityAvatar from "@/components/IdentityAvatar";
 import {
   type ProfessionalClientSummary,
 } from "@/lib/professional-client-list";
@@ -13,12 +14,6 @@ type ProfessionalClientsMobileListProps = {
   onOpen: (clientId: string) => void;
   onArchiveChange: (clientId: string, archived: boolean) => Promise<void>;
 };
-
-function getInitials(name: string) {
-  const parts = name.trim().split(/\s+/).filter(Boolean);
-  if (parts.length === 0) return "L";
-  return `${parts[0][0] || ""}${parts.length > 1 ? parts.at(-1)?.[0] || "" : ""}`.toUpperCase();
-}
 
 function formatMobileClientDate(value: string | null) {
   if (!value) return null;
@@ -87,9 +82,11 @@ export default function ProfessionalClientsMobileList({
               aria-label={`Open ${client.name}'s Client Card`}
               className="group flex min-h-[96px] items-center gap-3 py-3.5 pr-[78px] transition hover:bg-lumina-surface-soft/55 focus-visible:bg-lumina-blush/20 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-lumina-text-muted"
             >
-              <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-lumina-pearl/75 text-[13px] font-semibold tracking-[0.04em] text-lumina-text ring-1 ring-inset ring-lumina-border/55">
-                {getInitials(client.name)}
-              </span>
+              <IdentityAvatar
+                name={client.name}
+                imageUrl={client.profileImageUrl}
+                className="flex h-11 w-11 shrink-0 rounded-full bg-lumina-pearl/75 text-[13px] font-semibold tracking-[0.04em] text-lumina-text ring-1 ring-inset ring-lumina-border/55"
+              />
 
               <span className="min-w-0 flex-1">
                 <span className="block truncate text-[15px] font-semibold text-lumina-text">

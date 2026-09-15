@@ -15,15 +15,15 @@ const cardPage = readFileSync(
   "utf8"
 );
 
-test("mobile Clients uses initials-only relationship rows and service-aware search", () => {
+test("mobile Clients uses current profile avatars with initials fallback and service-aware search", () => {
   assert.match(listPage, /requested_services/);
   assert.match(listPage, /ProfessionalClientsMobileList/);
   assert.match(listPage, /orderProfessionalClientsForMobile/);
-  assert.match(mobileList, /getInitials\(client\.name\)/);
+  assert.match(mobileList, /IdentityAvatar/);
+  assert.match(mobileList, /imageUrl=\{client\.profileImageUrl\}/);
   assert.match(mobileList, /nextAppointmentService/);
   assert.match(mobileList, /newestRequestService/);
   assert.match(mobileList, /lg:hidden/);
-  assert.doesNotMatch(mobileList, /profileImageUrl/);
 });
 
 test("mobile Client Card preserves workspace ordering and professional-only modules", () => {

@@ -1,12 +1,18 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { createRealtimeChannelTopic } from "@/lib/realtime-channel";
 import { Bell, MessageCircle, Sparkles, CalendarDays, Clock, Search } from "lucide-react";
 import ChatModal from "@/components/ChatModal";
 import ConsultationSnapshot from "@/components/ConsultationSnapshot";
+import IdentityAvatar from "@/components/IdentityAvatar";
 import ProfessionalRequestMobileSummary from "@/components/ProfessionalRequestMobileSummary";
+import {
+  resolveClientIdentity,
+  type ClientIdentityProfile,
+} from "@/lib/client-identity";
+import { loadRelatedClientIdentities } from "@/lib/client-identity-query";
 import {
   formatDurationMinutes,
   getRequestServiceNames,
@@ -179,11 +185,13 @@ export default function DashboardRequestsPage() {
   const showingArchivedRef = useRef(false);
   const handledDeepLinkRef = useRef<string | null>(null);
   const routeActiveRef = useRef(true);
+  const requestLoadSequenceRef = useRef(0);
 
   useEffect(() => {
     routeActiveRef.current = true;
     return () => {
       routeActiveRef.current = false;
+      requestLoadSequenceRef.current += 1;
     };
   }, []);
 
@@ -218,12 +226,15 @@ export default function DashboardRequestsPage() {
     return () => cancelAnimationFrame(frame);
   }, [requestView, requests]);
 
-  const fetchRequests = async () => {
+  const fetchRequests = useCallback(async () => {
+    const sequence = ++requestLoadSequenceRef.current;
+    const canCommit = () =>
+      routeActiveRef.current && sequence === requestLoadSequenceRef.current;
     const {
       data: { user },
     } = await supabase.auth.getUser();
 
-    if (!routeActiveRef.current) return;
+    if (!canCommit()) return;
     if (!user) return;
 const { data: notificationData } = await supabase
   .from("notifications")
@@ -231,7 +242,7 @@ const { data: notificationData } = await supabase
   .eq("user_id", user.id)
   .order("created_at", { ascending: false });
 
-if (!routeActiveRef.current) return;
+if (!canCommit()) return;
 setNotifications(notificationData || []);
 
     const { data, error } = await supabase
@@ -241,7 +252,7 @@ setNotifications(notificationData || []);
       .eq("artist_hidden", showingArchived)
       .order("created_at", { ascending: false });
 
-    if (!routeActiveRef.current) return;
+    if (!canCommit()) return;
     if (error) {
       console.log(error);
       return;
@@ -250,23 +261,23 @@ setNotifications(notificationData || []);
     const clientIds = [
       ...new Set((data || []).map((request) => request.client_id)),
     ];
-    const { data: clientProfiles } = clientIds.length
-      ? await supabase
-          .from("profiles")
-          .select("id, full_name")
-          .in("id", clientIds)
-      : { data: [] };
-    if (!routeActiveRef.current) return;
+    const { data: clientProfiles } = await loadRelatedClientIdentities(clientIds);
+    if (!canCommit()) return;
     const clientProfileMap = new Map(
-      (clientProfiles || []).map((profile) => [profile.id, profile])
+      ((clientProfiles || []) as ClientIdentityProfile[]).map((profile) => [profile.id, profile])
     );
     const requestsWithProfiles = (data || []).map((request) => {
       const profile = clientProfileMap.get(request.client_id);
+      const identity = resolveClientIdentity(
+        request.client_id,
+        profile,
+        request.client_name
+      );
 
       return {
         ...request,
-        client_name: profile?.full_name || request.client_name,
-        client_image_url: null,
+        client_name: identity.name,
+        client_image_url: identity.avatarUrl,
       };
     });
 
@@ -277,14 +288,14 @@ setNotifications(notificationData || []);
         await createConsultationSignedUrls(request.consultation_snapshot),
       ] as const)
     );
-    if (!routeActiveRef.current) return;
+    if (!canCommit()) return;
     setConsultationImageUrls(Object.fromEntries(consultationEntries));
     const { data: updateData } = await supabase
   .from("request_updates")
   .select("*")
   .order("created_at", { ascending: true });
 
-if (!routeActiveRef.current) return;
+if (!canCommit()) return;
 const updateMap: Record<string, RequestUpdate[]> = {};
 
 (updateData || []).forEach((update) => {
@@ -320,7 +331,7 @@ setUpdates(updateMap);
     setProposedTimes(timeMap);
     setProposedPrices(priceMap);
     setProposedDurations(durationMap);
-  };
+  }, [showingArchived]);
 
  useEffect(() => {
   let cancelled = false;
@@ -333,7 +344,19 @@ setUpdates(updateMap);
     cancelled = true;
     window.clearTimeout(refreshTimer);
   };
-}, [showingArchived]);
+}, [fetchRequests]);
+useEffect(() => {
+  const handleFocus = () => void fetchRequests();
+  const handleVisibility = () => {
+    if (document.visibilityState === "visible") void fetchRequests();
+  };
+  window.addEventListener("focus", handleFocus);
+  document.addEventListener("visibilitychange", handleVisibility);
+  return () => {
+    window.removeEventListener("focus", handleFocus);
+    document.removeEventListener("visibilitychange", handleVisibility);
+  };
+}, [fetchRequests]);
 useEffect(() => {
   openChatRequestIdRef.current = chatRequest?.id || null;
 }, [chatRequest]);
@@ -423,11 +446,7 @@ useEffect(() => {
             return;
           }
 
-          setRequests((prev) =>
-            prev.some((request) => request.id === newRequest.id)
-              ? prev
-              : [newRequest, ...prev]
-          );
+          void fetchRequests();
         }
       )
       .on(
@@ -467,7 +486,7 @@ useEffect(() => {
       supabase.removeChannel(channel);
     }
   };
-}, []);
+}, [fetchRequests]);
   const updateRequest = async (id: string, status: string) => {
   setSavingId(id);
   const existingRequest = requests.find((request) => request.id === id);
@@ -942,17 +961,11 @@ const deleteMessage = async (messageId: string) => {
             }`}
           >
             <div className="flex items-start gap-3">
-              <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full bg-lumina-pearl text-[12px] font-medium text-lumina-text-muted">
-                {senderImage ? (
-                  <img
-                    src={senderImage}
-                    alt={senderName}
-                    className="h-full w-full object-cover"
-                  />
-                ) : (
-                  senderName.charAt(0).toUpperCase()
-                )}
-              </div>
+              <IdentityAvatar
+                name={senderName}
+                imageUrl={senderImage}
+                className="flex h-9 w-9 shrink-0 rounded-full bg-lumina-pearl text-[12px] font-medium text-lumina-text-muted"
+              />
 
               <div className="min-w-0">
                 <p className="truncate text-[13px] font-medium text-lumina-text">
