@@ -23,13 +23,20 @@ export default function MobileManagementSheet({
   useEffect(() => {
     if (!open) return;
     const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
+    const mobileViewport = window.matchMedia("(max-width: 1023px)");
+    const syncScrollLock = () => {
+      // A mobile onboarding sheet can be open while its desktop counterpart is visible.
+      document.body.style.overflow = mobileViewport.matches ? "hidden" : previousOverflow;
+    };
+    syncScrollLock();
+    mobileViewport.addEventListener("change", syncScrollLock);
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape" && !busy) onClose();
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => {
       document.body.style.overflow = previousOverflow;
+      mobileViewport.removeEventListener("change", syncScrollLock);
       window.removeEventListener("keydown", handleKeyDown);
     };
   }, [busy, onClose, open]);

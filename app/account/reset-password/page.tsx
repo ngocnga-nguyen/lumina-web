@@ -12,6 +12,7 @@ export default function ResetPasswordPage() {
   const [checkingLink, setCheckingLink] = useState(true);
   const [hasRecoverySession, setHasRecoverySession] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [returnTo, setReturnTo] = useState<"/account" | "/dashboard/settings">("/account");
 
   useEffect(() => {
     const checkSession = async () => {
@@ -19,6 +20,8 @@ export default function ResetPasswordPage() {
         data: { session },
       } = await supabase.auth.getSession();
 
+      // A fixed role marker chooses one of two known routes; never accept a URL from the link.
+      setReturnTo(new URLSearchParams(window.location.search).get("role") === "professional" ? "/dashboard/settings" : "/account");
       setHasRecoverySession(Boolean(session));
       setCheckingLink(false);
     };
@@ -58,14 +61,14 @@ export default function ResetPasswordPage() {
     }
 
     alert("Your password has been updated.");
-    router.push("/account");
+    router.push(returnTo);
   };
 
   return (
     <main className="min-h-screen bg-lumina-surface text-lumina-text">
       <header className="grid grid-cols-3 items-center bg-lumina-surface-soft px-5 py-5">
-        <Link href="/account" className="text-sm transition hover:opacity-70">
-          ← Account
+        <Link href={returnTo} className="text-sm transition hover:opacity-70">
+          ← {returnTo === "/account" ? "Account" : "Settings"}
         </Link>
         <Link href="/" className="justify-self-center font-medium">
           Lumina

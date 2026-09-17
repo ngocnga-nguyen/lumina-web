@@ -6,6 +6,9 @@ import { supabase } from "@/lib/supabase";
 import { useRouter } from "next/navigation";
 import { Camera, CircleUser } from "lucide-react";
 import ClientWorkspaceShell from "@/components/ClientWorkspaceShell";
+import IdentityAvatar from "@/components/IdentityAvatar";
+import MobileManagementSheet from "@/components/MobileManagementSheet";
+import MobileSettingsRow from "@/components/MobileSettingsRow";
 import {
   getProfileImageValidationError,
 } from "@/lib/profile-image-storage";
@@ -26,6 +29,7 @@ export default function AccountPage() {
   const [changingEmail, setChangingEmail] = useState(false);
   const [sendingPasswordReset, setSendingPasswordReset] = useState(false);
   const [signingOutOthers, setSigningOutOthers] = useState(false);
+  const [mobileSheet, setMobileSheet] = useState<"profile" | "email" | "password" | null>(null);
 
   useEffect(() => {
     const loadUser = async () => {
@@ -160,6 +164,7 @@ export default function AccountPage() {
     setSavedName(cleanName);
     setSavedProfileImageUrl(profileImageUrl);
     setEditing(false);
+    setMobileSheet(null);
   };
 
   const cancelEditing = () => {
@@ -192,6 +197,7 @@ export default function AccountPage() {
 
     setNewEmail("");
     setShowEmailChange(false);
+    setMobileSheet(null);
     alert(
       "Verification sent. Check your inbox and follow the link to finish changing your email."
     );
@@ -217,7 +223,68 @@ export default function AccountPage() {
   return (
     <ClientWorkspaceShell>
       <div className="min-h-screen bg-lumina-surface text-lumina-text">
-      <section className="mx-auto max-w-xl px-5 py-10 md:px-10 md:py-14">
+      <section className="mx-auto max-w-xl px-5 pb-10 pt-5 lg:hidden">
+        <p className="text-[11px] uppercase tracking-[0.16em] text-lumina-text-muted">Your account</p>
+        <h1 className="mt-2 font-serif text-[31px] font-semibold leading-[1.05]">Profile &amp; settings</h1>
+        <p className="mt-2 text-[13px] text-lumina-text-muted">Your profile and account in one place.</p>
+
+        <section className="mt-7 flex min-w-0 items-center gap-4 rounded-[20px] bg-lumina-surface-soft/80 p-4">
+          <IdentityAvatar name={savedName || email || "Client"} imageUrl={savedProfileImageUrl} className="h-16 w-16 shrink-0 rounded-full bg-lumina-blush/65" fallbackClassName="font-serif text-[24px] text-lumina-text" />
+          <div className="min-w-0 flex-1">
+            <p className="truncate font-serif text-[21px] leading-tight">{savedName || "Your profile"}</p>
+            <p className="mt-1 truncate text-[12px] text-lumina-text-muted">{email || "Loading…"}</p>
+            <button type="button" onClick={() => { setEditing(true); setMobileSheet("profile"); }} className="mt-2 inline-flex min-h-9 items-center text-[12px] font-medium underline decoration-lumina-border underline-offset-4">Edit profile</button>
+          </div>
+        </section>
+
+        <section className="mt-7" aria-label="Account and security">
+          <h2 className="text-[11px] font-semibold uppercase tracking-[0.14em] text-lumina-text-muted">Account &amp; security</h2>
+          <div className="mt-2 border-t border-lumina-border/70">
+            <MobileSettingsRow title="Email" detail={email || "Sign-in address"} onClick={() => setMobileSheet("email")} />
+            <MobileSettingsRow title="Password & security" detail="Get a secure reset link" onClick={() => setMobileSheet("password")} />
+            <MobileSettingsRow title="Other signed-in devices" detail="Keep this device signed in" onClick={() => void signOutOtherDevices()} disabled={signingOutOthers} />
+          </div>
+        </section>
+        <button type="button" onClick={() => void signOut()} className="mt-8 min-h-11 w-full border-t border-lumina-border/70 pt-4 text-left text-[13px] text-lumina-text-muted">Sign out</button>
+      </section>
+
+      <MobileManagementSheet open={mobileSheet === "profile"} eyebrow="Client account" title="Edit profile" busy={saving || uploading} onClose={cancelEditing}>
+        <div className="space-y-5 pb-2">
+          <div className="flex items-center gap-4">
+            <div className="relative h-[72px] w-[72px] shrink-0">
+              <IdentityAvatar name={name || email || "Client"} imageUrl={profileImageUrl} className="h-full w-full rounded-full bg-lumina-blush/65" fallbackClassName="font-serif text-[26px]" />
+              <label className="absolute inset-0 flex cursor-pointer items-end justify-end" aria-label="Change profile photo">
+                <span className="flex h-7 w-7 items-center justify-center rounded-full bg-lumina-black text-white"><Camera size={14} /></span>
+                <input type="file" accept="image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp" className="sr-only" disabled={uploading} onChange={(event) => { const file = event.target.files?.[0]; if (file) void uploadProfileImage(file); event.target.value = ""; }} />
+              </label>
+            </div>
+            <div className="min-w-0 text-[12px] text-lumina-text-muted">
+              <p>{uploading ? "Uploading…" : "Tap the camera to change your photo."}</p>
+              {profileImageUrl && <button type="button" onClick={() => setProfileImageUrl("")} disabled={uploading} className="mt-2 underline underline-offset-4">Remove photo</button>}
+            </div>
+          </div>
+          <label className="block text-[13px] font-medium">Name
+            <input type="text" value={name} onChange={(event) => setName(event.target.value)} className="mt-2 w-full rounded-[14px] border border-lumina-border bg-lumina-surface px-4 py-3 text-[15px] outline-none focus:border-lumina-text-muted" />
+          </label>
+          <div className="flex justify-end gap-2 pt-2">
+            <button type="button" onClick={cancelEditing} disabled={saving || uploading} className="min-h-11 rounded-full border border-lumina-border px-5 text-[13px]">Cancel</button>
+            <button type="button" onClick={() => void saveProfile()} disabled={saving || uploading} className="min-h-11 rounded-full bg-lumina-black px-6 text-[13px] text-white disabled:opacity-50">{saving ? "Saving…" : "Save profile"}</button>
+          </div>
+        </div>
+      </MobileManagementSheet>
+      <MobileManagementSheet open={mobileSheet === "email"} eyebrow="Client account" title="Change email" busy={changingEmail} onClose={() => { setMobileSheet(null); setNewEmail(""); }}>
+        <label className="block text-[13px]">New email address
+          <input type="email" value={newEmail} onChange={(event) => setNewEmail(event.target.value)} placeholder="name@example.com" className="mt-2 w-full rounded-[14px] border border-lumina-border px-4 py-3 text-[15px] outline-none focus:border-lumina-text-muted" />
+        </label>
+        <p className="mt-2 text-[12px] leading-relaxed text-lumina-text-muted">Your current email remains active until you verify the new address.</p>
+        <div className="mt-5 flex justify-end gap-2"><button type="button" onClick={() => { setMobileSheet(null); setNewEmail(""); }} className="min-h-11 rounded-full border border-lumina-border px-5 text-[13px]">Cancel</button><button type="button" onClick={() => void requestEmailChange()} disabled={changingEmail} className="min-h-11 rounded-full bg-lumina-black px-5 text-[13px] text-white disabled:opacity-50">{changingEmail ? "Sending…" : "Send verification"}</button></div>
+      </MobileManagementSheet>
+      <MobileManagementSheet open={mobileSheet === "password"} eyebrow="Client account" title="Password & security" onClose={() => setMobileSheet(null)}>
+        <p className="text-[13px] leading-relaxed text-lumina-text-muted">We’ll email a secure link to {email || "your sign-in address"} to change your password.</p>
+        <button type="button" onClick={() => void sendPasswordReset()} disabled={sendingPasswordReset || !email} className="mt-5 min-h-11 w-full rounded-full bg-lumina-black px-5 text-[13px] text-white disabled:opacity-50">{sendingPasswordReset ? "Sending…" : "Send reset link"}</button>
+      </MobileManagementSheet>
+
+      <section className="mx-auto hidden max-w-xl px-5 py-10 md:px-10 md:py-14 lg:block">
         <h1
           className="text-[42px] font-semibold leading-[1.02] md:text-[56px]"
           style={{ fontFamily: "Georgia, Times New Roman, serif" }}

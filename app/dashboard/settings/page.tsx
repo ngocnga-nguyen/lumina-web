@@ -5,6 +5,8 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import ProfessionalOnboardingContext from "@/components/ProfessionalOnboardingContext";
+import MobileManagementSheet from "@/components/MobileManagementSheet";
+import MobileSettingsRow from "@/components/MobileSettingsRow";
 import {
   professionalVerificationStatusLabels,
   type ProfessionalLicenseVerification,
@@ -39,10 +41,12 @@ export default function ArtistSettingsPage() {
   const [verificationForm, setVerificationForm] = useState(
     emptyVerificationForm
   );
+  const [savedVerificationForm, setSavedVerificationForm] = useState(emptyVerificationForm);
   const [submittingVerification, setSubmittingVerification] = useState(false);
   const [activationStatus, setActivationStatus] =
     useState<ProfessionalActivationStatus | null>(null);
   const [onboardingMode, setOnboardingMode] = useState(false);
+  const [mobileSheet, setMobileSheet] = useState<"email" | "password" | "verification" | null>(null);
 
   useEffect(() => {
     const loadSettings = async () => {
@@ -55,10 +59,9 @@ export default function ArtistSettingsPage() {
         return;
       }
 
-      setOnboardingMode(
-        new URLSearchParams(window.location.search).get("onboarding") ===
-          "license"
-      );
+      const isLicenseOnboarding = new URLSearchParams(window.location.search).get("onboarding") === "license";
+      setOnboardingMode(isLicenseOnboarding);
+      if (isLicenseOnboarding) setMobileSheet("verification");
 
       const { data: artist } = await supabase
         .from("artists")
@@ -98,20 +101,24 @@ export default function ArtistSettingsPage() {
         const savedVerification =
           verificationData as ProfessionalLicenseVerification;
         setVerification(savedVerification);
-        setVerificationForm({
+        const nextVerificationForm = {
           legal_professional_name: savedVerification.legal_professional_name,
           license_number: savedVerification.license_number,
           license_jurisdiction: savedVerification.license_jurisdiction,
           license_type: savedVerification.license_type,
           business_name: savedVerification.business_name || "",
-        });
+        };
+        setVerificationForm(nextVerificationForm);
+        setSavedVerificationForm(nextVerificationForm);
       } else {
-        setVerificationForm({
+        const nextVerificationForm = {
           ...emptyVerificationForm,
           legal_professional_name:
             user.user_metadata?.full_name || artist.name || "",
           business_name: user.user_metadata?.business_name || "",
-        });
+        };
+        setVerificationForm(nextVerificationForm);
+        setSavedVerificationForm(nextVerificationForm);
       }
 
       setLoading(false);
@@ -119,6 +126,20 @@ export default function ArtistSettingsPage() {
 
     void loadSettings();
   }, [router]);
+
+  useEffect(() => {
+    if (loading) return;
+    const scrollToVerification = () => {
+      if (window.location.hash !== "#license-verification") return;
+      const target = window.matchMedia("(max-width: 1023px)").matches
+        ? "license-verification-mobile"
+        : "license-verification-desktop";
+      document.getElementById(target)?.scrollIntoView({ block: "start" });
+    };
+    scrollToVerification();
+    window.addEventListener("hashchange", scrollToVerification);
+    return () => window.removeEventListener("hashchange", scrollToVerification);
+  }, [loading]);
 
   const requestEmailChange = async () => {
     const cleanEmail = newEmail.trim().toLowerCase();
@@ -144,6 +165,7 @@ export default function ArtistSettingsPage() {
 
     setNewEmail("");
     setShowEmailChange(false);
+    setMobileSheet(null);
     alert(
       "Verification sent. Check your inbox and follow the link to finish changing your email."
     );
@@ -154,7 +176,7 @@ export default function ArtistSettingsPage() {
 
     setSendingPasswordReset(true);
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/account/reset-password`,
+      redirectTo: `${window.location.origin}/account/reset-password?role=professional`,
     });
     setSendingPasswordReset(false);
 
@@ -236,13 +258,16 @@ export default function ArtistSettingsPage() {
     }
 
     setVerification(data as ProfessionalLicenseVerification);
-    setVerificationForm({
+    const nextVerificationForm = {
       legal_professional_name: legalName,
       license_number: licenseNumber,
       license_jurisdiction: jurisdiction,
       license_type: licenseType,
       business_name: businessName,
-    });
+    };
+    setVerificationForm(nextVerificationForm);
+    setSavedVerificationForm(nextVerificationForm);
+    setMobileSheet(null);
     const activationResult = await loadMyProfessionalActivationStatus();
     if (activationResult.data) {
       setActivationStatus(activationResult.data);
@@ -268,9 +293,58 @@ export default function ArtistSettingsPage() {
     alert("Other devices have been signed out. You are still signed in on this device.");
   };
 
+  const closeVerificationEditor = () => {
+    setVerificationForm(savedVerificationForm);
+    setMobileSheet(null);
+  };
+
   return (
     <div className="bg-lumina-surface text-lumina-text">
-      <section className="mx-auto max-w-2xl px-5 py-10 md:px-10 md:py-14">
+      <section className="mx-auto max-w-2xl px-5 pb-10 pt-5 lg:hidden">
+        {onboardingMode && <ProfessionalOnboardingContext step="license" title="Submit license verification" />}
+        <p className="text-[11px] uppercase tracking-[0.16em] text-lumina-text-muted">Professional workspace</p>
+        <h1 className="mt-2 font-serif text-[31px] font-semibold leading-[1.05]">Settings</h1>
+        <p className="mt-2 text-[13px] text-lumina-text-muted">Account, verification, and privacy.</p>
+        {loading ? <p className="mt-7 rounded-[18px] bg-lumina-surface-soft p-4 text-[13px] text-lumina-text-muted">Loading settings…</p> : <>
+          <section className="mt-7 rounded-[18px] bg-lumina-surface-soft/75 p-4" aria-label="Public profile visibility">
+            <div className="flex items-start justify-between gap-3"><div className="min-w-0"><p className="text-[14px] font-medium">Public profile</p><p className="mt-1 text-[12px] leading-relaxed text-lumina-text-muted">{isVisible ? "Visible to clients in browse, search, and map." : activationStatus?.activation_ready ? "Ready to become visible when you choose." : "Hidden until activation and license verification are complete."}</p></div>
+              <button type="button" onClick={() => void updateVisibility()} disabled={visibilityLoading || (!isVisible && !activationStatus?.activation_ready)} aria-label="Professional profile visibility" aria-pressed={isVisible} className={`relative h-7 w-12 shrink-0 rounded-full transition disabled:opacity-50 ${isVisible ? "bg-lumina-black" : "bg-lumina-pearl"}`}><span className={`absolute top-1 h-5 w-5 rounded-full bg-lumina-surface transition ${isVisible ? "left-6" : "left-1"}`} /></button>
+            </div>
+            {!isVisible && !activationStatus?.activation_ready && <Link href="/dashboard/onboarding" className="mt-3 inline-block text-[12px] underline decoration-lumina-border underline-offset-4">Continue profile setup</Link>}
+          </section>
+          <section className="mt-7" aria-label="Account and security"><h2 className="text-[11px] font-semibold uppercase tracking-[0.14em] text-lumina-text-muted">Account &amp; security</h2><div className="mt-2 border-t border-lumina-border/70">
+            <MobileSettingsRow title="Email" detail={email} onClick={() => setMobileSheet("email")} />
+            <MobileSettingsRow title="Password & security" detail="Get a secure reset link" onClick={() => setMobileSheet("password")} />
+            <MobileSettingsRow title="Other signed-in devices" detail="Keep this device signed in" onClick={() => void signOutOtherDevices()} disabled={signingOutOthers} />
+          </div></section>
+          <section id="license-verification-mobile" className="mt-7 scroll-mt-24" aria-label="Professional verification"><h2 className="text-[11px] font-semibold uppercase tracking-[0.14em] text-lumina-text-muted">Professional verification</h2><div className="mt-2 border-t border-lumina-border/70"><MobileSettingsRow title="License verification" detail={verification ? professionalVerificationStatusLabels[verification.status] : "Not submitted"} onClick={() => setMobileSheet("verification")} /></div>
+            {verification?.status === "rejected" && verification.decision_message && <p className="mt-2 rounded-[14px] bg-lumina-attention-soft p-3 text-[12px] leading-relaxed text-lumina-text-muted">Needs correction: {verification.decision_message}</p>}
+          </section>
+          <Link href="/dashboard/profile" className="mt-7 inline-flex min-h-10 items-center text-[12px] text-lumina-text-muted underline decoration-lumina-border underline-offset-4">View and edit public profile</Link>
+          <button type="button" onClick={() => void signOut()} className="mt-5 min-h-11 w-full border-t border-lumina-border/70 pt-4 text-left text-[13px] text-lumina-text-muted">Sign out</button>
+        </>}
+      </section>
+
+      <MobileManagementSheet open={mobileSheet === "email"} title="Change email" busy={changingEmail} onClose={() => { setMobileSheet(null); setNewEmail(""); }}>
+        <label className="block text-[13px]">New email address<input type="email" value={newEmail} onChange={(event) => setNewEmail(event.target.value)} placeholder="name@example.com" className="mt-2 w-full rounded-[14px] border border-lumina-border px-4 py-3 text-[15px] outline-none focus:border-lumina-text-muted" /></label>
+        <p className="mt-2 text-[12px] text-lumina-text-muted">Your current email remains active until verification.</p>
+        <div className="mt-5 flex justify-end gap-2"><button type="button" onClick={() => { setMobileSheet(null); setNewEmail(""); }} className="min-h-11 rounded-full border border-lumina-border px-5 text-[13px]">Cancel</button><button type="button" onClick={() => void requestEmailChange()} disabled={changingEmail} className="min-h-11 rounded-full bg-lumina-black px-5 text-[13px] text-white disabled:opacity-50">{changingEmail ? "Sending…" : "Send verification"}</button></div>
+      </MobileManagementSheet>
+      <MobileManagementSheet open={mobileSheet === "password"} title="Password & security" onClose={() => setMobileSheet(null)}>
+        <p className="text-[13px] leading-relaxed text-lumina-text-muted">We’ll email a secure link to {email} to change your password.</p>
+        <button type="button" onClick={() => void sendPasswordReset()} disabled={sendingPasswordReset || !email} className="mt-5 min-h-11 w-full rounded-full bg-lumina-black px-5 text-[13px] text-white disabled:opacity-50">{sendingPasswordReset ? "Sending…" : "Send reset link"}</button>
+      </MobileManagementSheet>
+      <MobileManagementSheet open={mobileSheet === "verification"} title="License verification" busy={submittingVerification} onClose={closeVerificationEditor}>
+        <p className="text-[12px] leading-relaxed text-lumina-text-muted">Submit professional-license details for Lumina review. This does not verify identity, insurance, background, or service quality.</p>
+        {verification?.status === "rejected" && verification.decision_message && <p className="mt-3 rounded-[14px] bg-lumina-attention-soft p-3 text-[12px]">Needs correction: {verification.decision_message}</p>}
+        <div className="mt-4 space-y-3">
+          {([ ["legal_professional_name", "Legal / professional name"], ["license_number", "License number"], ["license_jurisdiction", "License jurisdiction / state"], ["license_type", "License type"], ["business_name", "Business name (optional)"] ] as const).map(([key, label]) => <label key={key} className="block text-[12px] text-lumina-text-muted">{label}<input value={verificationForm[key]} maxLength={key === "license_number" || key === "license_jurisdiction" ? 100 : key === "license_type" ? 120 : 160} autoComplete={key === "license_number" ? "off" : undefined} onChange={(event) => setVerificationForm((current) => ({ ...current, [key]: event.target.value }))} className="mt-2 w-full rounded-[14px] border border-lumina-border bg-lumina-surface px-4 py-3 text-[14px] text-lumina-text outline-none focus:border-lumina-text-muted" /></label>)}
+        </div>
+        {verification?.submitted_at && <p className="mt-3 text-[11px] text-lumina-text-muted">Last submitted {new Date(verification.submitted_at).toLocaleString()}</p>}
+        <div className="mt-5 flex justify-end gap-2"><button type="button" onClick={closeVerificationEditor} disabled={submittingVerification} className="min-h-11 rounded-full border border-lumina-border px-5 text-[13px]">Cancel</button><button type="button" onClick={() => void submitLicenseVerification()} disabled={submittingVerification} className="min-h-11 rounded-full bg-lumina-black px-5 text-[13px] text-white disabled:opacity-50">{submittingVerification ? "Submitting…" : onboardingMode ? "Submit and continue" : verification ? "Resubmit for review" : "Submit for review"}</button></div>
+      </MobileManagementSheet>
+
+      <section className="mx-auto hidden max-w-2xl px-5 py-10 md:px-10 md:py-14 lg:block">
         {onboardingMode && (
           <ProfessionalOnboardingContext
             step="license"
@@ -375,7 +449,7 @@ export default function ArtistSettingsPage() {
             </section>
 
             <section
-              id="license-verification"
+              id="license-verification-desktop"
               className="scroll-mt-24 rounded-[24px] border border-lumina-border p-5"
             >
               <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">

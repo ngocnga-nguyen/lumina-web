@@ -129,7 +129,8 @@ export default function HomePage() {
   useEffect(() => {
     const hash = window.location.hash;
     if (hash.includes("type=recovery")) {
-      router.replace(`/account/reset-password${hash}`);
+      const role = new URLSearchParams(window.location.search).get("role");
+      router.replace(`/account/reset-password${role === "professional" ? "?role=professional" : ""}${hash}`);
     }
   }, [router]);
 
