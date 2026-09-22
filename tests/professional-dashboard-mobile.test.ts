@@ -15,16 +15,16 @@ const workspaceContext = readSource(
   "../components/ProfessionalWorkspaceContext.tsx"
 );
 
-test("mobile dashboard is isolated below lg while desktop dashboard stays intact", () => {
+test("mobile dashboard remains isolated below lg while the desktop home is separate", () => {
   assert.match(dashboard, /<ProfessionalDashboardMobileSummary/);
   assert.match(dashboard, /<ProfessionalDashboardMobileWorkspace/);
-  assert.match(dashboard, /<div className="hidden lg:block">/);
+  assert.match(dashboard, /<ProfessionalDashboardDesktopHome/);
   assert.match(mobileHome, /lg:hidden/);
   assert.match(mobileHome, /portfolioEntryCount/);
   assert.match(mobileHome, /Manage services/);
   assert.match(
     dashboard,
-    /panelMode === "active"[\s\S]*mb-8 hidden[\s\S]*lg:flex/
+    /panelMode === "incomplete"[\s\S]*lg:hidden/
   );
 });
 
