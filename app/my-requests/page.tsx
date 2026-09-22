@@ -1444,46 +1444,6 @@ request.client_status !== "declined" && (
       >
         Decline
       </button>
-
-      {replyingToId === request.id && (
-        <div className="mt-2.5 rounded-[14px] bg-lumina-pearl/65 p-3">
-          <label
-            htmlFor={`different-time-${request.id}`}
-            className="text-[10px] font-medium text-lumina-text"
-          >
-            What timing would work better?
-          </label>
-          <textarea
-            id={`different-time-${request.id}`}
-            value={responseNotes[request.id] || ""}
-            onChange={(event) =>
-              setResponseNotes((current) => ({
-                ...current,
-                [request.id]: event.target.value,
-              }))
-            }
-            rows={3}
-            className="mt-2 w-full resize-none rounded-[12px] border border-lumina-border bg-lumina-surface px-3 py-2 text-[12px] text-lumina-text outline-none transition placeholder:text-lumina-text-muted focus:border-lumina-text-muted"
-            placeholder="Share a preferred day or time."
-          />
-          <div className="mt-2 flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => void sendDifferentTimeNote(request.id)}
-              className="min-h-9 rounded-full bg-lumina-black px-3.5 text-[10px] font-medium text-white"
-            >
-              Send request
-            </button>
-            <button
-              type="button"
-              onClick={() => setReplyingToId(null)}
-              className="min-h-9 px-2 text-[10px] text-lumina-text-muted"
-            >
-              Cancel
-            </button>
-          </div>
-        </div>
-      )}
     </div>
   )}
 
@@ -1495,6 +1455,19 @@ request.client_status !== "declined" && (
     >
       Confirm appointment <span className="ml-1 inline-block transition-transform duration-200 group-hover:translate-x-1">→</span>
     </button>
+    {request.client_status !== "needs_different_time" && (
+      <button
+        type="button"
+        onClick={() =>
+          setReplyingToId(replyingToId === request.id ? null : request.id)
+        }
+        aria-expanded={replyingToId === request.id}
+        aria-controls={`different-time-editor-${request.id}`}
+        className="rounded-full border border-lumina-border bg-lumina-surface px-5 py-2.5 text-[13px] text-lumina-text transition hover:bg-lumina-surface-soft"
+      >
+        Request different time
+      </button>
+    )}
     <button
       onClick={() => {
         setSelectedAction({
@@ -1508,6 +1481,45 @@ request.client_status !== "declined" && (
       Not Interested
     </button>
   </div>
+  {request.client_status !== "needs_different_time" && replyingToId === request.id && (
+    <div id={`different-time-editor-${request.id}`} className="mt-2.5 rounded-[14px] bg-lumina-pearl/65 p-3 lg:mt-4 lg:max-w-[640px] lg:p-4">
+      <label
+        htmlFor={`different-time-${request.id}`}
+        className="text-[10px] font-medium text-lumina-text lg:text-[13px]"
+      >
+        What timing would work better?
+      </label>
+      <textarea
+        id={`different-time-${request.id}`}
+        value={responseNotes[request.id] || ""}
+        onChange={(event) =>
+          setResponseNotes((current) => ({
+            ...current,
+            [request.id]: event.target.value,
+          }))
+        }
+        rows={3}
+        className="mt-2 w-full resize-none rounded-[12px] border border-lumina-border bg-lumina-surface px-3 py-2 text-[12px] text-lumina-text outline-none transition placeholder:text-lumina-text-muted focus:border-lumina-text-muted lg:text-[13px]"
+        placeholder="Share a preferred day or time."
+      />
+      <div className="mt-2 flex items-center gap-2">
+        <button
+          type="button"
+          onClick={() => void sendDifferentTimeNote(request.id)}
+          className="min-h-9 rounded-full bg-lumina-black px-3.5 text-[10px] font-medium text-white lg:text-[12px]"
+        >
+          Send request
+        </button>
+        <button
+          type="button"
+          onClick={() => setReplyingToId(null)}
+          className="min-h-9 px-2 text-[10px] text-lumina-text-muted lg:text-[12px]"
+        >
+          Cancel
+        </button>
+      </div>
+    </div>
+  )}
 </>
 )}
 {request.client_status === "confirmed" &&
