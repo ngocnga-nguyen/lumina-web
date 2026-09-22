@@ -102,8 +102,8 @@ export default function ProfessionalClientListControls({
         </div>
       </div>
 
-      <div className="hidden gap-3 sm:grid-cols-2 lg:grid lg:grid-cols-[minmax(280px,1fr)_230px_250px]">
-        <label className="relative sm:col-span-2 lg:col-span-1">
+      <div className="hidden gap-3 lg:grid lg:grid-cols-2 xl:grid-cols-[minmax(280px,1fr)_230px_250px]">
+        <label className="relative lg:col-span-2 xl:col-span-1">
           <span className="sr-only">Search clients or services</span>
           <Search
             aria-hidden="true"

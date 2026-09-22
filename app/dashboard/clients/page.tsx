@@ -231,16 +231,16 @@ export default function DashboardClientsPage() {
       <section className="mx-auto max-w-[1280px] px-5 py-6 md:px-10 md:py-9 lg:py-14">
         <div className="flex items-end justify-between gap-4">
         <div className="max-w-[720px]">
-          <p className="text-[12px] font-semibold uppercase tracking-[0.18em] text-lumina-text-muted">
-            Professional dashboard
+          <p className="text-[12px] font-semibold uppercase tracking-[0.18em] text-lumina-text-muted lg:text-[11px] lg:tracking-[0.16em]">
+            Professional workspace
           </p>
           <h1
-            className="mt-2 text-[34px] font-semibold leading-[1.04] lg:mt-3 lg:text-[56px] lg:leading-[1.02]"
+            className="mt-2 text-[34px] font-semibold leading-[1.04] lg:mt-1.5 lg:text-[36px] lg:leading-[1.1]"
             style={{ fontFamily: "Georgia, Times New Roman, serif" }}
           >
             Clients
           </h1>
-          <p className="mt-2.5 text-[14px] leading-[1.55] text-lumina-text-muted lg:mt-4 lg:text-[16px] lg:leading-[1.6]">
+          <p className="mt-2.5 text-[14px] leading-[1.55] text-lumina-text-muted lg:mt-2 lg:text-[13px] lg:leading-[1.6]">
             Keep Lumina-linked and off-platform client relationships organized in one private workspace.
           </p>
         </div>
@@ -277,7 +277,7 @@ export default function DashboardClientsPage() {
           />
         )}
 
-        <div className="mt-6 lg:mt-10">
+        <div className="mt-6 lg:mt-8">
           <div className="mb-2.5 flex items-center justify-between gap-4 lg:mb-4">
             <h2 className="text-[15px] font-medium lg:text-[18px]">
               {clientView === "active" ? "Active clients" : "Archived clients"}
@@ -336,82 +336,37 @@ export default function DashboardClientsPage() {
               />
 
               <div className="hidden lg:block">
-              <div className="hidden overflow-hidden rounded-[24px] border border-lumina-border xl:block">
-                <div role="region" aria-label="Client list" tabIndex={0} className="max-h-[65dvh] min-h-[220px] overflow-y-auto overscroll-contain focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-lumina-text-muted">
-                  <div className="sticky top-0 z-10 grid grid-cols-[minmax(180px,1.6fr)_minmax(140px,1.2fr)_minmax(110px,1fr)_minmax(160px,1.25fr)_80px] gap-5 border-b border-lumina-surface/15 bg-lumina-black/85 px-6 py-4 text-[11px] font-semibold uppercase tracking-[0.12em] text-lumina-pearl backdrop-blur-[12px]">
+                <div role="region" aria-label="Client list" tabIndex={0} className="max-h-[70dvh] min-h-[160px] overflow-y-auto overscroll-contain border-y border-lumina-border/70 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-lumina-text-muted">
+                  <div className="sticky top-0 z-10 hidden grid-cols-[minmax(0,1fr)_minmax(0,1.3fr)_minmax(105px,0.45fr)] gap-6 border-b border-lumina-border/70 bg-lumina-surface/95 px-5 py-3 text-[10px] font-semibold uppercase tracking-[0.13em] text-lumina-text-muted backdrop-blur-[8px] xl:grid">
                     <span>Client</span>
-                    <span>Last service</span>
-                    <span>Last visit</span>
-                    <span>Next appointment</span>
-                    <span>Visits</span>
+                    <span>Relationship</span>
+                    <span>History</span>
                   </div>
-
-                  <div className="divide-y divide-lumina-border">
+                  <div className="divide-y divide-lumina-border/60">
                     {visibleClients.map((client) => (
                       <div key={client.clientId} className="relative bg-lumina-surface">
                         <Link
                           href={`/dashboard/clients/${client.clientId}`}
                           aria-label={`Open ${client.name}'s client card`}
-                          className="grid grid-cols-[minmax(180px,1.6fr)_minmax(140px,1.2fr)_minmax(110px,1fr)_minmax(160px,1.25fr)_80px] items-center gap-5 bg-lumina-surface px-6 py-5 pr-[74px] transition hover:bg-lumina-surface-soft/70 focus-visible:relative focus-visible:z-[1] focus-visible:bg-lumina-blush/25 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-lumina-text-muted"
+                          className="grid min-h-[90px] grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] items-center gap-5 py-4 pl-2 pr-14 transition hover:bg-lumina-surface-soft/65 focus-visible:relative focus-visible:z-[1] focus-visible:bg-lumina-blush/20 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-lumina-text-muted xl:grid-cols-[minmax(0,1fr)_minmax(0,1.3fr)_minmax(105px,0.45fr)] xl:gap-6 xl:px-5 xl:pr-14"
                         >
                           <ClientIdentity client={client} />
-                          <p className="text-[14px] text-lumina-text">{client.lastService || "No completed visits yet"}</p>
-                          <p className="text-[14px] text-lumina-text">{formatProfessionalClientDate(client.lastVisit) || "—"}</p>
-                          <NextAppointment client={client} />
-                          <p className="text-[15px] font-medium">{client.totalCompletedVisits}</p>
+                          <ClientRelationship client={client} />
+                          <ClientHistory client={client} />
                         </Link>
-                        <div className="absolute right-4 top-1/2 z-[2] -translate-y-1/2">
+                        <div className="absolute right-2 top-1/2 z-[2] -translate-y-1/2 xl:right-3">
                           <ProfessionalClientRowMenu
                             clientName={client.name}
                             archived={!!client.archivedAt}
                             changing={changingClientId === client.clientId}
                             onOpen={() => router.push(`/dashboard/clients/${client.clientId}`)}
-                            onArchiveChange={(archived) =>
-                              changeArchiveState(client.clientId, archived)
-                            }
+                            onArchiveChange={(archived) => changeArchiveState(client.clientId, archived)}
                           />
                         </div>
                       </div>
                     ))}
                   </div>
                 </div>
-              </div>
-
-              <div role="region" aria-label="Client list" tabIndex={0} className="max-h-[70dvh] overflow-y-auto overscroll-contain pr-1 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-lumina-text-muted xl:hidden">
-                <div className="grid gap-3 sm:grid-cols-2">
-                  {visibleClients.map((client) => (
-                    <div key={client.clientId} className="relative">
-                      <Link
-                        href={`/dashboard/clients/${client.clientId}`}
-                        aria-label={`Open ${client.name}'s client card`}
-                        className="block rounded-[20px] border border-lumina-border bg-lumina-surface p-5 pr-14 transition hover:border-lumina-text-muted/40 hover:bg-lumina-surface-soft/55 focus-visible:bg-lumina-blush/25 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-lumina-text-muted"
-                      >
-                        <ClientIdentity client={client} />
-                        <dl className="mt-5 divide-y divide-lumina-border/65 border-t border-lumina-border/65">
-                          <ClientCardDetail label="Last service" value={client.lastService || "No completed visits yet"} />
-                          <ClientCardDetail label="Last visit" value={formatProfessionalClientDate(client.lastVisit) || "—"} />
-                          <div className="grid grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)] gap-4 py-3">
-                            <dt className="text-[10px] font-semibold uppercase tracking-[0.1em] text-lumina-text-muted">Next appointment</dt>
-                            <dd className="text-right"><NextAppointment client={client} compact /></dd>
-                          </div>
-                          <ClientCardDetail label="Completed visits" value={String(client.totalCompletedVisits)} />
-                        </dl>
-                      </Link>
-                      <div className="absolute right-3 top-3 z-[2]">
-                        <ProfessionalClientRowMenu
-                          clientName={client.name}
-                          archived={!!client.archivedAt}
-                          changing={changingClientId === client.clientId}
-                          onOpen={() => router.push(`/dashboard/clients/${client.clientId}`)}
-                          onArchiveChange={(archived) =>
-                            changeArchiveState(client.clientId, archived)
-                          }
-                        />
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
               </div>
             </>
           )}
@@ -449,24 +404,43 @@ function ClientIdentity({ client }: { client: ProfessionalClientSummary }) {
   );
 }
 
-function NextAppointment({ client, compact = false }: { client: ProfessionalClientSummary; compact?: boolean }) {
-  if (!client.nextAppointment) {
-    return <p className={`${compact ? "text-[12px]" : "text-[14px]"} text-lumina-text-muted`}>None scheduled</p>;
-  }
+function ClientRelationship({ client }: { client: ProfessionalClientSummary }) {
+  const label = client.nextAppointment
+    ? "Upcoming appointment"
+    : client.lastVisit
+      ? "Most recent service"
+      : client.newestRequestTimestamp
+        ? "Latest request"
+        : null;
+  const service = client.nextAppointment
+    ? client.nextAppointmentService
+    : client.lastVisit
+      ? client.lastService
+      : client.newestRequestService;
+  const date = client.nextAppointment
+    ? formatProfessionalClientDate(client.nextAppointment)
+    : client.lastVisit
+      ? formatProfessionalClientDate(client.lastVisit)
+      : client.newestRequestTimestamp
+        ? new Date(client.newestRequestTimestamp).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
+        : null;
 
   return (
-    <div>
-      <p className={`${compact ? "text-[12px]" : "text-[14px]"} font-medium text-lumina-text`}>{formatProfessionalClientDate(client.nextAppointment)}</p>
-      {client.nextAppointmentTime && <p className="mt-1 text-[12px] text-lumina-text-muted">{client.nextAppointmentTime}</p>}
+    <div className="min-w-0">
+      {label ? <p className="text-[10px] font-semibold uppercase tracking-[0.11em] text-lumina-text-muted">{label}</p> : null}
+      <p className={`mt-1 truncate text-[13px] leading-snug ${service ? "font-medium text-lumina-text" : "text-lumina-text-muted"}`}>
+        {service || (client.nextAppointment ? "Appointment" : client.lastVisit ? "Completed service" : "No activity yet")}
+      </p>
+      {date && <p className="mt-1 text-[11px] text-lumina-text-muted">{date}{client.nextAppointment && client.nextAppointmentTime ? ` · ${client.nextAppointmentTime}` : ""}</p>}
     </div>
   );
 }
 
-function ClientCardDetail({ label, value }: { label: string; value: string }) {
+function ClientHistory({ client }: { client: ProfessionalClientSummary }) {
+  if (client.totalCompletedVisits === 0) return <span className="hidden xl:block" />;
   return (
-    <div className="grid grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)] gap-4 py-3">
-      <dt className="text-[10px] font-semibold uppercase tracking-[0.1em] text-lumina-text-muted">{label}</dt>
-      <dd className="break-words text-right text-[12px] leading-[1.5] text-lumina-text">{value}</dd>
-    </div>
+    <p className="hidden text-[11px] text-lumina-text-muted xl:block">
+      <span className="text-[14px] font-medium text-lumina-text">{client.totalCompletedVisits}</span> completed {client.totalCompletedVisits === 1 ? "visit" : "visits"}
+    </p>
   );
 }

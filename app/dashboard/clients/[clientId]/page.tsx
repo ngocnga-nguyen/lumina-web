@@ -982,40 +982,60 @@ export default function ClientCardPage() {
 
         <div className="hidden lg:block">
         <BackToClients />
-        <div className="mt-7 rounded-[22px] border border-lumina-border/60 bg-lumina-surface/80 p-5 md:p-7">
-          <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
-            <div className="flex min-w-0 items-center gap-5">
-              <IdentityAvatar
-                name={clientName}
-                imageUrl={clientIdentity.avatarUrl}
-                className="flex h-20 w-20 shrink-0 rounded-full bg-lumina-pearl text-[24px] font-medium md:h-24 md:w-24"
-              />
-              <div className="min-w-0"><p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-lumina-text-muted">{card?.source === "manual" ? "Added manually" : "Client overview"}</p><h1 className="mt-2 break-words text-[36px] font-semibold leading-[1.08] font-serif md:text-[46px]">{clientName}</h1>{card?.source === "manual" && (card.manual_phone || card.manual_email) && <p className="mt-2 text-[12px] text-lumina-text-muted">{[card.manual_phone, card.manual_email].filter(Boolean).join(" · ")}</p>}</div>
-            </div>
-            <div className="grid gap-3 sm:grid-cols-3 lg:w-[620px]">
-              <OverviewStat label="Last appointment" value={latestManualService ? formatDate(latestManualService.service_date) : latestCompleted ? formatDate(getCompletedVisitDate(latestCompleted)) : "No visits yet"} detail={latestManualService?.service_name || (latestCompleted ? formatRequestServiceSummary(latestCompleted) : null)} />
-              <OverviewStat label="Next appointment" value={nextAppointment ? formatDate(getAppointmentDate(nextAppointment)) : "None scheduled"} detail={nextAppointment ? formatTime(getAppointmentTime(nextAppointment)) : null} />
-              <OverviewStat label="Completed visits" value={String(completedVisitCount)} detail={card?.source === "manual" ? "Off-platform history" : completedVisitCount === 1 ? "Lumina visit" : "Lumina visits"} />
+        <header className="mt-6 flex flex-col gap-5 border-b border-lumina-border/70 pb-6 xl:flex-row xl:items-center xl:justify-between">
+          <div className="flex min-w-0 items-center gap-4">
+            <IdentityAvatar
+              name={clientName}
+              imageUrl={clientIdentity.avatarUrl}
+              className="flex h-[68px] w-[68px] shrink-0 rounded-full bg-lumina-pearl text-[21px] font-medium"
+            />
+            <div className="min-w-0">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-lumina-text-muted">{card?.source === "manual" ? "Added manually" : "Lumina client"}</p>
+              <h1 className="mt-1 break-words font-serif text-[32px] font-semibold leading-[1.1] xl:text-[36px]">{clientName}</h1>
             </div>
           </div>
-        </div>
+          {card?.source !== "manual" && relevantRequest && (
+            <div className="flex shrink-0 flex-wrap items-center gap-2.5">
+              <Link href={messageHref} className="inline-flex min-h-10 items-center gap-2 rounded-full bg-lumina-black px-4 text-[12px] font-medium text-white transition hover:bg-lumina-text focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-lumina-text">
+                <MessageCircle size={14} aria-hidden="true" /> Message client
+              </Link>
+              <Link href={requestWorkspaceHref} className="inline-flex min-h-10 items-center rounded-full border border-lumina-border px-4 text-[12px] font-medium transition hover:bg-lumina-surface-soft focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-lumina-text">
+                View requests
+              </Link>
+            </div>
+          )}
+        </header>
 
-        <ClientTagEditor instanceId="desktop-client-tags" tags={tags} saving={savingTags} onChange={updateTags} />
+        <section className="mt-5 flex flex-wrap items-start justify-between gap-x-8 gap-y-3 border-b border-lumina-border/70 pb-5" aria-label="Client relationship summary">
+          <div className="flex min-w-0 items-start gap-3">
+            <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-lumina-blush/35">
+              {nextAppointment ? <CalendarDays size={17} aria-hidden="true" /> : <History size={17} aria-hidden="true" />}
+            </span>
+            <div className="min-w-0">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-lumina-text-muted">{nextAppointment ? "Next appointment" : latestCompleted || latestManualService ? "Most recent service" : "Relationship history"}</p>
+              <p className="mt-1 text-[15px] font-medium leading-snug">{nextAppointment ? formatRequestServiceSummary(nextAppointment) || "Appointment" : latestManualService?.service_name || (latestCompleted ? formatRequestServiceSummary(latestCompleted) : null) || "No completed services yet"}</p>
+              {(nextAppointment || latestCompleted || latestManualService) && <p className="mt-1 text-[12px] text-lumina-text-muted">{nextAppointment ? formatDate(getAppointmentDate(nextAppointment)) : formatDate(latestManualService?.service_date || (latestCompleted ? getCompletedVisitDate(latestCompleted) : null))}{nextAppointment && formatTime(getAppointmentTime(nextAppointment)) ? ` · ${formatTime(getAppointmentTime(nextAppointment))}` : ""}</p>}
+            </div>
+          </div>
+          {completedVisitCount > 0 && <p className="text-[12px] text-lumina-text-muted"><span className="font-medium text-lumina-text">{completedVisitCount}</span> completed {completedVisitCount === 1 ? "visit" : "visits"}</p>}
+        </section>
+
+        <ClientTagEditor instanceId="desktop-client-tags" tags={tags} saving={savingTags} onChange={updateTags} compact />
         <p aria-live="polite" className={`mt-2 min-h-4 text-[11px] ${tagSaveMessage.includes("couldn't") ? "text-lumina-attention" : "text-lumina-text-muted"}`}>{tagSaveMessage}</p>
-        {card?.source === "manual" && <div className="mt-4 flex items-start justify-between gap-4 border-y border-lumina-border/55 py-4"><div><p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-lumina-text-muted">Private contact</p>{editingManualIdentity ? <ManualIdentityEditor draft={manualIdentityDraft} message={manualIdentityMessage} onChange={setManualIdentityDraft} onSave={() => void saveManualIdentity()} /> : <p className="mt-2 text-[13px] text-lumina-text">{[card.manual_phone, card.manual_email].filter(Boolean).join(" · ") || "No private contact details saved."}</p>}</div><div className="flex items-center gap-3"><button type="button" onClick={() => setEditingManualIdentity((current) => !current)} className="min-h-9 text-[11px] text-lumina-text-muted underline decoration-lumina-border underline-offset-4">{editingManualIdentity ? "Cancel" : "Edit contact"}</button><button type="button" onClick={() => void changeCardArchiveState()} className="min-h-9 text-[11px] text-lumina-text-muted underline decoration-lumina-border underline-offset-4">{card.archived_at ? "Restore client" : "Archive client"}</button></div></div>}
+        {card?.source === "manual" && <div className="flex items-start justify-between gap-4 border-b border-lumina-border/55 py-4"><div><p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-lumina-text-muted">Private contact</p>{editingManualIdentity ? <ManualIdentityEditor draft={manualIdentityDraft} message={manualIdentityMessage} onChange={setManualIdentityDraft} onSave={() => void saveManualIdentity()} /> : <p className="mt-2 text-[13px] text-lumina-text">{[card.manual_phone, card.manual_email].filter(Boolean).join(" · ") || "No private contact details saved."}</p>}</div><div className="flex items-center gap-3"><button type="button" onClick={() => setEditingManualIdentity((current) => !current)} className="min-h-9 text-[11px] text-lumina-text-muted underline decoration-lumina-border underline-offset-4">{editingManualIdentity ? "Cancel" : "Edit contact"}</button><button type="button" onClick={() => void changeCardArchiveState()} className="min-h-9 text-[11px] text-lumina-text-muted underline decoration-lumina-border underline-offset-4">{card.archived_at ? "Restore client" : "Archive client"}</button></div></div>}
 
-        <div className="mt-6 flex flex-wrap items-end justify-between gap-3">
+        <div className="mt-7 flex flex-wrap items-end justify-between gap-3">
           <div>
-            <h2 className="text-[19px] font-semibold text-lumina-text">Client workspace</h2>
+            <h2 className="font-serif text-[24px] font-semibold text-lumina-text">Client workspace</h2>
             <p className="mt-1 text-[12px] text-lumina-text-muted">History, visual results, and private service context in one place.</p>
           </div>
           <button type="button" onClick={() => setCustomizingWorkspace(true)} className="inline-flex min-h-10 items-center gap-2 rounded-full border border-lumina-border bg-lumina-surface px-4 text-[12px] font-medium text-lumina-text transition hover:bg-lumina-surface-soft focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-lumina-text"><Settings2 size={15} aria-hidden="true" /> Customize workspace</button>
         </div>
-        <div className="mt-4 grid gap-4 min-[1360px]:grid-cols-[minmax(0,1.55fr)_minmax(300px,0.75fr)] min-[1360px]:items-start min-[1360px]:gap-5">
-          <div className="min-w-0 space-y-4" aria-label="Primary client workspace modules">
+        <div className="mt-4 grid gap-6 min-[1360px]:grid-cols-[minmax(0,1.55fr)_minmax(300px,0.75fr)] min-[1360px]:items-start min-[1360px]:gap-7">
+          <div className="min-w-0" aria-label="Primary client workspace modules">
             {primarySections.map((section) => renderSection(section))}
           </div>
-          <aside className="min-w-0 space-y-4" aria-label="Supporting client workspace modules">
+          <aside className="min-w-0" aria-label="Supporting client workspace modules">
             {supportingSections.map((section) => renderSection(section))}
           </aside>
         </div>
@@ -1088,10 +1108,6 @@ function MobilePreviewBlock({ title, value, empty, actionLabel, onOpen }: { titl
 
 function PageMessage({ message, showBack = false }: { message: string; showBack?: boolean }) {
   return <div className="bg-lumina-surface text-lumina-text"><section className="mx-auto max-w-[1280px] px-5 py-10 md:px-10 md:py-14">{showBack && <BackToClients />}<div className={`${showBack ? "mt-8" : ""} rounded-[22px] bg-lumina-surface-soft p-6 text-[14px] text-lumina-text-muted`}>{message}</div></section></div>;
-}
-
-function OverviewStat({ label, value, detail }: { label: string; value: string; detail: string | null }) {
-  return <div className="border-l border-lumina-border/70 py-1 pl-4"><p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-lumina-text-muted">{label}</p><p className="mt-1.5 text-[15px] font-medium">{value}</p>{detail && <p className="mt-1 truncate text-[12px] text-lumina-text-muted">{detail}</p>}</div>;
 }
 
 function HistoryField({ label, children, mobile = false }: { label: string; children: React.ReactNode; mobile?: boolean }) {

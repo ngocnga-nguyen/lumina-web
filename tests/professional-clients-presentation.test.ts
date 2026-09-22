@@ -7,25 +7,26 @@ const clientsPage = readFileSync(
   "utf8"
 );
 
-test("desktop client rows scroll below a sticky dark-glass header", () => {
-  assert.match(clientsPage, /max-h-\[65dvh\][\s\S]*overflow-y-auto/);
+test("desktop client rows use one restrained responsive relationship list", () => {
+  assert.match(clientsPage, /max-h-\[70dvh\][\s\S]*overflow-y-auto/);
   assert.match(clientsPage, /sticky top-0 z-10/);
-  assert.match(clientsPage, /bg-lumina-black\/85/);
-  assert.match(clientsPage, /text-lumina-pearl/);
-  assert.match(clientsPage, /backdrop-blur-\[12px\]/);
+  assert.match(clientsPage, /bg-lumina-surface\/95/);
+  assert.doesNotMatch(clientsPage, /bg-lumina-black\/85/);
 });
 
-test("desktop table and compact card list use separate responsive presentations", () => {
-  assert.match(clientsPage, /hidden overflow-hidden rounded-\[24px\][\s\S]*xl:block/);
-  assert.match(clientsPage, /sm:grid-cols-2/);
-  assert.match(clientsPage, /xl:hidden/);
-  assert.match(clientsPage, /ClientCardDetail label="Last service"/);
-  assert.match(clientsPage, /ClientCardDetail label="Completed visits"/);
+test("client identity and useful relationship context outrank visit counts", () => {
+  assert.match(clientsPage, /<ClientIdentity client=\{client\} \/>/);
+  assert.match(clientsPage, /<ClientRelationship client=\{client\} \/>/);
+  assert.match(clientsPage, /<ClientHistory client=\{client\} \/>/);
+  assert.match(clientsPage, /Upcoming appointment/);
+  assert.match(clientsPage, /Most recent service/);
+  assert.match(clientsPage, /Latest request/);
+  assert.match(clientsPage, /client\.totalCompletedVisits === 0/);
 });
 
-test("both presentations preserve the existing Client Card destination", () => {
+test("desktop presentation preserves the existing Client Card destination", () => {
   const links = clientsPage.match(/href=\{`\/dashboard\/clients\/\$\{client\.clientId\}`\}/g) || [];
-  assert.equal(links.length, 2);
+  assert.equal(links.length, 1);
   assert.doesNotMatch(clientsPage, /visibleClients\.slice/);
 });
 

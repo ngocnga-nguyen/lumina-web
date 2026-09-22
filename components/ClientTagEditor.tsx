@@ -9,9 +9,10 @@ type ClientTagEditorProps = {
   saving: boolean;
   onChange: (tags: string[]) => Promise<boolean>;
   instanceId?: string;
+  compact?: boolean;
 };
 
-export default function ClientTagEditor({ tags, saving, onChange, instanceId = "client-tags" }: ClientTagEditorProps) {
+export default function ClientTagEditor({ tags, saving, onChange, instanceId = "client-tags", compact = false }: ClientTagEditorProps) {
   const [draft, setDraft] = useState("");
   const [message, setMessage] = useState("");
 
@@ -26,17 +27,17 @@ export default function ClientTagEditor({ tags, saving, onChange, instanceId = "
   };
 
   return (
-    <section aria-labelledby={`${instanceId}-title`} className="mt-4 border-y border-lumina-border/65 px-1 py-3.5">
+    <section aria-labelledby={`${instanceId}-title`} className={compact ? "mt-1 border-b border-lumina-border/65 px-1 py-3" : "mt-4 border-y border-lumina-border/65 px-1 py-3.5"}>
       <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
         <div>
-          <h2 id={`${instanceId}-title`} className="text-[15px] font-semibold text-lumina-text">
+          <h2 id={`${instanceId}-title`} className={compact ? "text-[12px] font-medium text-lumina-text-muted" : "text-[15px] font-semibold text-lumina-text"}>
             Client tags
           </h2>
-          <p className="mt-0.5 max-w-[620px] text-[11px] leading-[1.5] text-lumina-text-muted">
+          <p className={`mt-0.5 max-w-[620px] text-[11px] leading-[1.5] text-lumina-text-muted ${compact ? "hidden" : ""}`}>
             Private labels for service preferences or workflow organization. Do not use them for diagnoses or sensitive medical information.
           </p>
         </div>
-        <div className="flex w-full gap-2 sm:max-w-[340px]">
+        <div className={`flex w-full gap-2 ${compact ? "sm:max-w-[270px]" : "sm:max-w-[340px]"}`}>
           <input
             value={draft}
             onChange={(event) => {
@@ -52,7 +53,7 @@ export default function ClientTagEditor({ tags, saving, onChange, instanceId = "
             maxLength={CLIENT_CARD_TAG_MAX_LENGTH}
             placeholder="Add a client tag"
             aria-label="New client tag"
-            className="min-w-0 flex-1 rounded-full border border-lumina-border bg-lumina-surface px-4 py-2.5 text-[13px] text-lumina-text outline-none placeholder:text-lumina-text-muted/75 focus:border-lumina-text-muted"
+            className={`min-w-0 flex-1 rounded-full border border-lumina-border bg-lumina-surface px-4 text-[13px] text-lumina-text outline-none placeholder:text-lumina-text-muted/75 focus:border-lumina-text-muted ${compact ? "py-2" : "py-2.5"}`}
           />
           <button
             type="button"
@@ -67,7 +68,7 @@ export default function ClientTagEditor({ tags, saving, onChange, instanceId = "
       </div>
 
       {tags.length > 0 ? (
-        <div className="mt-3 flex flex-wrap gap-2">
+        <div className={`${compact ? "mt-2" : "mt-3"} flex flex-wrap gap-2`}>
           {tags.map((tag) => (
             <span key={tag.toLocaleLowerCase()} className="inline-flex items-center gap-2 rounded-full border border-lumina-border bg-lumina-surface/90 py-1.5 pl-3 pr-2 text-[12px] text-lumina-text">
               {tag}
