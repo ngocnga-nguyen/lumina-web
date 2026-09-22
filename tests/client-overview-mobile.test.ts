@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
+import { getClientFirstName } from "../lib/client-overview-name.ts";
 
 function readSource(path: string) {
   return readFileSync(new URL(path, import.meta.url), "utf8");
@@ -9,6 +10,9 @@ function readSource(path: string) {
 const overviewPage = readSource("../app/client/page.tsx");
 const mobileOverview = readSource(
   "../components/ClientOverviewMobileHome.tsx"
+);
+const desktopOverview = readSource(
+  "../components/ClientOverviewDesktopHome.tsx"
 );
 const onboarding = readSource("../components/ClientOnboardingWelcome.tsx");
 const shell = readSource("../components/ClientWorkspaceShell.tsx");
@@ -32,10 +36,30 @@ test("mobile overview preserves the approved information order", () => {
 
 test("mobile and desktop overview presentations stay breakpoint-isolated", () => {
   assert.match(overviewPage, /<ClientOverviewMobileHome/);
-  assert.match(overviewPage, /<div className="hidden lg:block">/);
+  assert.match(overviewPage, /<ClientOverviewDesktopHome/);
+  assert.match(desktopOverview, /hidden max-w-\[1240px\].*lg:block/);
   assert.match(mobileOverview, /lg:hidden/);
   assert.match(mobileOverview, /Nothing confirmed yet/);
   assert.match(mobileOverview, /View request/);
+});
+
+test("mobile first name handles whitespace without retaining a second name", () => {
+  assert.equal(getClientFirstName("Nga Setting"), "Nga");
+  assert.equal(getClientFirstName("  Nga   Setting  "), "Nga");
+  assert.equal(getClientFirstName(""), "");
+  assert.match(mobileOverview, /getClientFirstName\(clientName\)/);
+});
+
+test("desktop prioritizes next up, compact activity, recent requests, then browse", () => {
+  const nextUp = desktopOverview.indexOf("Next up");
+  const activity = desktopOverview.indexOf("Client activity summary");
+  const recent = desktopOverview.indexOf("Recent requests");
+  const browse = desktopOverview.lastIndexOf("Browse professionals");
+  assert.ok(nextUp >= 0 && activity > nextUp && recent > activity && browse > recent);
+  assert.match(desktopOverview, /nextRequest \? \(/);
+  assert.match(desktopOverview, /Nothing confirmed yet/);
+  assert.match(desktopOverview, /reviewReadyCount/);
+  assert.doesNotMatch(desktopOverview, /supabase|useWorkspaceActionCounts/);
 });
 
 test("review-ready metric reuses the shell-owned authoritative count", () => {
@@ -60,6 +84,8 @@ test("recent requests and metrics reuse existing overview data", () => {
   assert.match(overviewPage, /activeRequestCount=\{activeRequests\.length\}/);
   assert.match(overviewPage, /savedCount=\{savedCount\}/);
   assert.match(overviewPage, /recentRequests=\{mobileRecentRequests\}/);
+  assert.match(overviewPage, /dateLabel: formatDate\(recentRequests\[index\]\.created_at\)/);
+  assert.match(overviewPage, /recentRequests=\{desktopRecentRequests\}/);
   assert.match(mobileOverview, /recentRequests\.map/);
   assert.match(mobileOverview, /grid grid-cols-3/);
 });

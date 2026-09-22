@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import ClientOnboardingWelcome from "@/components/ClientOnboardingWelcome";
 import { useClientWorkspace } from "@/components/ClientWorkspaceContext";
+import { getClientFirstName } from "@/lib/client-overview-name";
 
 export type ClientOverviewRequestItem = {
   id: string;
@@ -59,7 +60,7 @@ export default function ClientOverviewMobileHome({
   onRetry,
 }: ClientOverviewMobileHomeProps) {
   const { reviewReadyCount } = useClientWorkspace();
-  const firstName = clientName.trim().split(/s+/)[0];
+  const firstName = getClientFirstName(clientName);
   const metrics = [
     {
       label: "Active",
