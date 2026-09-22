@@ -127,7 +127,8 @@ test("mobile presentation routes to the shared inbox and mounts no realtime clie
   );
 
   assert.match(page, /lg:order-none/);
-  assert.match(page, /hidden cursor-pointer[\s\S]*lg:flex/);
+  assert.match(page, /<ProfessionalRequestMobileSummary/);
+  assert.match(page, /className="hidden lg:block"/);
   assert.match(summary, /className="lg:hidden"/);
   assert.match(summary, /\/dashboard\/messages\?request=/);
   assert.match(summary, /Message client/);

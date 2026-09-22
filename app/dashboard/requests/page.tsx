@@ -30,6 +30,7 @@ import {
   getCompletionState,
   getCompletionStateLabel,
   getProfessionalRequestAction,
+  isConfirmedUpcomingRequest,
   type AppointmentExceptionReason,
   type CompletionResponse,
 } from "@/lib/request-completion";
@@ -698,14 +699,6 @@ const reportBookingLiteException = async (
   await fetchRequests();
 };
 
-  const statusLabel = (status: string | null) => {
-    if (!status || status === "new") return "New";
-    if (status === "accepted") return "Proposal Sent";
-    if (status === "needs_changes") return "Needs Changes";
-    if (status === "declined") return "Declined";
-    return status;
-  };
-
 const setRequestHidden = async (id: string, hidden: boolean) => {
   const confirmed = window.confirm(
     hidden
@@ -1022,17 +1015,17 @@ const deleteMessage = async (messageId: string) => {
         </div>
 
         <h1
-          className="hidden text-[56px] font-semibold leading-[1.02] lg:block"
+          className="hidden text-[38px] font-semibold leading-[1.08] lg:block"
           style={{ fontFamily: "Georgia, Times New Roman, serif" }}
         >
           Requests
         </h1>
 
-        <p className="mt-4 hidden max-w-[680px] text-[16px] leading-[1.6] text-lumina-text-muted lg:block">
+        <p className="mt-2 hidden max-w-[680px] text-[14px] leading-[1.55] text-lumina-text-muted lg:block">
           Manage client inquiries, send proposals, and follow up.
         </p>
-        <div className="mt-4 lg:mt-6">
-          <p className="mb-3 hidden text-[14px] text-lumina-text-muted lg:block">
+        <div className="mt-4 lg:mt-5">
+          <p className="mb-2 hidden text-[12px] text-lumina-text-muted lg:block">
             {visibleRequests.length} request{visibleRequests.length !== 1 ? "s" : ""}
           </p>
           <div className="relative max-w-[520px]">
@@ -1072,7 +1065,7 @@ const deleteMessage = async (messageId: string) => {
             </div>
           )}
         </div>
-        <div className="mt-5 flex flex-col gap-3 lg:mt-10 lg:gap-5">
+        <div className="mt-5 flex flex-col gap-3 lg:mt-6 lg:gap-3">
           {visibleRequests.length === 0 ? (
             <div className="rounded-[18px] border border-lumina-border bg-lumina-surface p-4 lg:rounded-[24px] lg:p-6">
               <h2 className="text-[15px] font-medium text-lumina-text lg:text-[16px]">
@@ -1126,6 +1119,24 @@ const deleteMessage = async (messageId: string) => {
 	    request.proposed_date || request.preferred_date,
 	    request.proposed_time || request.preferred_time
 	  );
+	  const desktopIsConfirmed = isConfirmedUpcomingRequest(request);
+	  const desktopStatusLabel = desktopIsConfirmed ? "Confirmed" : mobileStatus.label;
+	  const desktopStatusTone = desktopIsConfirmed ? "confirmed" : mobileStatus.tone;
+	  const desktopTimingKind =
+	    request.client_status === "confirmed" || request.booking_status === "completed"
+	      ? "Appointment"
+	      : request.status === "accepted" || request.status === "needs_changes"
+	      ? "Proposed"
+	      : "Requested";
+	  const desktopTiming = formatMobileRequestSchedule(
+	    desktopTimingKind === "Appointment" ? request.scheduled_for : null,
+	    desktopTimingKind === "Requested" ? request.preferred_date : request.proposed_date,
+	    desktopTimingKind === "Requested" ? request.preferred_time : request.proposed_time
+	  );
+	  const desktopNeedsAction =
+	    requestView === "active" &&
+	    !desktopIsConfirmed &&
+	    (mobileStatus.tone === "attention" || mobileStatus.tone === "action");
 	  const mobileMessagePreview =
 	    latestUpdate &&
 	    (latestUpdate.message?.trim() || latestUpdate.image_url)
@@ -1143,12 +1154,12 @@ const deleteMessage = async (messageId: string) => {
 	  ref={(el) => {
 	    requestRefs.current[request.id] = el;
 	  }}
-	  className={`${mobilePriorityClass} rounded-[18px] border p-3.5 transition-all duration-300 lg:order-none lg:rounded-[24px] lg:border-lumina-border lg:p-6 lg:duration-700 ${
+	  className={`${mobilePriorityClass} rounded-[18px] border p-3.5 transition-all duration-300 lg:order-none lg:rounded-[18px] lg:p-4 lg:duration-300 ${
 	    highlightedRequestId === request.id
-	      ? "border-lumina-blush bg-lumina-blush/10 ring-1 ring-lumina-blush/60 lg:bg-lumina-surface lg:ring-2 lg:ring-lumina-attention/25"
+	      ? "border-lumina-blush bg-lumina-blush/10 ring-1 ring-lumina-blush/60 lg:bg-lumina-surface lg:ring-1 lg:ring-lumina-attention/25"
 	      : mobileStatus.tone === "attention" || mobileStatus.tone === "action"
-	      ? "border-lumina-blush/75 bg-lumina-surface lg:bg-transparent"
-	      : "border-lumina-border/70 bg-lumina-surface lg:bg-transparent"
+	      ? `border-lumina-blush/75 bg-lumina-surface ${desktopNeedsAction ? "lg:border-lumina-blush/60 lg:bg-lumina-blush/[0.035]" : "lg:border-lumina-border/65 lg:bg-lumina-surface"}`
+	      : "border-lumina-border/70 bg-lumina-surface lg:border-lumina-border/65 lg:bg-lumina-surface"
 	  }`}
 >
 	                <ProfessionalRequestMobileSummary
@@ -1183,122 +1194,52 @@ const deleteMessage = async (messageId: string) => {
 	                    setRequestHidden(request.id, requestView !== "archived")
 	                  }
 	                />
-	                <div
-	  onClick={toggleRequestDetails}
-	  className="hidden cursor-pointer flex-col gap-2 lg:flex lg:flex-row lg:items-start lg:justify-between"
->
-                  <div>
-                    <div className="flex flex-wrap items-center gap-3">
-                      <h2 className="text-[22px] font-medium">
-                        {request.client_name}
-                      </h2>
-
-                      <span
-  className={`rounded-full px-3 py-1 text-[12px] ${
-    completionState === "completed"
-      ? "bg-lumina-pearl text-lumina-text-muted"
-      : completionState === "needs_attention"
-      ? "bg-lumina-attention-soft text-lumina-attention"
-      : completionState === "completion_pending" ||
-        completionState === "awaiting_confirmation" ||
-        completionState === "booked" ||
-        completionState === "review_ready"
-      ? "bg-lumina-pearl text-lumina-text"
-      : request.status === "accepted"
-      ? "bg-lumina-success-soft text-lumina-success"
-      : request.status === "needs_changes"
-      ? "bg-lumina-attention-soft text-lumina-attention"
-      : request.status === "declined"
-      ? "bg-lumina-pearl text-lumina-text-muted"
-      : "bg-lumina-pearl text-lumina-text-muted"
-  }`}
->
-  {showCompletionState
-    ? getCompletionStateLabel(completionState)
-    : statusLabel(request.status)}
-</span>
-
-{request.client_status && request.client_status !== "pending" && (
-    <span
-  className={`rounded-full px-3 py-1 text-[12px] ${
-    request.client_status === "confirmed"
-      ? "bg-lumina-success-soft text-lumina-success"
-      : request.client_status === "needs_different_time"
-      ? "bg-lumina-attention-soft text-lumina-attention"
-      : "bg-lumina-pearl text-lumina-text-muted"
-  }`}
->
-  {request.client_status === "confirmed"
-    ? "Confirmed"
-    : request.client_status === "needs_different_time"
-    ? "Needs New Time"
-    : "Declined"}
-</span>
-)}
+	                <div className="hidden lg:block">
+                    <div className="flex flex-col gap-3 xl:flex-row xl:items-start xl:justify-between">
+                      <div className="flex min-w-0 items-start gap-3">
+                        <IdentityAvatar name={request.client_name || "Client"} imageUrl={request.client_image_url || null} className="h-11 w-11 shrink-0 rounded-full" fallbackClassName="bg-lumina-pearl text-[13px] font-medium text-lumina-text" />
+                        <div className="min-w-0">
+                          <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                            <h2 className="truncate text-[17px] font-medium text-lumina-text">{request.client_name || "Client"}</h2>
+                            <span className={`rounded-full px-2.5 py-1 text-[11px] font-medium ${desktopStatusTone === "attention" || desktopStatusTone === "action" ? "bg-lumina-blush/35 text-lumina-text" : "bg-lumina-pearl/70 text-lumina-text-muted"}`}>
+                              {desktopStatusLabel}
+                            </span>
+                          </div>
+                          <p className="mt-0.5 truncate text-[13px] text-lumina-text-muted">{requestedServiceNames.join(" · ") || "Service request"}</p>
+                          <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-[12px] text-lumina-text-muted">
+                            {desktopTiming && <span><span className="text-lumina-text-muted/70">{desktopTimingKind} · </span>{desktopTiming}</span>}
+                            {request.proposed_price != null && <span>Final total · ${request.proposed_price}</span>}
+                            {unreadMessages > 0 && <span className="font-medium text-lumina-text">{unreadMessages} unread message{unreadMessages === 1 ? "" : "s"}</span>}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex shrink-0 flex-wrap items-center gap-2 pl-[56px] xl:pl-0">
+                        {mobileStatus.action && !desktopIsConfirmed && (
+                          <button type="button" onClick={() => {
+                            if (mobileStatus.action?.kind === "complete") void submitArtistCompletionResponse(request, "confirmed");
+                            else toggleRequestDetails();
+                          }} className="min-h-9 rounded-full bg-lumina-black px-4 text-[12px] font-medium text-white transition hover:opacity-85">
+                            {mobileStatus.action.label}
+                          </button>
+                        )}
+                        {updates[request.id]?.length > 0 && (
+                          <button type="button" aria-label="Open conversation" onClick={() => {
+                            setChatRequest(request);
+                            setDraftMessage("");
+                            markMessagesRead(request.id);
+                          }} className="relative flex h-9 w-9 items-center justify-center rounded-full border border-lumina-border/70 text-lumina-text-muted transition hover:text-lumina-text">
+                            <MessageCircle size={16} strokeWidth={1.7} />
+                            {unreadMessages > 0 && <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-lumina-black px-1 text-[9px] text-white">{unreadMessages}</span>}
+                          </button>
+                        )}
+                        <button type="button" onClick={toggleRequestDetails} aria-expanded={expandedRequestId === request.id} aria-controls={`professional-request-details-${request.id}`} className="min-h-9 rounded-full border border-lumina-border/70 px-3 text-[12px] text-lumina-text-muted transition hover:text-lumina-text">
+                          {expandedRequestId === request.id ? "Hide details" : "View details"}
+                        </button>
+                        <button type="button" onClick={() => setRequestHidden(request.id, requestView !== "archived")} className="min-h-9 px-2 text-[11px] text-lumina-text-muted transition hover:text-lumina-text">
+                          {requestView === "archived" ? "Restore" : "Archive"}
+                        </button>
+                      </div>
                     </div>
-<p className="mt-1 text-[14px] text-lumina-text-muted">
-  {request.client_contact}
-</p>
-                  </div>
-
-                  <div className="flex items-center gap-3">
-  {updates[request.id]?.length > 0 && (
-  <button
-  onClick={(e) => {
-    e.stopPropagation();
-    setChatRequest(request);
-    setDraftMessage("");
-    markMessagesRead(request.id);
-  }}
-  className="relative flex h-10 w-10 items-center justify-center rounded-full border border-lumina-border bg-lumina-surface text-lumina-text transition hover:bg-lumina-surface-soft hover:text-lumina-text"
->
-  <MessageCircle size={17} strokeWidth={1.8} />
-
-  {unreadMessages > 0 && (
-    <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-lumina-black px-1 text-[10px] font-medium text-white">
-      {unreadMessages}
-    </span>
-  )}
-</button>
-)}
-{(canRespondToCompletion || canMarkBookingLiteComplete) && (
-  <div className="flex flex-wrap items-center gap-2">
-    <button
-      onClick={(e) => {
-        e.stopPropagation();
-        void submitArtistCompletionResponse(request, "confirmed");
-      }}
-      className="rounded-full bg-lumina-black px-4 py-2 text-[12px] font-medium text-white transition hover:opacity-85"
-    >
-      Mark service completed
-    </button>
-    {request.completion_protocol_version !== 3 && (
-      <button
-        onClick={(e) => {
-          e.stopPropagation();
-          void submitArtistCompletionResponse(request, "disputed");
-        }}
-        className="rounded-full border border-lumina-border px-4 py-2 text-[12px] text-lumina-text-muted transition hover:border-lumina-text-muted/35 hover:text-lumina-text"
-      >
-        Service did not occur
-      </button>
-    )}
-  </div>
-)}
-  <button
-    onClick={(e) => {
-      e.stopPropagation();
-      setRequestHidden(request.id, requestView !== "archived");
-    }}
-    className="rounded-full border border-lumina-border px-3 py-1 text-[12px] text-lumina-text-muted transition hover:text-lumina-text"
-  >
-    {requestView === "archived" ? "Restore" : "Archive"}
-  </button>
-
-  <span className="text-[15px] text-lumina-text-muted">
-    {expandedRequestId === request.id ? "⌃" : "⌄"}
-  </span>
-</div>
                 </div>
 <div
 	  id={`professional-request-details-${request.id}`}
@@ -1308,8 +1249,8 @@ const deleteMessage = async (messageId: string) => {
       : "max-h-0 opacity-0"
   }`}
 >
-                <div className="mt-4 grid grid-cols-1 gap-2.5 md:grid-cols-3 lg:mt-6 lg:gap-4">
-  <div className="flex items-center gap-3 rounded-[16px] bg-lumina-surface-soft p-3.5 lg:gap-4 lg:rounded-[20px] lg:p-5">
+                <div className="mt-4 grid grid-cols-1 gap-2.5 md:grid-cols-3 lg:mt-4 lg:gap-3 lg:border-t lg:border-lumina-border/55 lg:pt-4">
+  <div className="flex items-center gap-3 rounded-[16px] bg-lumina-surface-soft p-3.5 lg:gap-3 lg:rounded-none lg:bg-transparent lg:p-1">
     <Sparkles size={24} strokeWidth={1.6} className="h-5 w-5 text-lumina-text lg:h-6 lg:w-6" />
 
     <div>
@@ -1330,7 +1271,7 @@ const deleteMessage = async (messageId: string) => {
     </div>
   </div>
 
-  <div className="flex items-center gap-3 rounded-[16px] bg-lumina-surface-soft p-3.5 lg:gap-4 lg:rounded-[20px] lg:p-5">
+  <div className="flex items-center gap-3 rounded-[16px] bg-lumina-surface-soft p-3.5 lg:gap-3 lg:rounded-none lg:bg-transparent lg:p-1">
     <CalendarDays size={24} strokeWidth={1.6} className="h-5 w-5 text-lumina-text lg:h-6 lg:w-6" />
 
     <div>
@@ -1343,7 +1284,7 @@ const deleteMessage = async (messageId: string) => {
     </div>
   </div>
 
-  <div className="flex items-center gap-3 rounded-[16px] bg-lumina-surface-soft p-3.5 lg:gap-4 lg:rounded-[20px] lg:p-5">
+  <div className="flex items-center gap-3 rounded-[16px] bg-lumina-surface-soft p-3.5 lg:gap-3 lg:rounded-none lg:bg-transparent lg:p-1">
     <Clock size={24} strokeWidth={1.6} className="h-5 w-5 text-lumina-text lg:h-6 lg:w-6" />
 
     <div>
@@ -1363,12 +1304,20 @@ const deleteMessage = async (messageId: string) => {
                 />
 
                 {request.notes && (
-                  <p className="mt-4 whitespace-pre-line rounded-[16px] bg-lumina-surface-soft p-3.5 text-[13px] leading-[1.55] text-lumina-text lg:mt-5 lg:rounded-[18px] lg:p-4 lg:text-[15px] lg:leading-[1.6]">
+                  <p className="mt-4 whitespace-pre-line rounded-[16px] bg-lumina-surface-soft p-3.5 text-[13px] leading-[1.55] text-lumina-text lg:mt-4 lg:rounded-none lg:bg-transparent lg:p-0 lg:text-[14px] lg:leading-[1.6]">
                     {request.notes}
                   </p>
                 )}
 
-                <div className="mt-4 rounded-[18px] bg-lumina-surface-soft p-3.5 lg:mt-6 lg:rounded-[22px] lg:p-5">
+                {request.client_contact && <p className="mt-3 hidden text-[12px] text-lumina-text-muted lg:block">Client contact · {request.client_contact}</p>}
+
+                {(canRespondToCompletion || canMarkBookingLiteComplete) && request.completion_protocol_version !== 3 && (
+                  <button type="button" onClick={() => void submitArtistCompletionResponse(request, "disputed")} className="mt-3 hidden text-[12px] text-lumina-text-muted underline underline-offset-4 transition hover:text-lumina-text lg:inline-flex">
+                    Service did not occur
+                  </button>
+                )}
+
+                <div className="mt-4 rounded-[18px] bg-lumina-surface-soft p-3.5 lg:mt-5 lg:rounded-none lg:border-t lg:border-lumina-border/55 lg:bg-transparent lg:p-0 lg:pt-4">
                   {(request.booking_status === "completed" ||
                     request.client_status === "confirmed" ||
                     request.client_status === "declined") ? (
@@ -1382,17 +1331,17 @@ const deleteMessage = async (messageId: string) => {
 </div>
 
     <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
-      <div className="rounded-[14px] border border-lumina-border bg-lumina-surface px-4 py-3">
+      <div className="rounded-[14px] border border-lumina-border bg-lumina-surface px-4 py-3 lg:rounded-none lg:border-0 lg:bg-transparent lg:px-0 lg:py-1">
         <p className="text-[12px] text-lumina-text-muted">Date</p>
         <p className="mt-1 text-[14px]">{request.proposed_date || "-"}</p>
       </div>
 
-      <div className="rounded-[14px] border border-lumina-border bg-lumina-surface px-4 py-3">
+      <div className="rounded-[14px] border border-lumina-border bg-lumina-surface px-4 py-3 lg:rounded-none lg:border-0 lg:bg-transparent lg:px-0 lg:py-1">
         <p className="text-[12px] text-lumina-text-muted">Time</p>
         <p className="mt-1 text-[14px]">{request.proposed_time || "-"}</p>
       </div>
 
-      <div className="rounded-[14px] border border-lumina-border bg-lumina-surface px-4 py-3">
+      <div className="rounded-[14px] border border-lumina-border bg-lumina-surface px-4 py-3 lg:rounded-none lg:border-0 lg:bg-transparent lg:px-0 lg:py-1">
         <p className="text-[12px] text-lumina-text-muted">Estimated duration</p>
         <p className="mt-1 text-[14px]">
           {formatDurationMinutes(appointmentDurationMinutes) || "—"}
@@ -1407,7 +1356,7 @@ const deleteMessage = async (messageId: string) => {
         )}
       </div>
 
-      <div className="rounded-[14px] border border-lumina-border bg-lumina-surface px-4 py-3">
+      <div className="rounded-[14px] border border-lumina-border bg-lumina-surface px-4 py-3 lg:rounded-none lg:border-0 lg:bg-transparent lg:px-0 lg:py-1">
         <p className="text-[12px] text-lumina-text-muted">Final total</p>
         <p className="mt-1 text-[14px]">
           {request.proposed_price ? `$${request.proposed_price}` : "-"}
@@ -1415,7 +1364,7 @@ const deleteMessage = async (messageId: string) => {
       </div>
     </div>
     {showCompletionState && (
-      <div className="mt-4 rounded-[16px] border border-lumina-border bg-lumina-surface px-4 py-3">
+      <div className="mt-4 rounded-[16px] border border-lumina-border bg-lumina-surface px-4 py-3 lg:rounded-none lg:border-0 lg:border-t lg:border-lumina-border/55 lg:bg-transparent lg:px-0 lg:pt-3">
         <p className="text-[13px] font-medium text-lumina-text">
           {getCompletionStateLabel(completionState)}
         </p>
@@ -1490,7 +1439,7 @@ const deleteMessage = async (messageId: string) => {
 
 </div>
 
-                  <div className="mt-4 rounded-[16px] border border-lumina-border bg-lumina-surface px-4 py-3">
+                  <div className="mt-4 rounded-[16px] border border-lumina-border bg-lumina-surface px-4 py-3 lg:rounded-none lg:border-0 lg:bg-transparent lg:px-0 lg:py-0">
                     <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-lumina-text-muted">
                       Services included
                     </p>
