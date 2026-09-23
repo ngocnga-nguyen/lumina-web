@@ -406,9 +406,9 @@ export default function DashboardPortfolioPage() {
     });
   };
 
-  const renderEntryForm = (mobile = false) => (
+  const renderEntryForm = (mobile = false, fixedEntryType = false) => (
     <>
-      {!editingResult && !mobile && (
+      {!editingResult && !mobile && !fixedEntryType && (
         <div className="grid grid-cols-2 gap-2 rounded-full bg-lumina-surface-soft p-1">
           <button
             type="button"
@@ -432,7 +432,7 @@ export default function DashboardPortfolioPage() {
         </div>
       )}
 
-      <div className={`${!editingResult && !mobile ? "mt-6" : ""} space-y-5`}>
+      <div className={`${!editingResult && !mobile && !fixedEntryType ? "mt-6" : ""} space-y-5`}>
         {entryType === "before_after" && (
           <label className="block cursor-pointer">
             <span className="mb-2 block text-[13px] font-medium text-lumina-text">
@@ -621,7 +621,7 @@ export default function DashboardPortfolioPage() {
 
   return (
     <div className="bg-lumina-surface text-lumina-text">
-      <section className="px-4 py-6 sm:px-6 sm:py-8 lg:px-10 lg:py-14">
+      <section className="px-4 py-6 sm:px-6 sm:py-8 lg:px-8 lg:py-8 xl:px-10">
         {onboardingMode && (
           <ProfessionalOnboardingContext
             step="portfolio"
@@ -677,17 +677,14 @@ export default function DashboardPortfolioPage() {
           </div>
         </div>
 
-        <div className="hidden lg:block">
-          <h1
-            className="text-[42px] leading-[1.02] font-semibold md:text-[56px]"
-            style={{ fontFamily: "Georgia, Times New Roman, serif" }}
-          >
-            Results
-          </h1>
-          <p className="mt-4 max-w-[720px] text-[16px] leading-[1.6] text-lumina-text-muted">
-            Show clients finished work or a clear Before &amp; After. Every upload is labeled honestly so clients know what Lumina can—and cannot—confirm.
-          </p>
-        </div>
+        <header className="hidden items-end justify-between gap-6 lg:flex">
+          <div>
+            <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-lumina-text-muted">Professional workspace</p>
+            <h1 className="mt-2 font-serif text-[34px] font-semibold leading-tight">Portfolio / Results</h1>
+            <p className="mt-2 text-[13px] text-lumina-text-muted">Finished work and Before &amp; After outcomes for your public profile.</p>
+          </div>
+          {artistId && <Link href={`/artist/${artistId}`} className="inline-flex shrink-0 items-center gap-1.5 text-[12px] text-lumina-text-muted hover:text-lumina-text">View public profile <ExternalLink size={13} aria-hidden="true" /></Link>}
+        </header>
 
         {initialLoadError && (
           <div className="mt-6 flex flex-wrap items-center justify-between gap-3 rounded-[18px] border border-lumina-border bg-lumina-surface px-5 py-4 text-[13px] text-lumina-text-muted">
@@ -885,77 +882,80 @@ export default function DashboardPortfolioPage() {
           )}
         </div>
 
-        <div className="mt-10 hidden grid-cols-1 gap-10 lg:grid lg:grid-cols-[480px_1fr]">
-          <div className="rounded-[24px] border border-lumina-border p-6 md:p-7">
-            <div className="flex items-center justify-between gap-4">
-              <h2 className="text-[30px] font-semibold" style={{ fontFamily: "Georgia, Times New Roman, serif" }}>
-                {editingResult ? "Edit result" : "Add a result"}
-              </h2>
-              {editingResult && (
-                <button
-                  type="button"
-                  onClick={resetForm}
-                  className="text-[13px] text-lumina-text-muted transition hover:text-lumina-text"
-                >
-                  Cancel
-                </button>
-              )}
+        <div className="mt-7 hidden lg:block">
+          <div className="flex items-center justify-between gap-4 border-b border-lumina-border/70 pb-5">
+            <div role="tablist" aria-label="Desktop portfolio workspace view" className="inline-flex rounded-full bg-lumina-surface-soft p-1">
+              <button type="button" role="tab" aria-selected={mobileView === "single_photo"} onClick={() => setMobileView("single_photo")} className={`min-h-10 rounded-full px-5 text-[13px] font-medium transition ${mobileView === "single_photo" ? "bg-lumina-surface text-lumina-text" : "text-lumina-text-muted"}`}>Portfolio</button>
+              <button type="button" role="tab" aria-selected={mobileView === "before_after"} onClick={() => setMobileView("before_after")} className={`min-h-10 rounded-full px-5 text-[13px] font-medium transition ${mobileView === "before_after" ? "bg-lumina-surface text-lumina-text" : "text-lumina-text-muted"}`}>Results</button>
             </div>
-            <div className="mt-6">{renderEntryForm(false)}</div>
+            <button type="button" onClick={() => startAddingEntry(mobileView)} className="inline-flex min-h-10 items-center gap-2 rounded-full bg-lumina-black px-4 text-[13px] font-medium text-white hover:opacity-85"><Plus size={15} aria-hidden="true" />{mobileView === "single_photo" ? "Add Portfolio item" : "Add Result"}</button>
           </div>
 
-          <div>
-            <div className="mb-5 flex items-center justify-between">
-              <h2 className="text-[30px] font-semibold" style={{ fontFamily: "Georgia, Times New Roman, serif" }}>
-                Your results
-              </h2>
-              <p className="text-[14px] text-lumina-text-muted">{portfolio.length} saved</p>
-            </div>
-            {portfolio.length === 0 ? (
-              <div className="rounded-[24px] border border-lumina-border bg-lumina-surface p-6">
-                <h3 className="text-[16px] font-medium text-lumina-text">No results yet</h3>
-                <p className="mt-1 text-[14px] leading-[1.55] text-lumina-text-muted">
-                  Add finished work or a Before &amp; After to help clients understand your work.
-                </p>
+          {mobileEditorOpen && (
+            <section aria-label={editingResult ? "Edit Result" : entryType === "before_after" ? "Add Result" : "Add Portfolio item"} className="my-6 max-w-[680px] rounded-[16px] border border-lumina-border/70 p-6">
+              <div className="flex items-center justify-between gap-4">
+                <h2 className="font-serif text-[24px] font-semibold">{editingResult ? "Edit Result" : entryType === "before_after" ? "Add Result" : "Add Portfolio item"}</h2>
+                <button type="button" onClick={closeMobileEditor} disabled={loading} className="min-h-10 px-2 text-[13px] text-lumina-text-muted hover:text-lumina-text disabled:opacity-50">Cancel</button>
               </div>
-            ) : (
-              <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-                {portfolio.map((item) => (
-                  <article key={item.id} className="overflow-hidden rounded-[22px] border border-lumina-border bg-lumina-surface">
-                    {item.entry_type === "before_after" && item.before_image_url ? (
-                      <div className="grid grid-cols-2">
-                        <div className="relative">
-                          <img src={item.before_image_url} alt="Before" className="h-[250px] w-full object-cover" />
-                          <span className="absolute bottom-3 left-3 rounded-full bg-lumina-surface/90 px-3 py-1 text-[11px]">Before</span>
-                        </div>
-                        <div className="relative">
-                          <img src={item.image_url} alt="After" className="h-[250px] w-full object-cover" />
-                          <span className="absolute bottom-3 left-3 rounded-full bg-lumina-surface/90 px-3 py-1 text-[11px]">After</span>
-                        </div>
-                      </div>
-                    ) : (
-                      <img src={item.image_url} alt={item.caption || "Finished work"} className="h-[250px] w-full object-cover" />
-                    )}
-                    <div className="p-5">
-                      <div className="flex flex-wrap items-center gap-2 text-[11px] uppercase tracking-[0.1em] text-lumina-text-muted">
-                        <span>{item.entry_type === "before_after" ? "Before & After" : "Finished work"}</span>
-                        {item.service_name && <><span>•</span><span>{item.service_name}</span></>}
-                      </div>
-                      {item.caption && <p className="mt-3 whitespace-pre-line text-[14px] leading-[1.6] text-lumina-text">{item.caption}</p>}
-                      {item.result_date && <p className="mt-3 text-[12px] text-lumina-text-muted">{new Date(`${item.result_date}T00:00:00`).toLocaleDateString()}</p>}
-                      <p className="mt-4 text-[11px] text-lumina-text-muted">Added by professional</p>
-                      <div className="mt-4 flex items-center gap-4">
-                        {item.entry_type === "before_after" && (
-                          <button onClick={() => startEditingEntry(item)} className="text-[13px] text-lumina-text-muted transition hover:text-lumina-text">Edit</button>
-                        )}
-                        <button onClick={() => void deletePortfolioImage(item.id)} className="text-[13px] text-lumina-text-muted hover:text-lumina-text">Delete</button>
-                      </div>
-                    </div>
-                  </article>
-                ))}
-              </div>
-            )}
+              <div className="mt-4 max-h-[65dvh] overflow-y-auto overscroll-contain pr-2">{renderEntryForm(false, true)}</div>
+            </section>
+          )}
+
+          <div className="my-5 flex items-baseline justify-between gap-4">
+            <p className="text-[13px] text-lumina-text-muted">{mobileView === "single_photo" ? "A closer look at your finished work." : "Before & After outcomes, added by you."}</p>
+            <span className="shrink-0 text-[12px] text-lumina-text-muted">{mobileView === "single_photo" ? portfolioEntries.length : resultEntries.length} {mobileView === "single_photo" ? "items" : "results"}</span>
           </div>
+          {(mobileView === "single_photo" ? portfolioEntries : resultEntries).length === 0 ? (
+            <div className="py-6">
+              <h2 className="text-[15px] font-medium">{mobileView === "single_photo" ? "No portfolio work yet" : "No results yet"}</h2>
+              <p className="mt-2 text-[13px] text-lumina-text-muted">{mobileView === "single_photo" ? "Add finished work to show clients your style." : "Add a Before & After to document a service outcome."}</p>
+            </div>
+          ) : mobileView === "single_photo" ? (
+            <div className="grid grid-cols-2 gap-x-5 gap-y-7 xl:grid-cols-3">
+              {portfolioEntries.map((item) => (
+                <article key={item.id} className="min-w-0">
+                  <img src={item.image_url} alt={item.caption || "Finished work"} className="aspect-square w-full rounded-[10px] object-cover" />
+                  <div className="pt-3">
+                    {item.service_name && <h2 className="text-[14px] font-medium">{item.service_name}</h2>}
+                    {item.caption && <p className="mt-1 whitespace-pre-line text-[13px] leading-relaxed text-lumina-text-muted">{item.caption}</p>}
+                    <div className="mt-2 flex items-center justify-between gap-3">
+                      <span className="text-[11px] text-lumina-text-muted">{item.result_date ? formatResultDate(item.result_date) : ""}</span>
+                      <button type="button" onClick={() => void deletePortfolioImage(item.id)} aria-label={`Delete ${item.caption || item.service_name || "portfolio item"}`} className="min-h-9 text-[12px] text-lumina-text-muted hover:text-lumina-text">Delete</button>
+                    </div>
+                  </div>
+                </article>
+              ))}
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 gap-x-6 gap-y-8 xl:grid-cols-2">
+              {resultEntries.map((item) => (
+                <article key={item.id} className="min-w-0">
+                  <div className="grid grid-cols-2 gap-1 overflow-hidden rounded-[10px]">
+                    <div className="relative">
+                      <img src={item.before_image_url || ""} alt="Before" className="aspect-[4/3] w-full object-cover" />
+                      <span className="absolute bottom-2 left-2 rounded-full bg-lumina-surface/90 px-2.5 py-1 text-[10px]">Before</span>
+                    </div>
+                    <div className="relative">
+                      <img src={item.image_url} alt="After" className="aspect-[4/3] w-full object-cover" />
+                      <span className="absolute bottom-2 left-2 rounded-full bg-lumina-surface/90 px-2.5 py-1 text-[10px]">After</span>
+                    </div>
+                  </div>
+                  <div className="pt-3">
+                    <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+                      {item.service_name && <h2 className="font-serif text-[21px] font-semibold">{item.service_name}</h2>}
+                      {item.result_date && <span className="text-[11px] text-lumina-text-muted">{formatResultDate(item.result_date)}</span>}
+                    </div>
+                    {item.caption && <p className="mt-2 whitespace-pre-line text-[13px] leading-relaxed text-lumina-text-muted">{item.caption}</p>}
+                    {item.request_id && <p className="mt-2 text-[11px] text-lumina-text-muted">Linked to completed service</p>}
+                    <div className="mt-2 flex items-center gap-4 text-[12px]">
+                      <button type="button" onClick={() => startEditingEntry(item)} aria-label={`Edit ${item.service_name || "result"}`} className="min-h-9 text-lumina-text hover:underline">Edit</button>
+                      <button type="button" onClick={() => void deletePortfolioImage(item.id)} aria-label={`Delete ${item.service_name || "result"}`} className="min-h-9 text-lumina-text-muted hover:text-lumina-text">Delete</button>
+                    </div>
+                  </div>
+                </article>
+              ))}
+            </div>
+          )}
         </div>
       </section>
 

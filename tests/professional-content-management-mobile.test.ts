@@ -23,7 +23,7 @@ test("shared mobile editor is safe-area aware, internally scrollable, and tablet
   assert.match(mobileSheet, /sm:items-center/);
   assert.match(mobileSheet, /sm:max-w-\[620px\]/);
   assert.match(mobileSheet, /lg:hidden/);
-  assert.match(mobileSheet, /document\.body\.style\.overflow = "hidden"/);
+  assert.match(mobileSheet, /document\.body\.style\.overflow = mobileViewport\.matches \? "hidden" : previousOverflow/);
 });
 
 test("mobile Services uses a compact launcher, dense rows, and selected-only editing", () => {
@@ -37,7 +37,7 @@ test("mobile Services uses a compact launcher, dense rows, and selected-only edi
   assert.match(servicesPage, /More actions for \$\{service\.service_name\}/);
   assert.match(servicesPage, /setMobileEditorOpen\(true\)/);
   assert.match(servicesPage, /MobileManagementSheet/);
-  assert.match(servicesPage, /hidden grid-cols-1 gap-10 lg:grid/);
+  assert.match(servicesPage, /mt-7 hidden lg:block/);
 });
 
 test("mobile Portfolio and Results split the same authoritative entry model", () => {
@@ -67,8 +67,8 @@ test("upload, linkage, and visibility mutations remain on existing tables and st
 });
 
 test("desktop content-management layouts remain separate at lg", () => {
-  assert.match(servicesPage, /hidden grid-cols-1 gap-10 lg:grid/);
-  assert.match(portfolioPage, /hidden grid-cols-1 gap-10 lg:grid/);
-  assert.match(servicesPage, />\s*Manage services\s*</);
+  assert.match(servicesPage, /mt-7 hidden lg:block/);
+  assert.match(portfolioPage, /mt-7 hidden lg:block/);
+  assert.match(servicesPage, />Services</);
   assert.match(portfolioPage, />\s*Results\s*</);
 });
