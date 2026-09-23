@@ -145,37 +145,11 @@ export default function RequestInbox({ role }: RequestInboxProps) {
 
   const roleLabel = role === "client" ? "professional" : "client";
 
-  return (
-    <div
-      className={`bg-lumina-bg text-lumina-text ${
-        selectedRequest
-          ? "h-[calc(100dvh-68px)] overflow-hidden p-0 lg:h-auto lg:min-h-[calc(100vh-68px)] lg:overflow-visible lg:px-8 lg:py-9"
-          : "min-h-[calc(100vh-68px)] px-4 py-5 md:px-8 md:py-7 lg:py-9"
-      }`}
-    >
+  // Both responsive placements share the same controls and filter state.
+  const inboxControls = (
+    <>
       <div
-        className={`mx-auto max-w-[1480px] ${
-          selectedRequest ? "h-full lg:h-auto" : ""
-        }`}
-      >
-        <header className={inbox.selectedRequestId ? "hidden lg:block" : "block"}>
-          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-lumina-text-muted">
-            Request conversations
-          </p>
-          <h1
-            className="mt-1.5 text-[32px] font-semibold leading-[1.08] md:mt-2 md:text-[40px] lg:text-[44px]"
-            style={{ fontFamily: "Georgia, Times New Roman, serif" }}
-          >
-            Messages
-          </h1>
-          <p className="mt-2 max-w-[620px] text-[13px] leading-[1.55] text-lumina-text-muted md:mt-3 md:text-[14px] md:leading-[1.6]">
-            Every conversation stays connected to its original request, services,
-            and appointment history.
-          </p>
-        </header>
-
-        <div
-          className={`relative mt-4 md:mt-5 lg:mt-6 ${
+          className={`relative mt-4 md:mt-5 lg:mt-0 ${
             inbox.selectedRequestId ? "hidden lg:block" : "block"
           }`}
         >
@@ -190,12 +164,12 @@ export default function RequestInbox({ role }: RequestInboxProps) {
             onChange={(event) => setSearchQuery(event.target.value)}
             placeholder="Search conversations"
             aria-label="Search conversations"
-            className="min-h-11 w-full rounded-full border border-lumina-border bg-lumina-surface py-2.5 pl-10 pr-4 text-[13px] text-lumina-text outline-none transition placeholder:text-lumina-text-muted focus:border-lumina-text lg:max-w-[420px]"
+            className="min-h-11 w-full rounded-full border border-lumina-border bg-lumina-surface py-2.5 pl-10 pr-4 text-[13px] text-lumina-text outline-none transition placeholder:text-lumina-text-muted focus:border-lumina-text lg:min-h-10 lg:text-[12px]"
           />
         </div>
 
         <div
-          className={`mt-3 flex gap-2 overflow-x-auto pb-1 ${
+          className={`mt-3 flex gap-2 overflow-x-auto pb-1 lg:mt-2.5 lg:gap-1 lg:pb-0 ${
             inbox.selectedRequestId ? "hidden lg:flex" : "flex"
           }`}
           aria-label="Conversation filters"
@@ -206,7 +180,7 @@ export default function RequestInbox({ role }: RequestInboxProps) {
               type="button"
               onClick={() => setFilter(item.value)}
               aria-pressed={filter === item.value}
-              className={`min-h-10 shrink-0 rounded-full border px-3.5 text-[12px] font-medium transition md:px-4 ${
+              className={`min-h-10 shrink-0 rounded-full border px-3.5 text-[12px] font-medium transition md:px-4 lg:min-h-8 lg:px-2.5 lg:text-[11px] ${
                 filter === item.value
                   ? "border-lumina-text bg-lumina-text text-white"
                   : "border-lumina-border bg-lumina-surface text-lumina-text hover:bg-lumina-surface-soft"
@@ -216,6 +190,39 @@ export default function RequestInbox({ role }: RequestInboxProps) {
             </button>
           ))}
         </div>
+    </>
+  );
+
+  return (
+    <div
+      className={`bg-lumina-bg text-lumina-text ${
+        selectedRequest
+          ? "h-[calc(100dvh-68px)] overflow-hidden p-0 lg:h-auto lg:min-h-[calc(100vh-68px)] lg:overflow-visible lg:px-8 lg:py-6"
+          : "min-h-[calc(100vh-68px)] px-4 py-5 md:px-8 md:py-7 lg:py-6"
+      }`}
+    >
+      <div
+        className={`mx-auto max-w-[1480px] ${
+          selectedRequest ? "h-full lg:h-auto" : ""
+        }`}
+      >
+        <header className={inbox.selectedRequestId ? "hidden lg:block" : "block"}>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-lumina-text-muted">
+            Request conversations
+          </p>
+          <h1
+            className="mt-1.5 text-[32px] font-semibold leading-[1.08] md:mt-2 md:text-[40px] lg:mt-1 lg:text-[32px] xl:text-[34px]"
+            style={{ fontFamily: "Georgia, Times New Roman, serif" }}
+          >
+            Messages
+          </h1>
+          <p className="mt-2 max-w-[620px] text-[13px] leading-[1.55] text-lumina-text-muted md:mt-3 md:text-[14px] md:leading-[1.6] lg:mt-1.5 lg:text-[12px]">
+            Every conversation stays connected to its original request, services,
+            and appointment history.
+          </p>
+        </header>
+
+        <div className="lg:hidden">{inboxControls}</div>
 
         {(inbox.error || actionError) && (
           <div
@@ -241,18 +248,19 @@ export default function RequestInbox({ role }: RequestInboxProps) {
         <div
           className={`overflow-hidden bg-lumina-surface ${
             selectedRequest
-              ? "h-full rounded-none border-0 shadow-none lg:mt-5 lg:h-[min(720px,calc(100vh-240px))] lg:min-h-[560px] lg:rounded-[24px] lg:border lg:border-lumina-border lg:shadow-[0_12px_36px_rgba(39,36,40,0.04)]"
-              : "mt-4 rounded-[20px] border border-lumina-border shadow-[0_8px_28px_rgba(39,36,40,0.035)] lg:mt-5 lg:h-[min(720px,calc(100vh-240px))] lg:min-h-[560px] lg:rounded-[24px] lg:shadow-[0_12px_36px_rgba(39,36,40,0.04)]"
-          } lg:grid lg:grid-cols-[minmax(300px,370px)_minmax(0,1fr)]`}
+              ? "h-full rounded-none border-0 shadow-none lg:mt-5 lg:h-[calc(100dvh-230px)] lg:min-h-[440px] lg:max-h-[840px] lg:rounded-[18px] lg:border lg:border-lumina-border/70 lg:shadow-none"
+              : "mt-4 rounded-[20px] border border-lumina-border shadow-[0_8px_28px_rgba(39,36,40,0.035)] lg:mt-5 lg:h-[calc(100dvh-230px)] lg:min-h-[440px] lg:max-h-[840px] lg:rounded-[18px] lg:border-lumina-border/70 lg:shadow-none"
+          } lg:grid lg:grid-cols-[280px_minmax(0,1fr)] xl:grid-cols-[330px_minmax(0,1fr)]`}
         >
           <aside
-            className={`min-h-[360px] border-lumina-border bg-lumina-surface lg:min-h-0 lg:border-r ${
+            className={`min-h-[360px] border-lumina-border bg-lumina-surface lg:min-h-0 lg:min-w-0 lg:border-r lg:border-lumina-border/70 ${
               selectedRequest ? "hidden lg:block" : "block"
             }`}
             aria-label="Conversations"
           >
             <div className="flex h-full min-h-0 flex-col">
-              <div className="border-b border-lumina-border px-3.5 py-2.5 text-[11px] text-lumina-text-muted md:px-4 md:py-3 md:text-[12px]">
+              <div className="hidden shrink-0 px-4 pb-3 pt-4 lg:block">{inboxControls}</div>
+              <div className="border-b border-lumina-border px-3.5 py-2.5 text-[11px] text-lumina-text-muted md:px-4 md:py-3 md:text-[12px] lg:border-lumina-border/60 lg:py-2 lg:text-[10px]">
                 {visibleRequests.length} conversation{visibleRequests.length === 1 ? "" : "s"}
               </div>
               <div className="min-h-0 flex-1 overflow-y-auto">
@@ -296,7 +304,7 @@ export default function RequestInbox({ role }: RequestInboxProps) {
                         key={request.id}
                         type="button"
                         onClick={() => openConversation(request.id)}
-                        className={`flex w-full gap-3 border-b border-lumina-border/65 px-3.5 py-3 text-left transition last:border-b-0 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-lumina-text md:px-4 md:py-4 ${
+                        className={`flex w-full gap-3 border-b border-lumina-border/65 px-3.5 py-3 text-left transition last:border-b-0 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-lumina-text md:px-4 md:py-4 lg:gap-2.5 lg:border-lumina-border/45 lg:py-3 ${
                           selected
                             ? "bg-lumina-surface-soft"
                             : unread > 0
@@ -307,13 +315,23 @@ export default function RequestInbox({ role }: RequestInboxProps) {
                         <IdentityAvatar
                           name={request.participant_name}
                           imageUrl={request.participant_image_url}
-                          className="flex h-10 w-10 shrink-0 rounded-full bg-lumina-pearl text-[11px] font-semibold text-lumina-text md:h-11 md:w-11"
+                          className="flex h-10 w-10 shrink-0 rounded-full bg-lumina-pearl text-[11px] font-semibold text-lumina-text md:h-11 md:w-11 lg:h-10 lg:w-10"
                         />
                         <div className="min-w-0 flex-1">
                           <div className="flex items-start justify-between gap-3">
+                            <div className="contents lg:flex lg:min-w-0 lg:flex-1 lg:items-center lg:gap-2">
                             <p className={`truncate text-[14px] ${unread > 0 ? "font-semibold" : "font-medium"}`}>
                               {request.participant_name}
                             </p>
+                            {unread > 0 && (
+                              <span
+                                className="hidden h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-lumina-black px-1.5 text-[10px] font-semibold text-white lg:inline-flex"
+                                aria-label={`${unread} unread update${unread === 1 ? "" : "s"}`}
+                              >
+                                {unread > 99 ? "99+" : unread}
+                              </span>
+                            )}
+                            </div>
                             <span className="shrink-0 text-[10px] text-lumina-text-muted">
                               {formatInboxTimestamp(timestamp)}
                             </span>
@@ -329,7 +347,7 @@ export default function RequestInbox({ role }: RequestInboxProps) {
                             </p>
                             {unread > 0 && (
                               <span
-                                className="flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-lumina-black px-1.5 text-[10px] font-semibold text-white"
+                                className="flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-lumina-black px-1.5 text-[10px] font-semibold text-white lg:hidden"
                                 aria-label={`${unread} unread update${unread === 1 ? "" : "s"}`}
                               >
                                 {unread > 99 ? "99+" : unread}
@@ -337,7 +355,7 @@ export default function RequestInbox({ role }: RequestInboxProps) {
                             )}
                           </div>
                           <span
-                            className={`mt-1.5 rounded-full border border-lumina-border/80 bg-lumina-surface px-2 py-0.5 text-[10px] text-lumina-text-muted ${
+                            className={`mt-1.5 rounded-full border border-lumina-border/80 bg-lumina-surface px-2 py-0.5 text-[10px] text-lumina-text-muted lg:rounded-none lg:border-0 lg:bg-transparent lg:p-0 ${
                               shouldShowConversationState(stateLabel)
                                 ? "inline-flex"
                                 : "hidden lg:inline-flex"
@@ -357,10 +375,11 @@ export default function RequestInbox({ role }: RequestInboxProps) {
           <div
             className={`${
               selectedRequest ? "block h-full" : "hidden lg:block"
-            } min-h-0 lg:h-auto`}
+            } min-h-0 min-w-0 lg:h-auto`}
           >
             {selectedRequest ? (
               <RequestConversationPanel
+                presentation="inbox"
                 context={{
                   requestId: selectedRequest.id,
                   participantName: selectedRequest.participant_name,
@@ -393,7 +412,7 @@ export default function RequestInbox({ role }: RequestInboxProps) {
                 onBack={closeConversation}
               />
             ) : (
-              <div className="flex h-full min-h-[560px] items-center justify-center bg-lumina-bg-soft px-8 text-center">
+              <div className="flex h-full min-h-[560px] lg:min-h-0 items-center justify-center bg-lumina-bg-soft px-8 text-center">
                 <div className="max-w-[320px]">
                   <span className="mx-auto flex h-12 w-12 items-center justify-center rounded-full border border-lumina-border bg-lumina-glass text-lumina-text-muted backdrop-blur">
                     <MessageCircle size={21} strokeWidth={1.55} />

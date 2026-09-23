@@ -35,8 +35,29 @@ test("client and professional routes retain one shared role-aware inbox", () => 
 test("mobile conversation uses the dynamic workspace viewport while desktop keeps split view", () => {
   assert.match(inbox, /h-\[calc\(100dvh-68px\)\]/);
   assert.match(inbox, /h-full rounded-none border-0 shadow-none/);
-  assert.match(inbox, /lg:grid-cols-\[minmax\(300px,370px\)_minmax\(0,1fr\)\]/);
-  assert.match(inbox, /lg:h-\[min\(720px,calc\(100vh-240px\)\)\]/);
+  assert.match(inbox, /lg:grid-cols-\[280px_minmax\(0,1fr\)\]/);
+  assert.match(inbox, /xl:grid-cols-\[330px_minmax\(0,1fr\)\]/);
+  assert.match(inbox, /lg:h-\[calc\(100dvh-230px\)\]/);
+});
+
+test("desktop inbox controls reuse the existing state while retaining the mobile placement", () => {
+  assert.match(inbox, /const inboxControls =/);
+  assert.equal((inbox.match(/\{inboxControls\}/g) || []).length, 2);
+  assert.match(inbox, /className="lg:hidden">\{inboxControls\}/);
+  assert.match(inbox, /className="hidden shrink-0 px-4 pb-3 pt-4 lg:block">\{inboxControls\}/);
+  assert.equal((inbox.match(/useRequestInbox\(role\)/g) || []).length, 1);
+  assert.equal((inbox.match(/onChange=\{\(event\) => setSearchQuery/g) || []).length, 1);
+});
+
+test("desktop thread polish is opt-in for Messages and leaves the request overlay on its default", () => {
+  const chatModal = readFileSync(
+    new URL("../components/ChatModal.tsx", import.meta.url),
+    "utf8"
+  );
+  assert.match(inbox, /<RequestConversationPanel\s+presentation="inbox"/);
+  assert.match(conversation, /presentation = "overlay"/);
+  assert.doesNotMatch(chatModal, /presentation=/);
+  assert.match(conversation, /presentation === "inbox" \? "lg:/);
 });
 
 test("mobile composer respects safe areas and grows only to its bounded height", () => {

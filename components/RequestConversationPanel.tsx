@@ -30,6 +30,7 @@ export type RequestConversationContext = {
 };
 
 type RequestConversationPanelProps = {
+  presentation?: "overlay" | "inbox";
   context: RequestConversationContext;
   updates: RequestConversationUpdate[];
   currentUserType: RequestConversationRole;
@@ -55,6 +56,7 @@ function formatRequestDate(value: string | null | undefined) {
 }
 
 export default function RequestConversationPanel({
+  presentation = "overlay",
   context,
   updates,
   currentUserType,
@@ -136,8 +138,8 @@ export default function RequestConversationPanel({
 
   return (
     <section className="flex h-full min-h-0 flex-col overflow-hidden bg-lumina-surface">
-      <header className="z-10 shrink-0 border-b border-lumina-border/80 bg-lumina-surface/95 px-3.5 py-2.5 backdrop-blur md:px-5 md:py-3 lg:border-lumina-border lg:py-4">
-        <div className="flex items-start justify-between gap-2.5 lg:gap-3">
+      <header className={`z-10 shrink-0 border-b border-lumina-border/80 bg-lumina-surface/95 px-3.5 py-2.5 backdrop-blur md:px-5 md:py-3 ${presentation === "inbox" ? "lg:border-lumina-border/60 lg:py-3.5" : "lg:border-lumina-border lg:py-4"}`}>
+        <div className={`flex items-start justify-between gap-2.5 lg:gap-3 ${presentation === "inbox" ? "lg:flex-wrap xl:flex-nowrap" : ""}`}>
           <div className="flex min-w-0 items-start gap-2.5 lg:gap-3">
             {onBack && (
               <button
@@ -163,12 +165,12 @@ export default function RequestConversationPanel({
                   ? context.services.join(" · ")
                   : context.participantSubtitle}
               </p>
-              <div className="mt-1 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-[10px] text-lumina-text-muted md:mt-1.5 md:text-[11px] lg:mt-2 lg:gap-x-3">
+              <div className={`mt-1 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-[10px] text-lumina-text-muted md:mt-1.5 md:text-[11px] lg:gap-x-3 ${presentation === "inbox" ? "lg:mt-1.5 lg:text-[10px]" : "lg:mt-2"}`}>
                 {requestDate && (
                   <span className="hidden sm:inline">Requested {requestDate}</span>
                 )}
                 {context.stateLabel && (
-                  <span className="rounded-full border border-lumina-border/80 bg-lumina-surface-soft px-2 py-0.5 text-lumina-text">
+                  <span className={`rounded-full border border-lumina-border/80 bg-lumina-surface-soft px-2 py-0.5 text-lumina-text ${presentation === "inbox" ? "lg:rounded-none lg:border-0 lg:bg-transparent lg:p-0 lg:text-lumina-text-muted" : ""}`}>
                     {context.stateLabel}
                   </span>
                 )}
@@ -180,7 +182,7 @@ export default function RequestConversationPanel({
             {context.relatedRequestHref && (
               <Link
                 href={context.relatedRequestHref}
-                className="hidden items-center gap-1.5 rounded-full border border-lumina-border bg-lumina-surface px-3 py-2 text-[11px] font-medium text-lumina-text transition hover:bg-lumina-surface-soft sm:flex"
+                className={`hidden items-center gap-1.5 rounded-full border border-lumina-border bg-lumina-surface px-3 py-2 text-[11px] font-medium text-lumina-text transition hover:bg-lumina-surface-soft sm:flex ${presentation === "inbox" ? "lg:rounded-none lg:border-0 lg:bg-transparent lg:px-0 lg:py-1 lg:font-normal lg:text-lumina-text-muted lg:hover:bg-transparent lg:hover:text-lumina-text" : ""}`}
               >
                 View request
                 <ExternalLink size={13} strokeWidth={1.6} />
