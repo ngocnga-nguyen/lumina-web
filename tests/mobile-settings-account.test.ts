@@ -18,8 +18,8 @@ test("client mobile account groups identity and security without duplicating pro
   assert.match(client, /avatar_url: profileImageUrl \|\| null/);
   assert.match(client, /supabase\.auth\.updateUser\(\{\s*data:/);
   assert.match(client, /setProfileImageUrl\(""\)/);
-  assert.match(client, /hidden max-w-xl[\s\S]*lg:block/);
-  const mobile = client.slice(client.indexOf("<section className=\"mx-auto max-w-xl px-5 pb-10"), client.indexOf("<section className=\"mx-auto hidden max-w-xl"));
+  assert.match(client, /hidden max-w-\[1040px\][\s\S]*lg:block/);
+  const mobile = client.slice(client.indexOf("<section className=\"mx-auto max-w-xl px-5 pb-10"), client.indexOf("<section className=\"mx-auto hidden max-w-[1040px]"));
   assert.doesNotMatch(mobile, /Saved Artists|My Requests|Notifications|Preferences/);
 });
 
@@ -31,7 +31,7 @@ test("professional mobile profile uses the existing save path and direct media e
   assert.match(professionalProfile, /if \(mobileDraftStart\) setForm\(mobileDraftStart\)/);
   assert.match(professionalProfile, /onClick=\{\(\) => void saveProfile\(\)\}/);
   assert.match(professionalProfile, /ProfessionalProfileMediaEditor/);
-  assert.match(professionalProfile, /hidden px-5 py-10[\s\S]*lg:block/);
+  assert.match(professionalProfile, /hidden max-w-\[1120px\][\s\S]*lg:block/);
 });
 
 test("professional settings keeps license, visibility, and account flows authoritative", () => {
@@ -41,7 +41,7 @@ test("professional settings keeps license, visibility, and account flows authori
   assert.match(professionalSettings, /onboardingMode \? "Submit and continue"/);
   assert.match(professionalSettings, /signOut\(\{ scope: "others" \}\)/);
   assert.match(professionalSettings, /signOut\(\{ scope: "local" \}\)/);
-  assert.match(professionalSettings, /hidden max-w-2xl[\s\S]*lg:block/);
+  assert.match(professionalSettings, /hidden max-w-\[1040px\][\s\S]*lg:block/);
 });
 
 test("recovery accepts only an allowlisted professional marker and preserves client default", () => {

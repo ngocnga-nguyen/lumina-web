@@ -344,21 +344,22 @@ export default function ArtistSettingsPage() {
         <div className="mt-5 flex justify-end gap-2"><button type="button" onClick={closeVerificationEditor} disabled={submittingVerification} className="min-h-11 rounded-full border border-lumina-border px-5 text-[13px]">Cancel</button><button type="button" onClick={() => void submitLicenseVerification()} disabled={submittingVerification} className="min-h-11 rounded-full bg-lumina-black px-5 text-[13px] text-white disabled:opacity-50">{submittingVerification ? "Submitting…" : onboardingMode ? "Submit and continue" : verification ? "Resubmit for review" : "Submit for review"}</button></div>
       </MobileManagementSheet>
 
-      <section className="mx-auto hidden max-w-2xl px-5 py-10 md:px-10 md:py-14 lg:block">
+      <section className="mx-auto hidden max-w-[1040px] px-6 py-8 lg:block xl:px-10">
         {onboardingMode && (
           <ProfessionalOnboardingContext
             step="license"
             title="Submit license verification"
           />
         )}
+        <p className="mb-2 text-[10px] uppercase tracking-[0.16em] text-lumina-text-muted">Professional workspace</p>
         <h1
-          className="text-[42px] font-semibold leading-[1.02] md:text-[56px]"
+          className="text-[36px] font-semibold leading-tight"
           style={{ fontFamily: "Georgia, Times New Roman, serif" }}
         >
-          Settings &amp; Privacy
+          Settings
         </h1>
-        <p className="mt-4 text-[16px] leading-[1.6] text-lumina-text-muted">
-          Manage your professional account, security, and visibility.
+        <p className="mt-2 text-[13px] leading-[1.6] text-lumina-text-muted">
+          Account, verification, and privacy.
         </p>
 
         {loading ? (
@@ -366,13 +367,58 @@ export default function ArtistSettingsPage() {
             Loading settings…
           </div>
         ) : (
-          <div className="mt-8 space-y-5">
-            <section className="rounded-[24px] border border-lumina-border p-5">
+          <div className="mt-7 space-y-2">            <section className="border-b border-lumina-border/70 py-6">
+              <p className="text-[12px] uppercase tracking-[0.14em] text-lumina-text-muted">
+                Public profile visibility
+              </p>
+              <div className="mt-5 flex items-center justify-between gap-5">
+                <div>
+                  <p className="text-[14px] font-medium">
+                    Professional profile visibility
+                  </p>
+                  <p className="mt-1 text-[12px] leading-[1.5] text-lumina-text-muted">
+                    {isVisible
+                      ? "Clients can find your profile in browse, search, and map."
+                      : activationStatus?.activation_ready
+                        ? "Your profile is ready. Turn visibility on when you want clients to discover it."
+                        : "Your profile is hidden until every activation requirement is complete, including license verification."}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => void updateVisibility()}
+                  disabled={
+                    visibilityLoading ||
+                    (!isVisible && !activationStatus?.activation_ready)
+                  }
+                  aria-pressed={isVisible}
+                  className={`relative h-7 w-12 shrink-0 rounded-full transition disabled:opacity-50 ${
+                    isVisible ? "bg-lumina-black" : "bg-lumina-pearl"
+                  }`}
+                >
+                  <span
+                    className={`absolute top-1 h-5 w-5 rounded-full bg-lumina-surface transition ${
+                      isVisible ? "left-6" : "left-1"
+                    }`}
+                  />
+                </button>
+              </div>
+              {!isVisible && !activationStatus?.activation_ready && (
+                <Link
+                  href="/dashboard/onboarding"
+                  className="mt-4 inline-flex text-[12px] font-medium underline decoration-lumina-border underline-offset-4"
+                >
+                  Continue profile setup
+                </Link>
+              )}
+            </section>
+            <div className="grid items-start gap-x-10 xl:grid-cols-2">
+            <section className="border-b border-lumina-border/70 py-6">
               <p className="text-[12px] uppercase tracking-[0.14em] text-lumina-text-muted">
                 Account &amp; security
               </p>
 
-              <div className="mt-5">
+              <div className="mt-4">
                 <p className="text-[13px] text-lumina-text-muted">Sign-in email</p>
                 <p className="mt-1 text-[15px]">{email}</p>
                 <p className="mt-2 text-[12px] text-lumina-text-muted">
@@ -421,7 +467,7 @@ export default function ArtistSettingsPage() {
                 )}
               </div>
 
-              <div className="mt-6 border-t border-lumina-border pt-5">
+              <div className="mt-5 border-t border-lumina-border/50 pt-4">
                 <p className="text-[13px] font-medium">Password</p>
                 <p className="mt-1 text-[12px] text-lumina-text-muted">
                   Receive a secure link at your verified email.
@@ -435,7 +481,7 @@ export default function ArtistSettingsPage() {
                 </button>
               </div>
 
-              <div className="mt-6 border-t border-lumina-border pt-5">
+              <div className="mt-5 border-t border-lumina-border/50 pt-4">
                 <p className="text-[13px] font-medium">Other devices</p>
                 <p className="mt-1 text-[12px] leading-[1.5] text-lumina-text-muted">End every other Lumina session while keeping this device signed in.</p>
                 <button
@@ -450,7 +496,7 @@ export default function ArtistSettingsPage() {
 
             <section
               id="license-verification-desktop"
-              className="scroll-mt-24 rounded-[24px] border border-lumina-border p-5"
+              className="scroll-mt-24 border-b border-lumina-border/70 py-6"
             >
               <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                 <div>
@@ -490,6 +536,9 @@ export default function ArtistSettingsPage() {
                   </div>
                 )}
 
+              <details key={verification?.submitted_at || "not-submitted"} open={onboardingMode || undefined} className="mt-4 group">
+                <summary className="w-fit cursor-pointer text-[12px] underline decoration-lumina-border underline-offset-4">{verification ? "Edit license information" : "Add license information"}</summary>
+                <p className="mt-3 text-[12px] text-lumina-text-muted">License details are separate from your public professional name and business profile.</p>
               <div className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <label className="sm:col-span-2">
                   <span className="mb-2 block text-[12px] text-lumina-text-muted">
@@ -600,55 +649,13 @@ export default function ArtistSettingsPage() {
                     ? "Resubmit for review"
                     : "Submit for review"}
               </button>
+              </details>
             </section>
 
-            <section className="rounded-[24px] border border-lumina-border p-5">
-              <p className="text-[12px] uppercase tracking-[0.14em] text-lumina-text-muted">
-                Privacy &amp; visibility
-              </p>
-              <div className="mt-5 flex items-center justify-between gap-5">
-                <div>
-                  <p className="text-[14px] font-medium">
-                    Professional profile visibility
-                  </p>
-                  <p className="mt-1 text-[12px] leading-[1.5] text-lumina-text-muted">
-                    {isVisible
-                      ? "Clients can find your profile in browse, search, and map."
-                      : activationStatus?.activation_ready
-                        ? "Your profile is ready. Turn visibility on when you want clients to discover it."
-                        : "Your profile is hidden until every activation requirement is complete, including license verification."}
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => void updateVisibility()}
-                  disabled={
-                    visibilityLoading ||
-                    (!isVisible && !activationStatus?.activation_ready)
-                  }
-                  aria-pressed={isVisible}
-                  className={`relative h-7 w-12 shrink-0 rounded-full transition disabled:opacity-50 ${
-                    isVisible ? "bg-lumina-black" : "bg-lumina-pearl"
-                  }`}
-                >
-                  <span
-                    className={`absolute top-1 h-5 w-5 rounded-full bg-lumina-surface transition ${
-                      isVisible ? "left-6" : "left-1"
-                    }`}
-                  />
-                </button>
-              </div>
-              {!isVisible && !activationStatus?.activation_ready && (
-                <Link
-                  href="/dashboard/onboarding"
-                  className="mt-4 inline-flex text-[12px] font-medium underline decoration-lumina-border underline-offset-4"
-                >
-                  Continue profile setup
-                </Link>
-              )}
-            </section>
 
-            <section className="rounded-[24px] border border-lumina-border p-5">
+
+            </div>
+            <section className="border-b border-lumina-border/70 py-6">
               <p className="text-[12px] uppercase tracking-[0.14em] text-lumina-text-muted">
                 Professional profile
               </p>
@@ -657,7 +664,7 @@ export default function ArtistSettingsPage() {
               </p>
               <Link
                 href="/dashboard/profile"
-                className="mt-4 inline-block rounded-full bg-lumina-black px-5 py-2.5 text-[12px] text-white"
+                className="mt-3 inline-block text-[12px] text-lumina-text-muted underline decoration-lumina-border underline-offset-4"
               >
                 Edit professional profile
               </Link>
@@ -665,7 +672,7 @@ export default function ArtistSettingsPage() {
 
             <button
               onClick={() => void signOut()}
-              className="w-full rounded-[18px] border border-lumina-border px-5 py-4 text-left text-[13px] text-lumina-text-muted transition hover:bg-lumina-surface-soft hover:text-lumina-text"
+              className="mt-6 w-full border-t border-lumina-border/70 py-5 text-left text-[13px] text-lumina-text-muted transition hover:bg-lumina-surface-soft hover:text-lumina-text"
             >
               Sign out
             </button>

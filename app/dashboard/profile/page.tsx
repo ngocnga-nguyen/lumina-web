@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Pencil } from "lucide-react";
 import { supabase } from "@/lib/supabase";
+import DesktopSettingsSection from "@/components/DesktopSettingsSection";
 import IdentityAvatar from "@/components/IdentityAvatar";
 import MobileManagementSheet from "@/components/MobileManagementSheet";
 import MobileSettingsRow from "@/components/MobileSettingsRow";
@@ -411,9 +412,6 @@ export default function DashboardProfilePage() {
   const inputClass =
     "w-full rounded-[14px] border border-lumina-border bg-lumina-surface px-4 py-3 text-[15px] text-lumina-text outline-none transition placeholder:text-lumina-text-muted/75 focus:border-lumina-text-muted/60";
 
-  const sectionTitleClass =
-    "text-[12px] font-medium uppercase tracking-[0.14em] text-lumina-text-muted";
-
   const coverPreviewImage =
     form.cover_image_url || portfolioCoverFallback || form.profile_image_url;
   const coverPreviewClass = getArtistCoverImageClass(form.cover_style);
@@ -479,54 +477,99 @@ export default function DashboardProfilePage() {
         </div>
       </MobileManagementSheet>
 
-      <section className="hidden px-5 py-10 md:px-10 md:py-14 lg:block">
-        {onboardingStep && (
-          <ProfessionalOnboardingContext
-            step={onboardingStep}
-            title={
-              onboardingStep === "about"
-                ? "About your business"
-                : "Availability"
-            }
-          />
-        )}
-        <h1
-          className="text-[42px] leading-[1.02] font-semibold md:text-[56px]"
-          style={{ fontFamily: "Georgia, Times New Roman, serif" }}
-        >
-          Edit profile
-        </h1>
-
-        <p className="mt-4 max-w-[680px] text-[16px] leading-[1.6] text-lumina-text-muted">
-          Keep your profile clear, accurate, and easy for clients to understand.
-        </p>
-
-        <div className="mt-10 max-w-[780px] rounded-[24px] border border-lumina-border bg-lumina-surface p-5 md:p-7">
-          <div className="space-y-9">
-            <section>
-              <p className={sectionTitleClass}>Basic info</p>
-
-              <div className="mt-4 space-y-4">
+      <section className="mx-auto hidden max-w-[1120px] px-6 py-8 lg:block xl:px-10">
+        {onboardingStep && <ProfessionalOnboardingContext step={onboardingStep} title={onboardingStep === "about" ? "About your business" : "Availability"} />}
+        <header className="flex items-start justify-between gap-6">
+          <div><p className="text-[10px] uppercase tracking-[0.16em] text-lumina-text-muted">What clients see</p><h1 className="mt-2 font-serif text-[36px] font-semibold leading-tight">Profile</h1><p className="mt-2 text-[13px] text-lumina-text-muted">Your public identity, appearance, and business details.</p></div>
+          {artistId && <Link href={`/artist/${artistId}`} className="mt-3 shrink-0 text-[12px] text-lumina-text-muted underline decoration-lumina-border underline-offset-4">View public profile</Link>}
+        </header>
+        <section className="mt-7 border-y border-lumina-border/70 py-5" aria-label="Desktop profile appearance">
+          <div className="mb-5"><p className="font-serif text-[24px]">{form.name || "Your professional name"}</p>{form.business_name && <p className="mt-1 text-[13px]">{form.business_name}</p>}<p className="mt-1 text-[12px] text-lumina-text-muted">{form.category || "Your service category"}</p></div>
+          <div className="grid grid-cols-[minmax(0,1fr)_128px] items-start gap-6">
                 <div>
-                  <p className="mb-2 text-[13px] font-medium text-lumina-text">Location type</p>
-                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                    {([
-                      ["salon", "Salon or studio"],
-                      ["home_studio", "Home-based studio"],
-                      ["mobile_salon", "Mobile salon"],
-                      ["travels", "I travel to clients"],
-                    ] as const).map(([value, label]) => (
-                      <button
-                        key={value}
-                        type="button"
-                        onClick={() => setForm({ ...form, location_type: value, travels_to_clients: value === "travels", hide_street_address: value === "home_studio" ? true : form.hide_street_address })}
-                        className={`rounded-[14px] px-4 py-3 text-left text-[14px] transition ${form.location_type === value ? "bg-lumina-black text-white" : "border border-lumina-border bg-lumina-surface text-lumina-text-muted hover:border-lumina-text-muted/45 hover:bg-lumina-surface-soft"}`}
-                      >
-                        {label}
-                      </button>
-                    ))}
+                  <div className="mb-3 flex items-center justify-between gap-4">
+                    <div>
+                      <p className="text-[14px] text-lumina-text-muted">Cover image</p>
+                      <p className="mt-1 text-[12px] text-lumina-text-muted">
+                        Click the preview to replace or reposition it.
+                      </p>
+                    </div>
                   </div>
+                  <button
+                    type="button"
+                    onClick={() => setMediaEditorMode("cover")}
+                    disabled={!artistId}
+                    className="group relative block h-[160px] w-full overflow-hidden rounded-[14px] border border-lumina-border/70 bg-lumina-surface-soft text-lumina-text-muted"
+                    aria-label={form.cover_image_url ? "Edit cover image" : "Add cover image"}
+                  >
+                    {coverPreviewImage ? (
+                      <>
+                        <img
+                          src={coverPreviewImage}
+                          alt="Cover preview"
+                          className={coverPreviewClass}
+                          style={getArtistCoverFramingStyle(
+                            {
+                              positionX: form.cover_position_x,
+                              positionY: form.cover_position_y,
+                              scale: form.cover_scale,
+                            },
+                            form.cover_style
+                          )}
+                        />
+                        {coverPreviewOverlayClass && (
+                          <span className={coverPreviewOverlayClass} aria-hidden="true" />
+                        )}
+                      </>
+                    ) : (
+                      <span className="flex h-full items-center justify-center text-[13px]">
+                        Add a cover image
+                      </span>
+                    )}
+                    <span className="absolute bottom-3 right-3 rounded-full bg-lumina-surface/90 px-3 py-1.5 text-[11px] text-lumina-text opacity-90 shadow-sm backdrop-blur-[8px] transition group-hover:opacity-100">
+                      Edit cover
+                    </span>
+                  </button>
                 </div>
+
+                <div>
+                  <p className="mb-3 text-[14px] text-lumina-text-muted">
+                    Profile photo
+                  </p>
+
+                  <button
+                    type="button"
+                    onClick={() => setMediaEditorMode("avatar")}
+                    disabled={!artistId}
+                    className="group relative flex h-[112px] w-[112px] items-center justify-center overflow-hidden rounded-[18px] border border-dashed border-lumina-text-muted/35 bg-lumina-surface-soft transition hover:bg-lumina-pearl disabled:opacity-50"
+                  >
+                    {form.profile_image_url ? (
+                      <img
+                        src={form.profile_image_url}
+                        alt="Profile"
+                        className="h-full w-full object-cover"
+                      />
+                    ) : (
+                      <div className="text-center">
+                        <p className="text-[12px] font-medium">
+                          Upload profile photo
+                        </p>
+                      </div>
+                    )}
+
+                    <span className="absolute inset-x-0 bottom-0 bg-lumina-surface/90 py-1.5 text-[10px] text-lumina-text">
+                      Change photo
+                    </span>
+                  </button>
+                </div>
+          </div>
+          <p className="mt-4 text-[11px] text-lumina-text-muted">Cover and photo edits save separately in the media editor.</p>
+        </section>
+        <div className="mt-3" aria-label="Desktop public profile fields">
+          <DesktopSettingsSection title="Identity & business" summary={[form.name, form.category, form.price_start ? `From $${form.price_start}` : ""].filter(Boolean).join(" · ") || "Name, category, pricing, and experience"} defaultOpen={onboardingStep === "about"}>
+
+              <div className="space-y-4">
+
 
                 <label className="block">
                   <span className="mb-2 block text-[13px] font-medium text-lumina-text">Professional name</span>
@@ -577,12 +620,29 @@ export default function DashboardProfilePage() {
                 </div>
 
               </div>
-            </section>
+</DesktopSettingsSection>
+          <DesktopSettingsSection title="Location & service area" summary={[form.city, form.region].filter(Boolean).join(", ") || "Location, travel, and address visibility"}>
 
-            <section>
-              <p className={sectionTitleClass}>Location</p>
-
-              <div className="mt-4 space-y-4">
+              <div className="space-y-4">                <div>
+                  <p className="mb-2 text-[13px] font-medium text-lumina-text">Location type</p>
+                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                    {([
+                      ["salon", "Salon or studio"],
+                      ["home_studio", "Home-based studio"],
+                      ["mobile_salon", "Mobile salon"],
+                      ["travels", "I travel to clients"],
+                    ] as const).map(([value, label]) => (
+                      <button
+                        key={value}
+                        type="button"
+                        onClick={() => setForm({ ...form, location_type: value, travels_to_clients: value === "travels", hide_street_address: value === "home_studio" ? true : form.hide_street_address })}
+                        className={`rounded-[14px] px-4 py-3 text-left text-[14px] transition ${form.location_type === value ? "bg-lumina-black text-white" : "border border-lumina-border bg-lumina-surface text-lumina-text-muted hover:border-lumina-text-muted/45 hover:bg-lumina-surface-soft"}`}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
                 <label className="block">
                   <span className="mb-2 block text-[13px] font-medium text-lumina-text">Street address</span>
                   <input
@@ -646,12 +706,10 @@ export default function DashboardProfilePage() {
                   </p>
                 )}
               </div>
-            </section>
+</DesktopSettingsSection>
+          <DesktopSettingsSection title="Contact & booking" summary={form.phone || form.social_link || "Phone and existing booking link"}>
 
-            <section>
-              <p className={sectionTitleClass}>Contact</p>
-
-              <div className="mt-4 space-y-4">
+              <div className="space-y-4">
                 <input
                   type="text"
                   placeholder="Phone number"
@@ -672,101 +730,10 @@ export default function DashboardProfilePage() {
                   className={inputClass}
                 />
               </div>
-            </section>
+</DesktopSettingsSection>
+          <DesktopSettingsSection title="Bio & availability" summary={form.availability || "Introduce your work and usual working hours"} defaultOpen={onboardingStep === "availability"}>
 
-            <section>
-              <p className={sectionTitleClass}>Profile details</p>
-
-              <div className="mt-4 space-y-4">
-                <div>
-                  <div className="mb-3 flex items-center justify-between gap-4">
-                    <div>
-                      <p className="text-[14px] text-lumina-text-muted">Cover image</p>
-                      <p className="mt-1 text-[12px] text-lumina-text-muted">
-                        Click the preview to replace or reposition it.
-                      </p>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => setMediaEditorMode("cover")}
-                      disabled={!artistId}
-                      className="inline-flex min-h-10 items-center gap-2 rounded-full border border-lumina-border bg-lumina-surface px-4 text-[12px] text-lumina-text transition hover:border-lumina-text-muted hover:bg-lumina-surface-soft disabled:opacity-50"
-                    >
-                      <Pencil size={14} aria-hidden="true" />
-                      {form.cover_image_url ? "Edit cover" : "Add cover"}
-                    </button>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setMediaEditorMode("cover")}
-                    disabled={!artistId}
-                    className="group relative block h-[170px] w-full overflow-hidden rounded-[18px] border border-lumina-border bg-lumina-surface-soft text-lumina-text-muted sm:h-[210px]"
-                    aria-label={form.cover_image_url ? "Edit cover image" : "Add cover image"}
-                  >
-                    {coverPreviewImage ? (
-                      <>
-                        <img
-                          src={coverPreviewImage}
-                          alt="Cover preview"
-                          className={coverPreviewClass}
-                          style={getArtistCoverFramingStyle(
-                            {
-                              positionX: form.cover_position_x,
-                              positionY: form.cover_position_y,
-                              scale: form.cover_scale,
-                            },
-                            form.cover_style
-                          )}
-                        />
-                        {coverPreviewOverlayClass && (
-                          <span className={coverPreviewOverlayClass} aria-hidden="true" />
-                        )}
-                      </>
-                    ) : (
-                      <span className="flex h-full items-center justify-center text-[13px]">
-                        Add a cover image
-                      </span>
-                    )}
-                    <span className="absolute bottom-3 right-3 rounded-full bg-lumina-surface/90 px-3 py-1.5 text-[11px] text-lumina-text opacity-90 shadow-sm backdrop-blur-[8px] transition group-hover:opacity-100">
-                      Edit cover
-                    </span>
-                  </button>
-                </div>
-
-                <div>
-                  <p className="mb-3 text-[14px] text-lumina-text-muted">
-                    Profile photo
-                  </p>
-
-                  <button
-                    type="button"
-                    onClick={() => setMediaEditorMode("avatar")}
-                    disabled={!artistId}
-                    className="group relative flex h-[220px] w-full items-center justify-center overflow-hidden rounded-[18px] border border-dashed border-lumina-text-muted/35 bg-lumina-surface-soft transition hover:bg-lumina-pearl disabled:opacity-50"
-                  >
-                    {form.profile_image_url ? (
-                      <img
-                        src={form.profile_image_url}
-                        alt="Profile"
-                        className="h-full w-full object-cover"
-                      />
-                    ) : (
-                      <div className="text-center">
-                        <p className="text-[16px] font-medium">
-                          Upload profile photo
-                        </p>
-
-                        <p className="mt-2 text-[13px] text-lumina-text-muted">
-                          Tap to choose from phone or files
-                        </p>
-                      </div>
-                    )}
-
-                    <span className="absolute bottom-3 right-3 rounded-full bg-lumina-surface/90 px-3 py-1.5 text-[11px] text-lumina-text shadow-sm backdrop-blur-[8px]">
-                      Change photo
-                    </span>
-                  </button>
-                </div>
+              <div className="space-y-4">
 
                 <textarea
                   placeholder="Short bio — describe your style, specialties, and what clients can expect."
@@ -802,21 +769,9 @@ export default function DashboardProfilePage() {
                   />
                 </div>
               </div>
-            </section>
-
-            <button
-              onClick={saveProfile}
-              disabled={loading}
-              className="w-full rounded-full bg-lumina-black px-6 py-3 text-[14px] font-medium text-white transition hover:opacity-90 disabled:opacity-50"
-            >
-              {loading
-                ? "Saving changes..."
-                : onboardingStep
-                  ? "Save and continue"
-                  : "Save changes"}
-            </button>
-          </div>
+</DesktopSettingsSection>
         </div>
+        <div className="mt-6 flex items-center justify-between gap-5"><p className="text-[12px] text-lumina-text-muted">Profile field edits apply when you save changes.</p><button onClick={saveProfile} disabled={loading} className="min-h-10 shrink-0 rounded-full bg-lumina-black px-6 text-[12px] font-medium text-white disabled:opacity-50">{loading ? "Saving changes..." : onboardingStep ? "Save and continue" : "Save changes"}</button></div>
       </section>
 
       {artistId && mediaEditorMode && (

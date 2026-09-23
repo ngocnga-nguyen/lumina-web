@@ -284,20 +284,11 @@ export default function AccountPage() {
         <button type="button" onClick={() => void sendPasswordReset()} disabled={sendingPasswordReset || !email} className="mt-5 min-h-11 w-full rounded-full bg-lumina-black px-5 text-[13px] text-white disabled:opacity-50">{sendingPasswordReset ? "Sending…" : "Send reset link"}</button>
       </MobileManagementSheet>
 
-      <section className="mx-auto hidden max-w-xl px-5 py-10 md:px-10 md:py-14 lg:block">
-        <h1
-          className="text-[42px] font-semibold leading-[1.02] md:text-[56px]"
-          style={{ fontFamily: "Georgia, Times New Roman, serif" }}
-        >
-          Account
-        </h1>
-
-        <p className="mt-4 text-[16px] leading-[1.6] text-lumina-text-muted">
-          Manage your Lumina account.
-        </p>
-
-        <div className="mt-10 rounded-[24px] border border-lumina-border bg-lumina-surface p-5">
-          <div className="mb-6 flex items-start justify-between gap-4">
+      <section className="mx-auto hidden max-w-[1040px] px-6 py-8 lg:block xl:px-10">
+        <header><p className="text-[10px] uppercase tracking-[0.16em] text-lumina-text-muted">Your account</p><h1 className="mt-2 font-serif text-[36px] font-semibold leading-tight">Profile &amp; settings</h1><p className="mt-2 text-[13px] text-lumina-text-muted">Your identity and account, in one place.</p></header>
+        <section className="mt-7 border-y border-lumina-border/70 py-6" aria-label="Desktop client profile">
+          {!editing ? <div className="flex items-center gap-5"><IdentityAvatar name={savedName || email || "Client"} imageUrl={savedProfileImageUrl} className="block h-20 w-20 shrink-0 rounded-full bg-lumina-blush/60" fallbackClassName="font-serif text-[28px]" /><div className="min-w-0 flex-1"><p className="truncate font-serif text-[25px]">{name || "Your profile"}</p><p className="mt-1 truncate text-[13px] text-lumina-text-muted">{email || "Loading..."}</p></div><button onClick={() => setEditing(true)} className="min-h-10 shrink-0 rounded-full border border-lumina-border px-4 text-[12px]">Edit profile</button></div> : <div className="max-w-[640px]">
+          <div className="mb-5 flex items-start justify-between gap-4">
             <div className="flex items-center gap-4">
               <div className="relative flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-full bg-lumina-blush/60">
                 {profileImageUrl ? (
@@ -371,6 +362,27 @@ export default function AccountPage() {
 ) : (
   <p className="mb-6 mt-2 text-[15px]">{name || "Not set"}</p>
 )}
+          {editing && (
+            <div className="mt-6 flex justify-end gap-3 border-t border-lumina-border pt-5">
+              <button
+                onClick={cancelEditing}
+                disabled={saving || uploading}
+                className="rounded-full border border-lumina-border px-5 py-2.5 text-[13px] text-lumina-text-muted disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => void saveProfile()}
+                disabled={saving || uploading}
+                className="rounded-full bg-lumina-black px-6 py-2.5 text-[13px] text-white disabled:bg-lumina-pearl"
+              >
+                {saving ? "Saving…" : "Save profile"}
+              </button>
+            </div>
+          )}
+          </div>}
+        </section>
+        <section className="py-6" aria-label="Desktop account and security"><h2 className="text-[15px] font-medium">Account &amp; security</h2><div className="mt-5 max-w-[760px]">
           <p className="text-[12px] uppercase tracking-[0.14em] text-lumina-text-muted">
             Email
           </p>
@@ -443,57 +455,19 @@ export default function AccountPage() {
             </button>
           </div>
 
-          {editing && (
-            <div className="mt-6 flex justify-end gap-3 border-t border-lumina-border pt-5">
-              <button
-                onClick={cancelEditing}
-                disabled={saving || uploading}
-                className="rounded-full border border-lumina-border px-5 py-2.5 text-[13px] text-lumina-text-muted disabled:opacity-50"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={() => void saveProfile()}
-                disabled={saving || uploading}
-                className="rounded-full bg-lumina-black px-6 py-2.5 text-[13px] text-white disabled:bg-lumina-pearl"
-              >
-                {saving ? "Saving…" : "Save profile"}
-              </button>
-            </div>
-          )}
-        </div>
-
-        <div className="mt-6 grid gap-3">
-          <Link
-            href="/saved"
-            className="rounded-[18px] border border-lumina-border px-5 py-4 text-sm transition hover:bg-lumina-blush/60"
-          >
-            Saved Artists
-          </Link>
-
-          <Link
-            href="/my-requests"
-            className="rounded-[18px] border border-lumina-border px-5 py-4 text-sm transition hover:bg-lumina-blush/60"
-          >
-            My Requests
-          </Link>
-
           <button
             onClick={() => void signOutOtherDevices()}
             disabled={signingOutOthers}
-            className="rounded-[18px] border border-lumina-border px-5 py-4 text-left text-sm text-lumina-text-muted transition hover:bg-lumina-blush/60 hover:text-lumina-black disabled:opacity-50"
+            className="mt-5 w-full border-t border-lumina-border/60 py-4 text-left text-sm text-lumina-text-muted transition hover:bg-lumina-blush/60 hover:text-lumina-black disabled:opacity-50"
           >
             <span className="block">Sign out of other devices</span>
             <span className="mt-1 block text-[11px] text-lumina-text-muted">Keep this device signed in</span>
           </button>
 
-          <button
-            onClick={signOut}
-            className="rounded-[18px] border border-lumina-border px-5 py-4 text-left text-sm text-lumina-text-muted transition hover:bg-lumina-blush/60 hover:text-lumina-black"
-          >
-            Sign out
-          </button>
-        </div>
+
+        </div></section>
+        <section className="border-t border-lumina-border/70 py-5" aria-label="Account shortcuts"><h2 className="text-[11px] uppercase tracking-[0.12em] text-lumina-text-muted">Shortcuts</h2><div className="mt-3 flex gap-6 text-[13px]"><Link href="/saved" className="text-lumina-text-muted underline decoration-lumina-border underline-offset-4">Saved Artists</Link><Link href="/my-requests" className="text-lumina-text-muted underline decoration-lumina-border underline-offset-4">My Requests</Link></div></section>
+        <button onClick={signOut} className="mt-4 min-h-11 w-full border-t border-lumina-border/70 pt-5 text-left text-[13px] text-lumina-text-muted">Sign out</button>
       </section>
       </div>
     </ClientWorkspaceShell>
