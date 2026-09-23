@@ -892,9 +892,9 @@ export default function DashboardPortfolioPage() {
           </div>
 
           {mobileEditorOpen && (
-            <section aria-label={editingResult ? "Edit Result" : entryType === "before_after" ? "Add Result" : "Add Portfolio item"} className="my-6 max-w-[680px] rounded-[16px] border border-lumina-border/70 p-6">
+            <section aria-label={editingResult ? entryType === "before_after" ? "Edit Result" : "Edit Portfolio item" : entryType === "before_after" ? "Add Result" : "Add Portfolio item"} className="my-6 max-w-[680px] rounded-[16px] border border-lumina-border/70 p-6">
               <div className="flex items-center justify-between gap-4">
-                <h2 className="font-serif text-[24px] font-semibold">{editingResult ? "Edit Result" : entryType === "before_after" ? "Add Result" : "Add Portfolio item"}</h2>
+                <h2 className="font-serif text-[24px] font-semibold">{editingResult ? entryType === "before_after" ? "Edit Result" : "Edit Portfolio item" : entryType === "before_after" ? "Add Result" : "Add Portfolio item"}</h2>
                 <button type="button" onClick={closeMobileEditor} disabled={loading} className="min-h-10 px-2 text-[13px] text-lumina-text-muted hover:text-lumina-text disabled:opacity-50">Cancel</button>
               </div>
               <div className="mt-4 max-h-[65dvh] overflow-y-auto overscroll-contain pr-2">{renderEntryForm(false, true)}</div>
@@ -920,7 +920,10 @@ export default function DashboardPortfolioPage() {
                     {item.caption && <p className="mt-1 whitespace-pre-line text-[13px] leading-relaxed text-lumina-text-muted">{item.caption}</p>}
                     <div className="mt-2 flex items-center justify-between gap-3">
                       <span className="text-[11px] text-lumina-text-muted">{item.result_date ? formatResultDate(item.result_date) : ""}</span>
-                      <button type="button" onClick={() => void deletePortfolioImage(item.id)} aria-label={`Delete ${item.caption || item.service_name || "portfolio item"}`} className="min-h-9 text-[12px] text-lumina-text-muted hover:text-lumina-text">Delete</button>
+                      <div className="flex items-center gap-4 text-[12px]">
+                        <button type="button" onClick={() => startEditingEntry(item)} aria-label={`Edit ${item.caption || item.service_name || "portfolio item"}`} className="min-h-9 text-lumina-text hover:underline">Edit</button>
+                        <button type="button" onClick={() => void deletePortfolioImage(item.id)} aria-label={`Delete ${item.caption || item.service_name || "portfolio item"}`} className="min-h-9 text-lumina-text-muted hover:text-lumina-text">Delete</button>
+                      </div>
                     </div>
                   </div>
                 </article>

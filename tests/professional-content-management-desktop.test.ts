@@ -21,7 +21,7 @@ test("desktop Services uses rows and an intentional editor, without invented ser
   assert.match(view, /deleteService\(service\.id\)/);
 });
 
-test("desktop separates Portfolio from Results without enabling single-photo edit parity", () => {
+test("desktop separates Portfolio from Results and shares existing editing for both types", () => {
   const view = desktop(media);
   assert.match(view, /Desktop portfolio workspace view/);
   assert.match(view, /portfolioEntries\.map/);
@@ -29,7 +29,7 @@ test("desktop separates Portfolio from Results without enabling single-photo edi
   assert.match(view, /grid-cols-2 gap-x-5 gap-y-7 xl:grid-cols-3/);
   assert.match(view, /grid-cols-1 gap-x-6 gap-y-8 xl:grid-cols-2/);
   const photos = view.slice(view.indexOf("portfolioEntries.map"), view.indexOf("resultEntries.map"));
-  assert.doesNotMatch(photos, /startEditingEntry/);
+  assert.match(photos, /onClick=\{\(\) => startEditingEntry\(item\)\}/);
   assert.match(photos, /deletePortfolioImage\(item.id\)/);
   assert.match(view.slice(view.indexOf("resultEntries.map")), /startEditingEntry\(item\)/);
   assert.match(view, /item.request_id &&.*Linked to completed service/);
@@ -43,6 +43,7 @@ test("focused desktop media form fixes the chosen entry type and reuses existing
   assert.match(view, /renderEntryForm\(false, true\)/);
   assert.match(view, /max-h-\[65dvh\] overflow-y-auto/);
   assert.match(view, /onClick=\{closeMobileEditor\}/);
+  assert.match(view, /entryType === "before_after" \? "Edit Result" : "Edit Portfolio item"/);
   assert.match(media, /!editingResult && !mobile && !fixedEntryType/);
   assert.match(media, /renderEntryForm\(true\)/);
 });
@@ -54,6 +55,20 @@ test("queries, mutations, crop, validation, ordering and onboarding match the ap
   assert.equal(digest(media, "  const renderEntryForm ="), "c0996e316a6e7fc93bc4c002fe385813073c647716f7a556fe1126009e3ed05a");
   assert.doesNotMatch(services + media, /\.channel\(/);
   assert.doesNotMatch(media, /storage[\s\S]*?\.remove\(/);
+});
+
+test("Portfolio editing populates existing values and returns the saved record without a second mutation", () => {
+  const editor = media.slice(media.indexOf("  const startEditingEntry ="), media.indexOf("  const uploadBlob ="));
+  for (const field of ["entry_type", "caption", "service_name", "result_date"]) {
+    assert.ok(editor.includes(`result.${field}`));
+  }
+  assert.match(editor, /setMobileEditorOpen\(true\)/);
+  const save = media.slice(media.indexOf("  const savePortfolioEntry ="), media.indexOf("  const deletePortfolioImage ="));
+  assert.equal((save.match(/\.update\(/g) || []).length, 1);
+  assert.match(save, /\.eq\("id", editingResult.id\)/);
+  assert.match(save, /\.eq\("artist_id", artistId\)/);
+  assert.match(save, /current.map\(\(item\) => \(item.id === data.id \? data : item\)\)/);
+  assert.match(save, /resetForm\(\);\s*setMobileEditorOpen\(false\);\s*setSelectedEntryId\(null\)/);
 });
 
 test("completed-result associations remain constrained and do not promote evidence", () => {
