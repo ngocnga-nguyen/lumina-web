@@ -173,18 +173,18 @@ export default function ProfessionalReviewsWorkspace() {
   };
 
   return (
-    <section className="mx-auto w-full max-w-[1120px] px-3 py-5 md:px-8 md:py-8 lg:px-10 lg:py-12">
-      <header>
+    <section className="mx-auto w-full max-w-[1120px] px-3 py-5 md:px-8 md:py-8 lg:px-6 lg:py-8 xl:px-10 xl:py-10">
+      <header className="lg:border-b lg:border-lumina-border/70 lg:pb-5">
         <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-lumina-text-muted lg:text-[11px]">
           Reputation
         </p>
         <h1
-          className="mt-1 text-[28px] font-semibold leading-none text-lumina-text lg:text-[44px]"
+          className="mt-1 text-[28px] font-semibold leading-none text-lumina-text lg:text-[32px] lg:leading-[1.1] xl:text-[36px]"
           style={{ fontFamily: "Georgia, Times New Roman, serif" }}
         >
           Reviews
         </h1>
-        <p className="mt-2 text-[12px] leading-[1.5] text-lumina-text-muted lg:text-[14px]">
+        <p className="mt-2 text-[12px] leading-[1.5] text-lumina-text-muted lg:text-[13px]">
           See verified client feedback and respond thoughtfully.
         </p>
       </header>
@@ -201,30 +201,30 @@ export default function ProfessionalReviewsWorkspace() {
       ) : (
         <>
           <section
-            className={`mt-6 grid divide-x divide-lumina-border/65 border-y border-lumina-border/70 ${
+            className={`mt-6 grid divide-x divide-lumina-border/65 border-y border-lumina-border/70 lg:mt-5 lg:flex lg:w-fit lg:border-0 ${
               summary.needsResponse > 0 ? "grid-cols-3" : "grid-cols-2"
             }`}
             aria-label="Reputation summary"
           >
-            <div className="flex min-h-[66px] flex-col items-center justify-center px-1 py-2 text-center">
+            <div className="flex min-h-[66px] flex-col items-center justify-center px-1 py-2 text-center lg:min-h-0 lg:items-start lg:pr-7 lg:pl-0 lg:text-left">
               <span className="text-[18px] font-semibold leading-none text-lumina-text">
                 {summary.count > 0 ? summary.average.toFixed(1) : "—"}
               </span>
               <span className="mt-1 text-[9px] uppercase tracking-[0.08em] text-lumina-text-muted">Average</span>
             </div>
-            <div className="flex min-h-[66px] flex-col items-center justify-center px-1 py-2 text-center">
+            <div className="flex min-h-[66px] flex-col items-center justify-center px-1 py-2 text-center lg:min-h-0 lg:items-start lg:px-7 lg:text-left">
               <span className="text-[18px] font-semibold leading-none text-lumina-text">{summary.count}</span>
               <span className="mt-1 text-[9px] uppercase tracking-[0.08em] text-lumina-text-muted">Published</span>
             </div>
             {summary.needsResponse > 0 && (
-              <div className="flex min-h-[66px] flex-col items-center justify-center px-1 py-2 text-center">
+              <div className="flex min-h-[66px] flex-col items-center justify-center px-1 py-2 text-center lg:min-h-0 lg:items-start lg:px-7 lg:text-left">
                 <span className="text-[18px] font-semibold leading-none text-lumina-text">{summary.needsResponse}</span>
                 <span className="mt-1 text-[9px] uppercase tracking-[0.08em] text-lumina-text-muted">Needs response</span>
               </div>
             )}
           </section>
 
-          <div className="mt-5 flex items-center justify-between gap-3">
+          <div className="mt-5 flex items-center justify-between gap-3 lg:mt-7 lg:border-b lg:border-lumina-border/70 lg:pb-3">
             <div className="inline-flex rounded-full border border-lumina-border/70 bg-lumina-pearl/60 p-1" aria-label="Review filters">
               {(["all", "needs_response"] as ReviewFilter[]).map((value) => (
                 <button
@@ -248,13 +248,13 @@ export default function ProfessionalReviewsWorkspace() {
           </div>
 
           {visibleReviews.length > 0 ? (
-            <div className="mt-3 divide-y divide-lumina-border/70 lg:grid lg:grid-cols-2 lg:gap-4 lg:divide-y-0">
+            <div className="mt-3 divide-y divide-lumina-border/70 lg:mt-0">
               {visibleReviews.map((review) => {
                 const request = review.request_id ? requests.get(review.request_id) : undefined;
                 const service = getReviewServiceLabel(request);
                 const editing = editingReviewId === review.id;
                 return (
-                  <article key={review.id} className="py-4 lg:rounded-[20px] lg:border lg:border-lumina-border lg:bg-lumina-surface lg:p-5">
+                  <article key={review.id} className="py-4 lg:py-6">
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
                         <div className="flex flex-wrap items-center gap-1.5">
@@ -275,11 +275,13 @@ export default function ProfessionalReviewsWorkspace() {
                       )}
                     </div>
 
-                    {service && <p className="mt-2 text-[11px] text-lumina-text-muted">{service}</p>}
-                    {review.comment && <p className="mt-2 whitespace-pre-line text-[13px] leading-[1.55] text-lumina-text">{review.comment}</p>}
+                    <div className="contents lg:flex lg:flex-col">
+                      {service && <p className="mt-2 text-[11px] text-lumina-text-muted lg:order-2 lg:text-[12px]">{service}</p>}
+                      {review.comment && <p className="mt-2 whitespace-pre-line text-[13px] leading-[1.55] text-lumina-text lg:order-1 lg:mt-3 lg:max-w-[76ch] lg:text-[14px] lg:leading-[1.7]">{review.comment}</p>}
+                    </div>
 
                     {review.artist_response && !editing && (
-                      <div className="mt-3 border-l-2 border-lumina-blush bg-lumina-pearl/45 px-3 py-2.5">
+                      <div className="mt-3 border-l-2 border-lumina-blush bg-lumina-pearl/45 px-3 py-2.5 lg:mt-4 lg:max-w-[760px] lg:px-4 lg:py-3">
                         <div className="flex items-center justify-between gap-3">
                           <p className="text-[10px] font-semibold uppercase tracking-[0.1em] text-lumina-text-muted">Your response</p>
                           <p className="text-[9px] text-lumina-text-muted">{formatReviewWorkspaceDate(review.artist_response_at)}</p>
@@ -305,7 +307,7 @@ export default function ProfessionalReviewsWorkspace() {
                     )}
 
                     {editing && (
-                      <div className="mt-3 rounded-[14px] border border-lumina-border bg-lumina-surface px-3 py-3">
+                      <div className="mt-3 rounded-[14px] border border-lumina-border bg-lumina-surface px-3 py-3 lg:mt-4 lg:max-w-[760px] lg:rounded-[12px] lg:border-lumina-border/65 lg:p-4">
                         <label htmlFor={`review-response-${review.id}`} className="text-[11px] font-medium text-lumina-text">Public response</label>
                         <textarea
                           id={`review-response-${review.id}`}

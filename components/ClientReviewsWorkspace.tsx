@@ -43,7 +43,7 @@ function ClientReviewRow({
   const service = getReviewServiceLabel(request);
 
   return (
-    <article className="border-b border-lumina-border/70 py-4 last:border-b-0 lg:rounded-[20px] lg:border lg:bg-lumina-surface lg:p-5">
+    <article className="border-b border-lumina-border/70 py-4 last:border-b-0 lg:py-6">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <h3 className="truncate text-[15px] font-semibold text-lumina-text">
@@ -71,13 +71,13 @@ function ClientReviewRow({
         <p className="mt-2 text-[11px] text-lumina-text-muted">{service}</p>
       )}
       {review.comment && (
-        <p className="mt-2 line-clamp-3 whitespace-pre-line text-[13px] leading-[1.55] text-lumina-text">
+        <p className="mt-2 line-clamp-3 whitespace-pre-line text-[13px] leading-[1.55] text-lumina-text lg:max-w-[76ch] lg:text-[14px] lg:leading-[1.7]">
           {review.comment}
         </p>
       )}
 
       {review.artist_response && (
-        <div className="mt-3 border-l-2 border-lumina-blush bg-lumina-pearl/45 px-3 py-2.5">
+        <div className="mt-3 border-l-2 border-lumina-blush bg-lumina-pearl/45 px-3 py-2.5 lg:mt-4 lg:max-w-[760px] lg:px-4 lg:py-3">
           <div className="flex items-center justify-between gap-3">
             <p className="text-[10px] font-semibold uppercase tracking-[0.1em] text-lumina-text-muted">
               Professional response
@@ -276,18 +276,18 @@ export default function ClientReviewsWorkspace() {
   };
 
   return (
-    <section className="mx-auto w-full max-w-[1040px] px-3 py-5 md:px-8 md:py-8 lg:px-10 lg:py-12">
-      <header>
+    <section className="mx-auto w-full max-w-[1040px] px-3 py-5 md:px-8 md:py-8 lg:px-6 lg:py-8 xl:px-10 xl:py-10">
+      <header className="lg:border-b lg:border-lumina-border/70 lg:pb-5">
         <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-lumina-text-muted lg:text-[11px]">
           Your experience
         </p>
         <h1
-          className="mt-1 text-[28px] font-semibold leading-none text-lumina-text lg:text-[44px]"
+          className="mt-1 text-[28px] font-semibold leading-none text-lumina-text lg:text-[32px] lg:leading-[1.1] xl:text-[36px]"
           style={{ fontFamily: "Georgia, Times New Roman, serif" }}
         >
           Reviews
         </h1>
-        <p className="mt-2 text-[12px] leading-[1.5] text-lumina-text-muted lg:text-[14px]">
+        <p className="mt-2 text-[12px] leading-[1.5] text-lumina-text-muted lg:text-[13px]">
           Share verified feedback after eligible Lumina appointments.
         </p>
       </header>
@@ -309,7 +309,7 @@ export default function ClientReviewsWorkspace() {
       ) : (
         <>
           {readyRequests.length > 0 && (
-            <section className="mt-6" aria-labelledby="review-ready-heading">
+            <section className="mt-6 lg:mt-7" aria-labelledby="review-ready-heading">
               <div className="flex items-end justify-between gap-3">
                 <div>
                   <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-lumina-text-muted">
@@ -348,7 +348,7 @@ export default function ClientReviewsWorkspace() {
                           : "border-lumina-border/75 bg-lumina-surface"
                       }`}
                     >
-                      <div className="flex items-center gap-3 p-3.5">
+                      <div className="flex items-center gap-3 p-3.5 lg:gap-4 lg:px-5 lg:py-4">
                         <span className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-lumina-pearl text-[12px] font-medium">
                           {image ? (
                             // eslint-disable-next-line @next/next/no-img-element
@@ -379,10 +379,11 @@ export default function ClientReviewsWorkspace() {
                       </div>
 
                       {isExpanded && (
-                        <div className="border-t border-lumina-border/65 bg-white/65 px-3.5 py-4">
+                        <div className="border-t border-lumina-border/65 bg-white/65 px-3.5 py-4 lg:px-5 lg:py-5">
                           <div className="flex items-center gap-2 text-[10px] font-medium text-lumina-text-muted">
                             <BadgeCheck size={14} strokeWidth={1.7} aria-hidden="true" />
-                            Your review will stay linked to this completed appointment.
+                            <span className="lg:hidden">Your review will stay linked to this completed appointment.</span>
+                            <span className="hidden lg:inline">Your review will stay linked to this Lumina appointment.</span>
                           </div>
                           <div className="mt-3">
                             <ReviewStars value={rating} interactive onChange={setRating} size="editor" />
@@ -419,7 +420,7 @@ export default function ClientReviewsWorkspace() {
             </section>
           )}
 
-          <section className={readyRequests.length > 0 ? "mt-7" : "mt-6"} aria-labelledby="past-reviews-heading">
+          <section className={readyRequests.length > 0 ? "mt-7 lg:mt-9" : "mt-6 lg:mt-7"} aria-labelledby="past-reviews-heading">
             <div className="flex items-end justify-between gap-3 border-b border-lumina-border/70 pb-2">
               <h2 id="past-reviews-heading" className="text-[19px] font-medium text-lumina-text">
                 Past reviews
@@ -427,7 +428,7 @@ export default function ClientReviewsWorkspace() {
               {reviews.length > 0 && <span className="text-[11px] text-lumina-text-muted">{reviews.length}</span>}
             </div>
             {reviews.length > 0 ? (
-              <div className="lg:mt-4 lg:grid lg:grid-cols-2 lg:gap-4">
+              <div>
                 {reviews.map((review) => (
                   <ClientReviewRow
                     key={review.id}
