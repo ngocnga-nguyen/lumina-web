@@ -9,6 +9,8 @@ import SaveArtistButton from "@/components/SaveArtistButton";
 import ReviewReportDialog from "@/components/ReviewReportDialog";
 import ClientGuidanceTip from "@/components/ClientGuidanceTip";
 import PublicPageHeader from "@/components/PublicPageHeader";
+import StorefrontDesktopHero from "@/components/StorefrontDesktopHero";
+import storefrontStyles from "./storefront.module.css";
 import ProfessionalProfileMediaEditor from "@/components/ProfessionalProfileMediaEditor";
 import { useClientOnboarding } from "@/lib/use-client-onboarding";
 import { useLuminaAdminAccess } from "@/lib/use-lumina-admin-access";
@@ -1057,7 +1059,7 @@ setAverageRating(updatedAverage);
   );
 
   return (
-    <main data-lumina-public-page className="min-h-screen bg-lumina-surface text-lumina-text">
+    <main data-lumina-public-page className={`${storefrontStyles.storefront} min-h-screen bg-lumina-surface text-lumina-text`}>
       <PublicPageHeader
         backHref="/browse"
         backLabel="Back"
@@ -1382,289 +1384,41 @@ setAverageRating(updatedAverage);
 
       <section className="px-4 pb-10 pt-0 md:px-10 md:py-8">
         <div className="mx-auto w-full max-w-[1520px]">
-        <div className="hidden md:grid md:grid-cols-[320px_1fr] md:gap-8 lg:grid-cols-[360px_1fr] lg:gap-14">
-          <div>
-            <div className="relative h-[clamp(260px,72vw,300px)] w-full overflow-hidden bg-lumina-pearl md:h-[430px]">
-              {artist.profile_image_url ? (
-                <img
-                  src={artist.profile_image_url}
-                  alt={artist.name}
-                  className="h-full w-full object-cover"
-                />
-              ) : (
-                <div className="flex h-full w-full items-center justify-center text-center text-lumina-text-muted">
-                  <div>
-                    <p className="text-[18px]">Profile Image</p>
-                    <p className="mt-1 text-[13px]">Coming soon</p>
-                  </div>
-                </div>
-              )}
-              {isOwnProfile && (
-                <button
-                  type="button"
-                  onClick={() => setMediaEditorMode("avatar")}
-                  className="group absolute inset-0 flex items-end p-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-lumina-surface"
-                  aria-label="Change profile photo"
-                >
-                  <span className="inline-flex items-center gap-1.5 rounded-full bg-lumina-surface/90 px-3 py-1.5 text-[11px] text-lumina-text opacity-90 shadow-sm backdrop-blur-[8px] transition group-hover:opacity-100">
-                    <Camera size={13} aria-hidden="true" /> Change photo
-                  </span>
-                </button>
-              )}
-            </div>
+        <StorefrontDesktopHero
+          name={artist.name}
+          businessName={artist.business_name}
+          category={artist.category}
+          location={compactLocation}
+          startingPrice={artist.price_start}
+          profileImage={artist.profile_image_url}
+          coverImage={mobileCoverImage}
+          coverClassName={mobileCoverImageClass}
+          coverStyle={getArtistCoverFramingStyle(mobileCoverFraming, mobileCoverStyle)}
+          coverOverlayClassName={mobileCoverOverlayClass}
+          bio={profileBio}
+          availability={artist.availability}
+          availabilitySummary={availabilitySummary}
+          availabilityExpanded={availabilityExpanded}
+          onToggleAvailability={() => setAvailabilityExpanded((expanded) => !expanded)}
+          detailsExpanded={profileDetailsExpanded}
+          onToggleDetails={() => setProfileDetailsExpanded((expanded) => !expanded)}
+          licenseVerified={verifiedLicenseArtistId === artistId}
+          experience={experienceLabel}
+          serviceCount={services.length}
+          portfolioCount={portfolioPhotos.length}
+          resultCount={results.length}
+          reviewCount={reviews.length}
+          rating={averageRating}
+          locationType={artist.location_type}
+          mobileLocationDetails={artist.mobile_location_details}
+          isOwner={isOwnProfile}
+          privatePreview={privatePreview}
+          onEditCover={() => setMediaEditorMode("cover")}
+          onEditAvatar={() => setMediaEditorMode("avatar")}
+          saveControl={<SaveArtistButton artistId={artist.id} artistName={artist.name} viewerIsArtist={viewerIsArtist} />}
+        />
 
-            <div className="mt-2 rounded-[14px] border border-lumina-border bg-lumina-surface/80 px-3 py-2 backdrop-blur-[8px] md:mt-3 md:px-3.5 md:py-2.5">
-              <button
-                type="button"
-                onClick={() => setAvailabilityExpanded((expanded) => !expanded)}
-                aria-expanded={availabilityExpanded}
-                aria-controls="profile-availability-details"
-                className="flex min-h-9 w-full items-center justify-between gap-3 rounded-[7px] text-left text-lumina-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lumina-attention/40 focus-visible:ring-offset-2 md:min-h-10"
-              >
-                <div className="min-w-0 flex-1">
-                  <h2
-                    className="text-[16px] md:text-[17px]"
-                    style={{ fontFamily: "Georgia, Times New Roman, serif" }}
-                  >
-                    Availability
-                  </h2>
-                  {!availabilityExpanded && (
-                    <p className="mt-0.5 truncate text-[12px] leading-[1.35] text-lumina-text-muted">
-                      {availabilitySummary}
-                    </p>
-                  )}
-                </div>
-                <ChevronDown
-                  size={15}
-                  strokeWidth={1.6}
-                  aria-hidden="true"
-                  className={`shrink-0 text-lumina-text-muted transition-transform duration-150 ${
-                    availabilityExpanded ? "rotate-180" : ""
-                  }`}
-                />
-                <span className="sr-only">
-                  {availabilityExpanded ? "Hide availability" : "Show availability"}
-                </span>
-              </button>
-
-              {availabilityExpanded && (
-                <div id="profile-availability-details">
-                  <p className="mt-2 whitespace-pre-line border-t border-lumina-border pt-2 text-[12px] leading-[1.5] text-lumina-text-muted">
-                    {artist.availability || "Availability coming soon."}
-                  </p>
-
-                  {isOwnProfile && (
-                    <Link
-                      href="/dashboard/profile"
-                      className="mt-2.5 inline-block rounded-full border border-lumina-border bg-lumina-surface px-3.5 py-1.5 text-[11px] text-lumina-text transition hover:border-lumina-text-muted hover:bg-lumina-surface-soft"
-                    >
-                      Edit profile
-                    </Link>
-                  )}
-                </div>
-              )}
-            </div>
-          </div>
-
-          <div>
-  <div className="flex items-start justify-between gap-4">
-    <h1
-      className="text-[30px] leading-[1.03] font-semibold md:text-[36px] md:leading-[1.02] lg:text-[42px] lg:leading-[1.0]"
-      style={{ fontFamily: "'Playfair Display', serif" }}
-    >
-      {artist.name}
-    </h1>
-
-    <div className="flex shrink-0 items-center gap-2">
-      {isOwnProfile && (
-        <button
-          type="button"
-          onClick={() => setMediaEditorMode("cover")}
-          className="inline-flex min-h-10 items-center gap-1.5 rounded-full border border-lumina-border bg-lumina-surface px-3 text-[11px] text-lumina-text transition hover:border-lumina-text-muted hover:bg-lumina-surface-soft"
-        >
-          <Pencil size={13} aria-hidden="true" /> Edit cover
-        </button>
-      )}
-      <SaveArtistButton
-        artistId={artist.id}
-        artistName={artist.name}
-        viewerIsArtist={viewerIsArtist}
-      />
-    </div>
-</div>
-
-            {artist.business_name && (
-              <p className="mt-2 text-[15px] text-lumina-text-muted md:text-[17px]">
-                {artist.business_name}
-              </p>
-            )}
-
-            {isOwnProfile && (
-              <p className="mt-2 inline-flex rounded-full border border-lumina-border bg-lumina-surface-soft px-3 py-1.5 text-[11px] font-medium text-lumina-text-muted md:mt-3 md:text-[12px]">
-                {privatePreview
-                  ? "Private preview · Not currently active"
-                  : "This is your public profile"}
-              </p>
-            )}
-              
-            <p
-              className="mt-1.5 text-[19px] md:mt-2 md:text-[24px]"
-              style={{ fontFamily: "Georgia, Times New Roman, serif" }}
-            >
-              {artist.category}
-            </p>
-
-<div className="mt-3 flex flex-wrap gap-x-5 gap-y-1 text-[13px] text-lumina-text-muted md:mt-6 md:gap-x-8 md:gap-y-2 md:text-[15px]">
-                <span>{artist.location}</span>
-              <span>Starting at ${artist.price_start}</span>
-            </div>
-            {artist.location_type === "mobile_salon" && (
-              <div className="mt-2.5 max-w-[680px] rounded-[16px] border border-lumina-border bg-lumina-surface-soft px-3 py-2.5 text-[12px] leading-[1.5] text-lumina-text-muted md:mt-3 md:px-4 md:py-3 md:text-[13px]">
-                <p>Mobile salon — exact appointment location is shared after confirmation.</p>
-                {artist.mobile_location_details && <p className="mt-1">{artist.mobile_location_details}</p>}
-              </div>
-            )}
-            {artist.location_type === "travels" && (
-              <p className="mt-3 text-[13px] text-lumina-text-muted">Exact service details are shared after booking confirmation.</p>
-            )}
-
-          <div className="mt-5 max-w-[760px] border-t border-lumina-border pt-4 md:mt-8 md:pt-6 2xl:max-w-[1040px]">
-
-<div className="flex items-center justify-between gap-4">
-  <h2
-    className="text-[23px] font-semibold md:text-[26px] lg:text-[30px]"
-    style={{ fontFamily: "Georgia, Times New Roman, serif" }}
-  >
-    Profile Details
-  </h2>
-  <button
-    type="button"
-    onClick={() => setProfileDetailsExpanded((expanded) => !expanded)}
-    aria-expanded={profileDetailsExpanded}
-    aria-controls="profile-supporting-details"
-    className="inline-flex shrink-0 items-center gap-1.5 rounded-[10px] px-2 py-1.5 text-[12px] text-lumina-text-muted transition hover:bg-lumina-blush/60 hover:text-lumina-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lumina-attention/40"
-  >
-    <span>{profileDetailsExpanded ? "Show less" : "Show more"}</span>
-    <ChevronDown
-      size={16}
-      strokeWidth={1.6}
-      aria-hidden="true"
-      className={`transition-transform duration-150 ${
-        profileDetailsExpanded ? "rotate-180" : ""
-      }`}
-    />
-  </button>
-</div>
-
-<div
-  id="profile-supporting-details"
-  hidden={verifiedLicenseArtistId !== artistId && !profileDetailsExpanded}
-  className="mt-4 grid grid-cols-2 gap-3 md:mt-6 md:gap-4 lg:grid-cols-3"
->
-  {verifiedLicenseArtistId === artistId && (
-    <div className="rounded-[16px] border border-lumina-border bg-lumina-surface p-3.5 md:rounded-[18px] md:p-5">
-      <ShieldCheck size={25} strokeWidth={1.5} aria-hidden="true" />
-      <p className="mt-3 text-[15px] font-medium text-lumina-text">
-        License verified
-      </p>
-      <p className="mt-2 text-[11px] leading-[1.5] text-lumina-text-muted">
-        Professional-license details reviewed by Lumina
-      </p>
-    </div>
-  )}
-
-  {profileDetailsExpanded && experienceLabel && (
-    <div className="rounded-[16px] border border-lumina-border bg-lumina-surface p-3.5 md:rounded-[18px] md:p-5">
-      <p className="text-[24px] font-semibold">{artist.experience_unit === "new" ? "New" : artist.experience_amount || artist.years_experience}</p>
-
-      <p className="mt-2 text-[15px] text-lumina-text-muted">
-        {artist.experience_unit === "new" ? "Artist" : artist.experience_unit === "months" ? "Months Experience" : "Years Experience"}
-      </p>
-
-      <p className="mt-2 text-[11px] text-lumina-text-muted">
-        Provided by the professional
-      </p>
-    </div>
-  )}
-
-  {profileDetailsExpanded && services.length > 0 && (
-    <div className="rounded-[16px] border border-lumina-border bg-lumina-surface p-3.5 md:rounded-[18px] md:p-5">
-      <p className="text-[28px] font-semibold">
-        {services.length}
-      </p>
-
-      <p className="mt-2 text-[15px] text-lumina-text-muted">
-        {services.length === 1 ? "Service Listed" : "Services Listed"}
-      </p>
-    </div>
-  )}
-
-  {profileDetailsExpanded && portfolioPhotos.length > 0 && (
-    <div className="rounded-[16px] border border-lumina-border bg-lumina-surface p-3.5 md:rounded-[18px] md:p-5">
-      <p className="text-[28px] font-semibold">
-        {portfolioPhotos.length}
-      </p>
-
-      <p className="mt-2 text-[15px] text-lumina-text-muted">
-        {portfolioPhotos.length === 1 ? "Portfolio Photo" : "Portfolio Photos"}
-      </p>
-    </div>
-  )}
-
-  {profileDetailsExpanded && results.length > 0 && (
-    <div className="rounded-[16px] border border-lumina-border bg-lumina-surface p-3.5 md:rounded-[18px] md:p-5">
-      <p className="text-[28px] font-semibold">
-        {results.length}
-      </p>
-
-      <p className="mt-2 text-[15px] text-lumina-text-muted">
-        {results.length === 1 ? "Before & After Result" : "Before & After Results"}
-      </p>
-
-      <p className="mt-2 text-[11px] text-lumina-text-muted">
-        Added by the professional
-      </p>
-    </div>
-  )}
-
-  {profileDetailsExpanded && reviews.length > 0 && (
-    <div className="rounded-[16px] border border-lumina-border bg-lumina-surface p-3.5 md:rounded-[18px] md:p-5">
-      <p className="text-[28px] font-semibold">
-        {averageRating.toFixed(1)} ★
-      </p>
-
-      <p className="mt-2 text-[15px] text-lumina-text-muted">
-        {reviews.length} Verified {reviews.length === 1 ? "Review" : "Reviews"}
-      </p>
-
-      <p className="mt-2 text-[11px] text-lumina-text-muted">
-        Linked to completed Lumina appointments
-      </p>
-    </div>
-  )}
-</div>
-
-<div className="mt-6 md:mt-10">
-  <h3
-    className="text-[23px] font-semibold md:text-[28px]"
-    style={{ fontFamily: "Georgia, Times New Roman, serif" }}
-  >
-    About
-  </h3>
-
-  <p
-    className="mt-3 text-[15px] leading-[1.6] text-lumina-text md:mt-4 md:text-[18px] md:leading-[1.7]"
-    style={{ fontFamily: "Georgia, Times New Roman, serif" }}
-  >
-    {profileBio}
-  </p>
-</div>
-            
-            </div>
-          </div>
-      </div>
-
-        <section className="pb-12 md:mt-6 md:pb-16">
+        <section data-storefront-content className="pb-12 md:mt-6 md:pb-16">
           <div className="sticky top-0 z-30 -mx-4 grid grid-cols-4 gap-1 border-b border-lumina-glass-border/60 bg-lumina-surface/95 px-4 py-1 text-[12px] sm:flex sm:flex-wrap sm:justify-center sm:gap-6 sm:text-[15px] md:static md:mx-0 md:border-0 md:bg-transparent md:px-0 md:py-0 md:text-[16px]">
             {[
               { key: "service", label: "Services" },
@@ -1712,6 +1466,7 @@ setAverageRating(updatedAverage);
                     return (
                       <button
                         key={service.id}
+                        data-storefront-service
                         type="button"
                         disabled={viewerIsArtist}
                         aria-pressed={viewerIsArtist ? undefined : selected}
@@ -1863,7 +1618,7 @@ setAverageRating(updatedAverage);
           )}
 
           {activeTab === "results" && (
-            <div className="mx-auto mt-10 grid max-w-[1350px] grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+            <div data-storefront-results className="mx-auto mt-10 grid max-w-[1350px] grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
               {results.length > 0 ? (
                 results.map((result) => (
                   <button
@@ -1922,7 +1677,7 @@ setAverageRating(updatedAverage);
           )}
 
           {activeTab === "reviews" && (
-            <div className="mx-auto mt-10 max-w-[900px]">
+            <div data-storefront-reviews className="mx-auto mt-10 max-w-[900px]">
               {eligibleRequest && !hasReviewed && (
               <div
                 id="leave-review"
@@ -2095,7 +1850,7 @@ setAverageRating(updatedAverage);
                       </p>
                       {review.artist_response &&
   replyingToReviewId !== review.id && (
-    <div className="mt-5 rounded-[18px] border border-lumina-border bg-lumina-surface p-5">
+    <div data-storefront-response className="mt-5 rounded-[18px] border border-lumina-border bg-lumina-surface p-5">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="text-[12px] font-medium uppercase tracking-[0.12em] text-lumina-text-muted">
           Response from the professional

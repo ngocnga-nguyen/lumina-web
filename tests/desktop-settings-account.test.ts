@@ -37,7 +37,6 @@ test("shared media, storage, activation, reset and public profile behavior are u
   "components/ProfessionalProfileMediaEditor.tsx": "d6cd4395cbc7d874287a31054ec350b9f77ca114859019c663be2a48e214586c",
   "components/MobileManagementSheet.tsx": "e8c91d6a4461dc077e5be69c0858d33fe899974ae8c5852ac7b7dee4b81ec59c",
   "app/account/reset-password/page.tsx": "4ec8d17189d3ed81d0b46577a6770a79a800ef0bc466e5313b4295b125e2ef2c",
-  "app/artist/[slug]/page.tsx": "b6b6d733a86e72ed59699d36b1ba99f3eeeb945a0a8f2e3223053de4b541bd22",
   "lib/professional-activation.ts": "90bf2c4f220d7bff70c457bbf05d094e1a8ab8b15aaeba20affb39286e8c2e5e",
   "lib/professional-activation-client.ts": "15d8096029f361097a478bb104be5aac834cf1491cd37de1d05ff4c49e5e8285",
   "lib/profile-image-upload.ts": "50fe92788283fcf11d9a5fb95b7d5b50c2a709f9785892b9ac8d4e72c61873f1",
@@ -45,6 +44,9 @@ test("shared media, storage, activation, reset and public profile behavior are u
   "lib/profile-media-image.ts": "58913b37dc903f9ffd54f200836ef6b3a220d5651b48c2ab6097695b917a7683"
 };
   for (const [path, expectedHash] of Object.entries(unchanged)) assert.equal(hash(read(path)), expectedHash, path);
+  // Public presentation evolves independently; pin the fetch, access and mutation authority.
+  const storefront = read("app/artist/[slug]/page.tsx");
+  assert.equal(hash(storefront.slice(storefront.indexOf("type Artist ="), storefront.indexOf("  return (\n    <main data-lumina-public-page"))), "f2ec26aad914ba1740557c4c6cb616da25a7ef85fb1fb9d1f21c4544e8de8906");
 });
 test("desktop profile separates immediate media saves from ordinary profile edits", () => {
   const source = read("app/dashboard/profile/page.tsx");

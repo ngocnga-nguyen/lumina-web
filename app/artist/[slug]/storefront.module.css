@@ -1,0 +1,76 @@
+/* Public desktop presentation only. Approved mobile styles remain authoritative. */
+@media (min-width: 768px) {
+  .storefront {
+    background: var(--lumina-bg);
+  }
+
+  .storefront [data-storefront-content] > div:first-child {
+    justify-content: flex-start;
+    gap: 2rem;
+    border-bottom: 1px solid var(--lumina-border);
+  }
+
+  .storefront [data-storefront-service] {
+    border-color: var(--lumina-glass-border);
+    border-radius: 12px;
+    padding: 1.125rem;
+    box-shadow: none;
+  }
+
+  .storefront [data-storefront-content] > div:not(:first-child) {
+    margin-top: 1.5rem;
+  }
+
+  .storefront [data-storefront-service] > h3 {
+    font-size: 20px;
+  }
+
+  .storefront [data-storefront-service] > p:nth-of-type(1) {
+    font-size: 15px;
+  }
+
+  .storefront [data-storefront-service] > p:nth-of-type(2) {
+    margin-top: 0.625rem;
+  }
+
+  .storefront [data-storefront-service] > div:last-child {
+    padding-top: 1.125rem;
+  }
+
+  .storefront [data-storefront-service] > div:last-child > span {
+    border-color: transparent;
+    background: transparent;
+    border-radius: 0;
+    padding: 0.25rem 0;
+    font-size: 12px;
+  }
+
+  .storefront [data-storefront-results] > button {
+    border-color: var(--lumina-glass-border);
+    border-radius: 12px;
+    background: transparent;
+  }
+
+  .storefront [data-storefront-results] > button > div:last-child {
+    padding: 0.875rem;
+  }
+
+  .storefront [data-storefront-reviews] {
+    max-width: 1040px;
+    margin-top: 2rem;
+  }
+
+  .storefront [data-storefront-reviews] > div,
+  .storefront [data-storefront-reviews] > div:last-child > div {
+    border-radius: 12px;
+    border-color: var(--lumina-glass-border);
+    background: transparent;
+  }
+
+  .storefront [data-storefront-response] {
+    border-width: 0 0 0 2px;
+    border-radius: 0;
+    background: var(--lumina-bg-soft);
+    padding: 1rem;
+  }
+}

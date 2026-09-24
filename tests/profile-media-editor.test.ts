@@ -112,9 +112,10 @@ test("owner-facing surfaces reuse the editor while public controls stay gated", 
   assert.match(editor, /user\.id !== artistId/);
 });
 
-test("public mobile cover consumes persisted framing without changing desktop layout", () => {
+test("public cover consumes persisted framing and keeps a separate mobile hero", () => {
   assert.match(publicProfile, /normalizeArtistCoverFraming\(/);
   assert.match(publicProfile, /style=\{getArtistCoverFramingStyle\(/);
   assert.match(publicProfile, /<section className="md:hidden">/);
-  assert.match(publicProfile, /hidden md:grid md:grid-cols/);
+  assert.match(publicProfile, /<StorefrontDesktopHero/);
+  assert.match(publicProfile, /coverStyle=\{getArtistCoverFramingStyle\(mobileCoverFraming, mobileCoverStyle\)\}/);
 });
