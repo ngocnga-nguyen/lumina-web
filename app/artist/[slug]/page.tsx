@@ -9,6 +9,7 @@ import SaveArtistButton from "@/components/SaveArtistButton";
 import ReviewReportDialog from "@/components/ReviewReportDialog";
 import ClientGuidanceTip from "@/components/ClientGuidanceTip";
 import PublicPageHeader from "@/components/PublicPageHeader";
+import { handleSignOut } from "@/components/AccountMenu";
 import StorefrontDesktopHero from "@/components/StorefrontDesktopHero";
 import storefrontStyles from "./storefront.module.css";
 import ProfessionalProfileMediaEditor from "@/components/ProfessionalProfileMediaEditor";
@@ -1120,23 +1121,19 @@ setAverageRating(updatedAverage);
           ) : (
             <>
               <Link
-                href="/saved"
-                className="block rounded-[14px] px-4 py-3 text-sm hover:bg-lumina-blush/70"
-              >
-                Saved Artists
-              </Link>
-              <Link
-                href="/my-requests"
-                className="block rounded-[14px] px-4 py-3 text-sm hover:bg-lumina-blush/70"
-              >
-                My Requests
-              </Link>
-              <Link
                 href="/account"
                 className="block rounded-[14px] px-4 py-3 text-sm hover:bg-lumina-blush/70"
               >
-                Account
+                Profile &amp; settings
               </Link>
+              <div className="my-1 border-t border-lumina-border" />
+              <button
+                type="button"
+                onClick={handleSignOut}
+                className="block w-full rounded-[14px] px-4 py-3 text-left text-sm text-lumina-text-muted hover:bg-lumina-blush/70 hover:text-lumina-black focus-visible:bg-lumina-blush/70 focus-visible:text-lumina-black"
+              >
+                Sign out
+              </button>
             </>
           )}
           {isLuminaAdmin && (

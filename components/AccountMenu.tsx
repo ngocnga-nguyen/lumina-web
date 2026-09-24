@@ -26,6 +26,12 @@ type ArtistAccountProfile = {
   profile_image_url: string | null;
 };
 
+// Existing current-session menu action, shared by the Storefront client dropdown.
+export const handleSignOut = async () => {
+  await supabase.auth.signOut({ scope: "local" });
+  window.location.href = "/login";
+};
+
 export default function AccountMenu({
   showNotifications = false,
   workspace,
@@ -102,11 +108,6 @@ export default function AccountMenu({
     artistProfile?.profile_image_url ||
     user?.user_metadata?.avatar_url ||
     null;
-
-  const handleSignOut = async () => {
-    await supabase.auth.signOut({ scope: "local" });
-    window.location.href = "/login";
-  };
 
   if (!user) {
     if (compactPublicHeader) {
@@ -262,17 +263,10 @@ export default function AccountMenu({
           ) : accountRole === "client" ? (
             <>
               <Link
-                href="/client"
-                className="block rounded-[14px] px-4 py-3 text-sm font-medium text-lumina-text hover:bg-lumina-blush/70 focus-visible:bg-lumina-blush/70"
-              >
-                Open my account
-              </Link>
-
-              <Link
                 href="/account"
                 className="block rounded-[14px] px-4 py-3 text-sm text-lumina-text hover:bg-lumina-blush/70 focus-visible:bg-lumina-blush/70"
               >
-                Profile / Settings
+                Profile &amp; settings
               </Link>
             </>
           ) : (
