@@ -12,6 +12,7 @@ import ArtistCard from "@/components/ArtistCard";
 import LuminaBrand from "@/components/LuminaBrand";
 import SearchBar from "@/components/SearchBar";
 import { supabase } from "@/lib/supabase";
+import type { User } from "@supabase/supabase-js";
 import { useLuminaAdminAccess } from "@/lib/use-lumina-admin-access";
 
 type Artist = {
@@ -76,8 +77,9 @@ export default function HomePage() {
   const [artists, setArtists] = useState<Artist[]>([]);
   const [artistsLoading, setArtistsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
-  const [user, setUser] = useState<any>(null);
-  const [artistProfile, setArtistProfile] = useState<any>(null);
+  const [user, setUser] = useState<User | null>(null);
+  const [artistProfile, setArtistProfile] = useState<Pick<Artist, "id" | "name" | "profile_image_url"> | null>(null);
+  const accountIdentity = useRef({ userId: null as string | null, version: 0 });
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
   const isLuminaAdmin = useLuminaAdminAccess(user?.id);
   const [heroServiceIndex, setHeroServiceIndex] = useState(0);
@@ -135,6 +137,7 @@ export default function HomePage() {
   }, [router]);
 
   useEffect(() => {
+    let mounted = true;
     const loadArtists = async () => {
       try {
         const { data, error } = await supabase
@@ -144,16 +147,17 @@ export default function HomePage() {
           .order("created_at", { ascending: false });
 
         if (error) throw error;
-        setArtists((data as Artist[]) || []);
+        if (mounted) setArtists((data as Artist[]) || []);
       } catch (error) {
         console.error("Unable to load homepage artists:", error);
-        setArtists([]);
+        if (mounted) setArtists([]);
       } finally {
-        setArtistsLoading(false);
+        if (mounted) setArtistsLoading(false);
       }
     };
 
     loadArtists();
+    return () => { mounted = false; };
   }, []);
 
   useEffect(() => {
@@ -162,26 +166,55 @@ export default function HomePage() {
   }, []);
 
   useEffect(() => {
-    const loadAccount = async () => {
-      const { data } = await supabase.auth.getUser();
-      const signedInUser = data.user;
-      setUser(signedInUser);
-      if (!signedInUser) return;
-
-      const { data: profile } = await supabase
-        .from("artists")
-        .select("id, name, profile_image_url")
-        .eq("id", signedInUser.id)
-        .maybeSingle();
-
-      setArtistProfile(profile || null);
+    let mounted = true;
+    // INITIAL_SESSION supplies the initial identity too. Never await Auth or
+    // database work here: session recovery can be waiting for this callback.
+    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (!mounted) return;
+      const nextUser = session?.user ?? null;
+      const userId = nextUser?.id ?? null;
+      if (accountIdentity.current.userId !== userId) {
+        accountIdentity.current = { userId, version: accountIdentity.current.version + 1 };
+        setArtistProfile(null);
+      }
+      setUser(nextUser);
+      if (!nextUser) {
+        setArtistProfile(null);
+        setAccountMenuOpen(false);
+      }
+    });
+    return () => {
+      mounted = false;
+      listener.subscription.unsubscribe();
     };
-
-    loadAccount();
-
-    const { data: listener } = supabase.auth.onAuthStateChange(() => loadAccount());
-    return () => listener.subscription.unsubscribe();
   }, []);
+
+  useEffect(() => {
+    const userId = user?.id;
+    if (!userId) return;
+    let mounted = true;
+    const version = accountIdentity.current.version;
+    const isCurrent = () => mounted && accountIdentity.current.version === version;
+
+    const loadProfile = async () => {
+      try {
+        const { data: profile, error } = await supabase
+          .from("artists")
+          .select("id, name, profile_image_url")
+          .eq("id", userId)
+          .maybeSingle();
+        if (error) throw error;
+        if (isCurrent()) setArtistProfile(profile || null);
+      } catch (error) {
+        if (isCurrent()) {
+          console.error("Unable to load homepage account:", error);
+          setArtistProfile(null);
+        }
+      }
+    };
+    void loadProfile();
+    return () => { mounted = false; };
+  }, [user]);
 
   const categories = useMemo(() => {
     const counts = artists.reduce<Record<string, number>>((result, artist) => {

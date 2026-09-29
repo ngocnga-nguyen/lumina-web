@@ -13,34 +13,37 @@ export default function LoginPage() {
       ? redirect
       : null;
   };
-useEffect(() => {
-  const checkSession = async () => {
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
+  useEffect(() => {
+    let mounted = true;
+    const checkSession = async () => {
+      try {
+        const {
+          data: { session }, error: sessionError,
+        } = await supabase.auth.getSession();
+        if (sessionError) throw sessionError;
+        if (!mounted || !session?.user) return;
 
-    if (!session?.user) return;
+        const { data: artist, error: artistError } = await supabase
+          .from("artists")
+          .select("id")
+          .eq("id", session.user.id)
+          .maybeSingle();
 
-    const { data: artist, error: artistError } = await supabase
-      .from("artists")
-      .select("id")
-      .eq("id", session.user.id)
-      .maybeSingle();
+        if (artistError) throw artistError;
+        if (!mounted) return;
+        if (artist) {
+          router.push(getSafeRedirect() || "/dashboard");
+        } else {
+          router.push("/browse");
+        }
+      } catch (error) {
+        if (mounted) console.log("Account role check failed:", error);
+      }
+    };
 
-    if (artistError) {
-      console.log("Account role check failed:", artistError);
-      return;
-    }
-
-    if (artist) {
-      router.push(getSafeRedirect() || "/dashboard");
-    } else {
-      router.push("/browse");
-    }
-  };
-
-  checkSession();
-}, [router]);
+    void checkSession();
+    return () => { mounted = false; };
+  }, [router]);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
@@ -78,47 +81,40 @@ useEffect(() => {
 
     setLoading(true);
 
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
 
-    if (error) {
-      setLoading(false);
-      alert(error.message);
-      return;
-    }
+      if (error) {
+        alert(error.message);
+        return;
+      }
 
-    const user = data.user;
+      const user = data.user;
+      if (!user) return;
 
-    if (!user) {
-      setLoading(false);
-      return;
-    }
+      // Authentication has persisted the session before resolving the role.
+      const { data: artist, error: artistError } = await supabase
+        .from("artists")
+        .select("id")
+        .eq("id", user.id)
+        .maybeSingle();
 
-    // check if user is an artist
-    const { data: artist, error: artistError } = await supabase
-      .from("artists")
-      .select("id")
-      .eq("id", user.id)
-      .maybeSingle();
+      if (artistError) throw artistError;
 
-    setLoading(false);
-
-    if (artistError) {
-      console.log("Account role check failed:", artistError);
+      if (artist) {
+        router.push(getSafeRedirect() || "/dashboard");
+        return;
+      }
+      router.push("/browse");
+    } catch (error) {
+      console.log("Account login or role check failed:", error);
       alert("We couldn't confirm your account type. Please try again.");
-      return;
+    } finally {
+      setLoading(false);
     }
-
-    // professional account
-    if (artist) {
-      router.push(getSafeRedirect() || "/dashboard");
-      return;
-    }
-
-    // normal client account
-    router.push("/browse");
   };
 
   return (
