@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { createRealtimeChannelTopic } from "@/lib/realtime-channel";
+import { formatRequestCalendarDate } from "@/lib/request-calendar-date";
 import { MessageCircle, CalendarDays, Search, Star } from "lucide-react";
 import ChatModal from "@/components/ChatModal";
 import ClientRequestMobileSummary from "@/components/ClientRequestMobileSummary";
@@ -125,14 +126,8 @@ function formatMobileRequestSchedule(
   }
 
   if (!date && !time) return null;
-  const parsedDate = date ? new Date(`${date.slice(0, 10)}T00:00:00`) : null;
   const dateLabel =
-    parsedDate && !Number.isNaN(parsedDate.getTime())
-      ? parsedDate.toLocaleDateString("en-US", {
-          month: "short",
-          day: "numeric",
-        })
-      : date;
+    formatRequestCalendarDate(date, { month: "short", day: "numeric" }) ?? date;
   const parsedTime = time ? new Date(`2000-01-01T${time}`) : null;
   const timeLabel =
     parsedTime && !Number.isNaN(parsedTime.getTime())
@@ -1361,13 +1356,11 @@ className="relative flex h-10 w-10 items-center justify-center rounded-full bord
 className="text-[18px] font-semibold leading-tight tracking-[-0.01em]"      
 style={{ fontFamily: "Georgia, Times New Roman, serif" }}
     >
-      {proposedDate
-        ? new Date(proposedDate).toLocaleDateString("en-US", {
-            weekday: "long",
-            month: "short",
-            day: "numeric",
-          })
-        : "Flexible date"}
+      {formatRequestCalendarDate(proposedDate, {
+        weekday: "long",
+        month: "short",
+        day: "numeric",
+      }) ?? "Flexible date"}
     </h3>
 
     <p className="mt-0.5 text-[14px] text-lumina-text-muted">

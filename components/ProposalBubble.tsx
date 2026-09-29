@@ -2,6 +2,7 @@
 
 import { CalendarDays } from "lucide-react";
 import { formatDurationMinutes } from "@/lib/request-services";
+import { formatRequestCalendarDate } from "@/lib/request-calendar-date";
 
 type ProposalBubbleProps = {
   date: string | null;
@@ -61,13 +62,11 @@ px-5 py-4 shadow-sm">
 
         <div>
           <p className="text-[15px] font-medium text-lumina-text">
-            {date
-              ? new Date(date).toLocaleDateString("en-US", {
-                  weekday: "short",
-                  month: "short",
-                  day: "numeric",
-                })
-              : "Flexible date"}
+            {formatRequestCalendarDate(date, {
+              weekday: "short",
+              month: "short",
+              day: "numeric",
+            }) ?? "Flexible date"}
           </p>
 
           <p className="mt-0.5 text-[13px] text-lumina-text-muted">
