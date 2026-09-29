@@ -89,12 +89,21 @@ test("messages acknowledge both participant read state and matching notification
 
 test("hidden requests are excluded and Overview links to exact request events", () => {
   const hook = source("../lib/use-client-notifications.ts");
-  const overview = source("../components/ClientOverviewMobileHome.tsx");
   const overviewPage = source("../app/client/page.tsx");
 
   assert.match(hook, /client_hidden\.eq\.false,client_hidden\.is\.null/);
-  assert.match(overview, /my-requests\?request=\$\{nextRequest\.id\}/);
-  assert.match(overview, /my-requests\?request=\$\{request\.id\}/);
-  assert.match(overviewPage, /my-requests\?request=\$\{request\.id\}/);
-  assert.match(overviewPage, /my-requests\?request=\$\{upcomingRequest\.id\}/);
+  // The route supplies request IDs; both extracted presentations own the links.
+  assert.match(overviewPage, /id: upcomingRequest\.id/);
+  assert.match(overviewPage, /recentRequests\.map\([\s\S]*?id: request\.id/);
+  for (const [component, recentItems] of [
+    ["ClientOverviewMobileHome", "mobileRecentRequests"],
+    ["ClientOverviewDesktopHome", "desktopRecentRequests"],
+  ]) {
+    const overview = source(`../components/${component}.tsx`);
+    const props = overviewPage.match(new RegExp(`<${component}\\b[\\s\\S]*?/>`))?.[0] || "";
+    assert.match(props, /nextRequest=\{mobileNextRequest\}/, component);
+    assert.match(props, new RegExp(`recentRequests=\\{${recentItems}\\}`), component);
+    assert.match(overview, /href=\{`\/my-requests\?request=\$\{nextRequest\.id\}`\}/, component);
+    assert.match(overview, /href=\{`\/my-requests\?request=\$\{request\.id\}`\}/, component);
+  }
 });

@@ -115,7 +115,19 @@ test("account and affected route loaders contain recoverable failures", async ()
 
   for (const source of [overview, saved, portfolio]) {
     assert.match(source, /\.catch\(\(error\) =>/);
+  }
+  for (const source of [saved, portfolio]) {
     assert.match(source, /Try again/);
+  }
+
+  // Overview owns recovery state; its extracted presentations render the retry UI.
+  assert.match(overview, /loadOverview\(\)\.catch\([\s\S]*?setLoadError\(true\);\s*setLoading\(false\)/);
+  for (const component of ["ClientOverviewMobileHome", "ClientOverviewDesktopHome"]) {
+    const presentation = await readSource(`../components/${component}.tsx`);
+    const props = overview.match(new RegExp(`<${component}\\b[\\s\\S]*?/>`))?.[0] || "";
+    assert.match(props, /loadError=\{loadError\}/, component);
+    assert.match(props, /onRetry=\{\(\) => setLoadAttempt\(\(current\) => current \+ 1\)\}/, component);
+    assert.match(presentation, /loadError && \([\s\S]*?<button\s[^>]*onClick=\{onRetry\}[^>]*>\s*Try again\s*<\/button>/, component);
   }
 
   assert.match(requestInbox, /onClick=\{\(\) => void inbox\.refresh\(\)\}/);
