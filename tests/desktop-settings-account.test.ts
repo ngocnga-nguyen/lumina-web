@@ -76,6 +76,17 @@ test("client desktop retains focused profile, security and quieter existing shor
   assert.match(desktop, /saveProfile()/);
   assert.doesNotMatch(desktop, /Notifications|Subscription|Delete account/);
 });
+test("desktop license badge stays grouped with its heading without spreading to the far edge", () => {
+  const source = read("app/dashboard/settings/page.tsx");
+  const license = source.slice(source.indexOf('id="license-verification-desktop"'), source.indexOf('<details key={verification?.submitted_at'));
+  assert.match(license, /flex flex-wrap items-center gap-x-3 gap-y-2/);
+  assert.doesNotMatch(license, /justify-between/);
+  assert.match(license, /shrink-0 whitespace-nowrap rounded-full border px-2 py-1 text-\[10px\]/);
+  assert.match(license, /border-lumina-success\/25 bg-lumina-success-soft text-lumina-success/);
+  assert.match(license, /max-w-\[400px\]/);
+  assert.match(source, /grid items-start gap-x-10 xl:grid-cols-2/);
+  assert.match(source, /Edit license information/);
+});
 test("temporary preview routes are absent", () => {
   for (const path of ["app/dashboard/local-preview/profile-baseline/page.tsx", "app/dashboard/local-preview/settings-baseline/page.tsx", "app/local-preview/account-baseline/page.tsx"]) assert.equal(existsSync(new URL("../" + path, import.meta.url)), false);
 });

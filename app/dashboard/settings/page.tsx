@@ -496,21 +496,14 @@ export default function ArtistSettingsPage() {
 
             <section
               id="license-verification-desktop"
-              className="scroll-mt-24 border-b border-lumina-border/70 py-6"
+              className="min-w-0 scroll-mt-24 border-b border-lumina-border/70 py-6"
             >
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                <div>
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
                   <p className="text-[12px] uppercase tracking-[0.14em] text-lumina-text-muted">
                     Professional license verification
                   </p>
-                  <p className="mt-2 max-w-[520px] text-[12px] leading-[1.6] text-lumina-text-muted">
-                    Submit your professional-license details for manual Lumina
-                    review. This does not verify identity, insurance, background,
-                    or service quality.
-                  </p>
-                </div>
                 <span
-                  className={`w-fit rounded-full border px-3 py-1.5 text-[11px] font-medium ${
+                  className={`w-fit shrink-0 whitespace-nowrap rounded-full border px-2 py-1 text-[10px] font-medium leading-4 ${
                     verification?.status === "verified"
                       ? "border-lumina-success/25 bg-lumina-success-soft text-lumina-success"
                       : verification?.status === "rejected"
@@ -523,6 +516,11 @@ export default function ArtistSettingsPage() {
                     : "Not submitted"}
                 </span>
               </div>
+              <p className="mt-2 max-w-[400px] text-[12px] leading-[1.6] text-lumina-text-muted">
+                Submit your professional-license details for manual Lumina
+                review. This does not verify identity, insurance, background,
+                or service quality.
+              </p>
 
               {verification?.status === "rejected" &&
                 verification.decision_message && (
