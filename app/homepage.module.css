@@ -1,0 +1,76 @@
+/* Phone-only density; shared cards and all layouts at 640px+ stay unchanged. */
+@media (max-width: 639px) {
+  .mobileHome h2 {
+    font-size: 30px;
+    line-height: 1.15;
+  }
+
+  .mobileHome .section { padding-block: 40px; }
+
+  .mobileHome .hero { gap: 28px; padding-top: 28px; padding-bottom: 36px; }
+  .hero h1 { font-size: 46px; }
+  .hero > div:first-child > p:first-child { margin-bottom: 12px; }
+  .hero h1 + p { margin-top: 18px; font-size: 16px; line-height: 1.6; }
+  .hero > div:first-child > div { margin-top: 22px; }
+
+  .stats > div > div { padding: 14px 20px; }
+  .stats > div > div > p:first-child { font-size: 18px; }
+
+  .search h2 { margin-top: 10px; }
+  .search h2 + p { margin-top: 10px; font-size: 14px; line-height: 1.6; }
+  .search > div > div:last-child { margin-top: 20px; }
+  .search .filters { margin-top: 12px; gap: 8px; }
+  .filters > a { display: inline-flex; min-height: 44px; align-items: center; padding: 8px 16px; font-size: 12px; }
+
+  .discovery > div > div:first-child { gap: 14px; }
+  .discovery h2 { margin-top: 10px; }
+  .discovery h2 + p { margin-top: 10px; font-size: 14px; line-height: 1.6; }
+  .discovery .discoveryCards {
+    display: flex;
+    gap: 14px;
+    margin: 22px -20px 0;
+    padding: 0 20px 12px;
+    overflow-x: auto;
+    scroll-snap-type: x proximity;
+    scroll-padding-inline: 20px;
+  }
+  .discovery .discoveryCards > * {
+    width: 250px;
+    max-width: calc(100vw - 40px);
+    flex-shrink: 0;
+    scroll-snap-align: start;
+  }
+
+  /* Local overrides through ArtistCard's className; no shared card behavior changes. */
+  .discoveryCard > div:first-child,
+  .discoverySkeleton { height: auto; aspect-ratio: 4 / 3; }
+  .discoveryCard > div:last-child { padding-top: 8px; }
+  .discoveryCard > div:last-child > p { margin-top: 2px; font-size: 12px; line-height: 17px; }
+  .discoveryCard > div:last-child > p:first-child { margin-top: 0; font-size: 11px; line-height: 16px; }
+  .discoveryCard h3 { margin-top: 3px; font-size: 18px; line-height: 1.15; }
+  .discoveryCard > div:last-child > div { margin-top: 6px; padding-top: 6px; font-size: 12px; line-height: 18px; }
+
+  .comparison > div > div { padding: 22px; }
+  .comparison h2 + p { margin-top: 12px; }
+  .comparison > div > div > div > div { margin-top: 20px; }
+  .comparison > div > div > div > div > div { padding-block: 12px; }
+  .comparison > div > div > a { margin-top: 20px; }
+
+  .categories > div { margin-top: 22px; }
+  .saveSection { padding-bottom: 40px; }
+  .saveSection > div > div:first-child { padding: 24px; }
+  .saveSection h2 { margin-top: 12px; }
+  .saveSection h2 + p { margin-top: 12px; font-size: 14px; line-height: 1.6; }
+  .saveSection > div > div:last-child { min-height: 230px; }
+
+  .steps > div > div:last-child { margin-top: 24px; }
+  .steps > div > div:last-child > div { padding: 16px; }
+  .steps h3 { margin-top: 12px; }
+  .steps h3 + p { margin-top: 6px; }
+  .benefits > div { gap: 24px; }
+  .benefits h3 { margin-top: 12px; }
+
+  .join > div > div { padding: 24px; }
+  .join h2 { margin-top: 12px; }
+  .join h2 + p { margin-top: 12px; font-size: 14px; line-height: 1.6; }
+}

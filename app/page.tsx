@@ -14,6 +14,7 @@ import SearchBar from "@/components/SearchBar";
 import { supabase } from "@/lib/supabase";
 import type { User } from "@supabase/supabase-js";
 import { useLuminaAdminAccess } from "@/lib/use-lumina-admin-access";
+import styles from "./homepage.module.css";
 
 type Artist = {
   id: string;
@@ -256,7 +257,7 @@ export default function HomePage() {
     artistProfile?.name || user?.user_metadata?.full_name || user?.email || "Account";
 
   return (
-    <main data-lumina-public-page className="min-h-screen overflow-x-hidden bg-lumina-surface text-lumina-text">
+    <main data-lumina-public-page className={`${styles.mobileHome} min-h-screen overflow-x-hidden bg-lumina-surface text-lumina-text`}>
       <header className="border-b border-lumina-border bg-lumina-bg-soft">
         <div className="grid h-[70px] w-full grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center px-3 sm:h-[76px] sm:px-4 lg:px-5 xl:px-6">
           <Link href="/" aria-label="Lumina home" className="col-start-1 row-start-1 block w-[108px] justify-self-start sm:w-[132px]">
@@ -325,7 +326,7 @@ export default function HomePage() {
       </header>
 
       <div className="bg-lumina-surface">
-      <section className={`${wideVisualContainer} grid gap-9 pb-14 pt-10 md:gap-10 md:pt-16 lg:grid-cols-[0.92fr_1.08fr] lg:items-center lg:gap-16 lg:pb-20 lg:pt-20 xl:grid-cols-[minmax(500px,0.9fr)_minmax(0,1.1fr)]`}>
+      <section className={`${styles.hero} ${wideVisualContainer} grid gap-9 pb-14 pt-10 md:gap-10 md:pt-16 lg:grid-cols-[0.92fr_1.08fr] lg:items-center lg:gap-16 lg:pb-20 lg:pt-20 xl:grid-cols-[minmax(500px,0.9fr)_minmax(0,1.1fr)]`}>
         <div className="max-w-[660px]">
           <p className="mb-4 text-[12px] uppercase tracking-[0.24em] text-lumina-attention sm:mb-5">Beauty. Trust. Care.</p>
           <h1 className="text-[52px] leading-[0.93] tracking-[-0.045em] sm:text-[68px] lg:text-[82px]" style={serif}>
@@ -380,7 +381,7 @@ export default function HomePage() {
       </section>
       </div>
 
-      <section className={wideVisualContainer}>
+      <section className={`${styles.stats} ${wideVisualContainer}`}>
         <div className="grid overflow-hidden rounded-[22px] border border-lumina-glass-border bg-lumina-glass backdrop-blur-[12px] sm:grid-cols-2 lg:grid-cols-4">
           {[
             [artists.length || "New", "active professional profiles"],
@@ -396,7 +397,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      <section className={`${editorialContainer} py-20 lg:py-24`}>
+      <section className={`${styles.section} ${styles.search} ${editorialContainer} py-20 lg:py-24`}>
         <div>
           <div className="text-center">
             <p className="text-[12px] uppercase tracking-[0.24em] text-lumina-attention">Find the right match</p>
@@ -415,7 +416,7 @@ export default function HomePage() {
                 </div>
               )}
             </div>
-            <div className="mt-5 flex flex-wrap justify-center gap-2.5">
+            <div className={`${styles.filters} mt-5 flex flex-wrap justify-center gap-2.5`}>
               <Link href="/browse?panel=category" className="rounded-full border border-lumina-border bg-lumina-surface px-5 py-2.5 text-[13px] hover:border-lumina-black">Category</Link>
               <Link href="/browse?panel=price" className="rounded-full border border-lumina-border bg-lumina-surface px-5 py-2.5 text-[13px] hover:border-lumina-black">Starting price</Link>
               <Link href="/browse?nearby=1" className="rounded-full border border-lumina-border bg-lumina-surface px-5 py-2.5 text-[13px] hover:border-lumina-black">Nearby</Link>
@@ -426,7 +427,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      <section className="border-y border-lumina-border bg-lumina-surface py-16 lg:py-20">
+      <section className={`${styles.section} ${styles.discovery} border-y border-lumina-border bg-lumina-surface py-16 lg:py-20`}>
         <div className={wideVisualContainer}>
           <div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
             <div>
@@ -446,10 +447,10 @@ export default function HomePage() {
           </div>
 
           {artistsLoading ? (
-            <div className="-mx-5 mt-9 flex snap-x snap-mandatory gap-5 overflow-x-auto px-5 pb-3 sm:-mx-8 sm:px-8 lg:mx-0 lg:grid lg:grid-cols-4 lg:overflow-visible lg:px-0">
+            <div className={`${styles.discoveryCards} -mx-5 mt-9 flex snap-x snap-mandatory gap-5 overflow-x-auto px-5 pb-3 sm:-mx-8 sm:px-8 lg:mx-0 lg:grid lg:grid-cols-4 lg:overflow-visible lg:px-0`}>
               {Array.from({ length: 4 }).map((_, index) => (
                 <div key={index} className="w-[78vw] max-w-[315px] shrink-0 snap-start overflow-hidden rounded-[22px] border border-lumina-border bg-lumina-surface lg:w-auto lg:max-w-none">
-                  <div className="aspect-[4/3] animate-pulse bg-lumina-pearl" />
+                  <div className={`${styles.discoverySkeleton} aspect-[4/3] animate-pulse bg-lumina-pearl`} />
                   <div className="space-y-3 p-5">
                     <div className="h-4 w-2/3 animate-pulse rounded-full bg-lumina-pearl" />
                     <div className="h-3 w-1/2 animate-pulse rounded-full bg-lumina-surface-soft" />
@@ -459,18 +460,18 @@ export default function HomePage() {
               ))}
             </div>
           ) : artists.length === 1 ? (
-            <div className="mt-9 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
+            <div className={`${styles.discoveryCards} mt-9 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4`}>
               <ArtistCard
                 artist={artists[0]}
-                className="w-full max-w-[360px]"
+                className={`${styles.discoveryCard} w-full max-w-[360px]`}
                 viewerIsArtist={Boolean(artistProfile)}
                 isOwnProfile={artists[0].id === artistProfile?.id}
               />
             </div>
           ) : artists.length > 1 ? (
-            <div className="-mx-5 mt-9 flex snap-x snap-mandatory gap-5 overflow-x-auto px-5 pb-3 sm:-mx-8 sm:px-8 lg:mx-0 lg:grid lg:grid-cols-4 lg:overflow-visible lg:px-0">
+            <div className={`${styles.discoveryCards} -mx-5 mt-9 flex snap-x snap-mandatory gap-5 overflow-x-auto px-5 pb-3 sm:-mx-8 sm:px-8 lg:mx-0 lg:grid lg:grid-cols-4 lg:overflow-visible lg:px-0`}>
               {artists.slice(0, 8).map((artist) => (
-                <ArtistCard key={artist.id} artist={artist} className="w-[78vw] max-w-[315px] shrink-0 snap-start lg:w-auto lg:max-w-none" viewerIsArtist={Boolean(artistProfile)} isOwnProfile={artist.id === artistProfile?.id} />
+                <ArtistCard key={artist.id} artist={artist} className={`${styles.discoveryCard} w-[78vw] max-w-[315px] shrink-0 snap-start lg:w-auto lg:max-w-none`} viewerIsArtist={Boolean(artistProfile)} isOwnProfile={artist.id === artistProfile?.id} />
               ))}
             </div>
           ) : (
@@ -489,7 +490,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      <section className="border-b border-lumina-border bg-lumina-surface py-16 lg:py-20">
+      <section className={`${styles.section} ${styles.comparison} border-b border-lumina-border bg-lumina-surface py-16 lg:py-20`}>
         <div className={wideVisualContainer}>
           <div className="rounded-[24px] border border-lumina-glass-border bg-lumina-glass p-7 backdrop-blur-[12px] sm:p-9 lg:flex lg:flex-col lg:justify-between">
             <div>
@@ -517,7 +518,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      <section className={`${wideVisualContainer} py-16 lg:py-20`}>
+      <section className={`${styles.section} ${styles.categories} ${wideVisualContainer} py-16 lg:py-20`}>
         <p className="text-[12px] uppercase tracking-[0.24em] text-lumina-attention">Browse by category</p>
         <h2 className="mt-3 max-w-[800px] text-[36px] leading-tight sm:text-[50px]" style={serif}>Start with the service you’re looking for.</h2>
         <div className="mt-9 grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-6">
@@ -533,7 +534,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      <section className={`${wideVisualContainer} pb-20`}>
+      <section className={`${styles.saveSection} ${wideVisualContainer} pb-20`}>
         <div className="grid overflow-hidden rounded-[28px] border border-lumina-glass-border bg-lumina-glass backdrop-blur-[12px] lg:grid-cols-[0.85fr_1.15fr]">
           <div className="flex flex-col justify-center p-8 sm:p-12 lg:p-14">
             <p className="text-[12px] uppercase tracking-[0.22em] text-lumina-attention">Compare with confidence</p>
@@ -549,7 +550,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      <section className="bg-lumina-bg-soft py-20">
+      <section className={`${styles.section} ${styles.steps} bg-lumina-bg-soft py-20`}>
         <div className={wideVisualContainer}>
           <div className="flex flex-col justify-between gap-5 sm:flex-row sm:items-end">
             <div>
@@ -577,7 +578,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      <section className={`${editorialContainer} py-20`}>
+      <section className={`${styles.section} ${styles.benefits} ${editorialContainer} py-20`}>
         <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
           {benefits.map(({ icon: Icon, title, body }) => (
             <div key={title}>
@@ -589,7 +590,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      <section className="border-t border-lumina-border bg-lumina-surface py-20">
+      <section className={`${styles.section} ${styles.join} border-t border-lumina-border bg-lumina-surface py-20`}>
         <div className={`${wideVisualContainer} grid gap-5 lg:grid-cols-2`}>
           <div className="flex h-full flex-col rounded-[28px] border border-lumina-border bg-lumina-surface p-8 sm:p-11">
             <div className="lg:flex-1">
