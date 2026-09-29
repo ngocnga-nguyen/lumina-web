@@ -84,9 +84,12 @@ export async function markClientNotificationsRead({
   if (!user) {
     return {
       data: null,
-      error: new Error("A signed-in client is required to read notifications."),
+      error: new Error("Sign in to update notifications."),
     };
   }
+
+  // An explicitly empty selection must never turn into an account-wide update.
+  if (notificationIds && notificationIds.length === 0) return { data: [], error: null };
 
   let query = supabase
     .from("notifications")
@@ -111,6 +114,7 @@ export async function markClientNotificationsRead({
           notificationIds: (result.data || []).map((item) => item.id),
           requestId,
           kind,
+          userId: user.id,
         },
       })
     );
@@ -118,3 +122,6 @@ export async function markClientNotificationsRead({
 
   return result;
 }
+
+// Both workspace bells use exactly the same authenticated, owner-scoped update.
+export const markNotificationsRead = markClientNotificationsRead;

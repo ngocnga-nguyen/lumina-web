@@ -12,6 +12,8 @@ import {
   X,
 } from "lucide-react";
 import AccountMenu from "@/components/AccountMenu";
+import WorkspaceNotificationCenter from "@/components/ClientNotificationCenter";
+import { useProfessionalNotifications } from "@/lib/use-professional-notifications";
 import WorkspaceNavigationIndicator, {
   getWorkspaceIndicatorLabel,
 } from "@/components/WorkspaceNavigationIndicator";
@@ -125,6 +127,7 @@ export default function ProfessionalDashboardShell({ children }: ShellProps) {
     "artist",
     professional?.id
   );
+  const notifications = useProfessionalNotifications(professional?.id);
 
   const isSelected = (label: string, href: string) => {
     if (href === "/dashboard") return pathname === href;
@@ -426,6 +429,7 @@ export default function ProfessionalDashboardShell({ children }: ShellProps) {
             </div>
 
             <div className="flex items-center gap-3">
+              <WorkspaceNotificationCenter role="professional" {...notifications} onAcknowledge={notifications.acknowledge} onMarkAllAsRead={notifications.markAllAsRead} />
               <AccountMenu workspace="professional" />
             </div>
           </header>

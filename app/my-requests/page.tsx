@@ -6,6 +6,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { createRealtimeChannelTopic } from "@/lib/realtime-channel";
 import { formatRequestCalendarDate } from "@/lib/request-calendar-date";
+import { useViewedClientConversation } from "@/lib/use-viewed-client-conversation";
 import { MessageCircle, CalendarDays, Search, Star } from "lucide-react";
 import ChatModal from "@/components/ChatModal";
 import ClientRequestMobileSummary from "@/components/ClientRequestMobileSummary";
@@ -56,6 +57,7 @@ import {
 
 type ClientRequest = {
   id: string;
+  client_id: string;
   artist_id: string;
   service_requested: string | null;
   requested_services?: unknown;
@@ -142,6 +144,8 @@ function formatMobileRequestSchedule(
 
 function MyRequestsContent() {
   const { notifications, acknowledgeNotifications } = useClientWorkspace();
+  const acknowledgeNotificationsRef = useRef(acknowledgeNotifications);
+  useEffect(() => { acknowledgeNotificationsRef.current = acknowledgeNotifications; }, [acknowledgeNotifications]);
   const router = useRouter();
   const searchParams = useSearchParams();
   const [requests, setRequests] = useState<ClientRequest[]>([]);
@@ -157,6 +161,7 @@ function MyRequestsContent() {
   const [completionSavingId, setCompletionSavingId] = useState<string | null>(null);
   const [replyingToId, setReplyingToId] = useState<string | null>(null);
   const [openHistoryId, setOpenHistoryId] = useState<string | null>(null);
+  useViewedClientConversation(requests.find((request) => request.id === openHistoryId)?.client_id, openHistoryId);
   const [expandedRequestId, setExpandedRequestId] = useState<string | null>(null);
   const requestRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const openChatRequestIdRef = useRef<string | null>(null);
@@ -439,6 +444,8 @@ useEffect(() => {
                     "client"
                   ),
                 }));
+                // The message flags and notification rows remain separate persisted authorities.
+                void acknowledgeNotificationsRef.current({ requestId: update.request_id, kind: "message" });
               }
             );
           }

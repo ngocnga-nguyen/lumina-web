@@ -11,6 +11,7 @@ import {
 } from "@/lib/client-notifications";
 import { createRealtimeChannelTopic } from "@/lib/realtime-channel";
 import { supabase } from "@/lib/supabase";
+import { CLIENT_CONVERSATION_VIEW_EVENT, confirmNotificationRead, preserveNotificationSnapshot, shouldAcknowledgeViewedMessage } from "@/lib/notification-reconciliation";
 
 export function useClientNotifications(userId: string | null | undefined) {
   const [notifications, setNotifications] = useState<ClientNotification[]>([]);
@@ -20,6 +21,7 @@ export function useClientNotifications(userId: string | null | undefined) {
   const [error, setError] = useState<string | null>(null);
   const mountedRef = useRef(true);
   const refreshSequenceRef = useRef(0);
+  const reconcilingIdsRef = useRef(new Set<string>());
 
   useEffect(() => {
     mountedRef.current = true;
@@ -72,18 +74,34 @@ export function useClientNotifications(userId: string | null | undefined) {
     setRequestsById(
       Object.fromEntries(visibleRequests.map((request) => [request.id, request]))
     );
-    setNotifications(
-      ((data || []) as ClientNotification[]).filter(
+    const visibleNotifications = ((data || []) as ClientNotification[]).filter(
         (notification) =>
           !notification.request_id || visibleRequestIds.has(notification.request_id)
-      )
-    );
+      );
+    setNotifications((current) => preserveNotificationSnapshot(current, visibleNotifications));
     setError(null);
+    const viewedIds = visibleNotifications.filter((notification) =>
+      !reconcilingIdsRef.current.has(notification.id) &&
+      shouldAcknowledgeViewedMessage(notification, userId, document.visibilityState === "visible")
+    ).map((notification) => notification.id);
+    if (viewedIds.length > 0) {
+      viewedIds.forEach((id) => reconcilingIdsRef.current.add(id));
+      try {
+        const result = await markClientNotificationsRead({ notificationIds: viewedIds, kind: "message" });
+        if (result.error && canCommit()) setError(result.error.message);
+      } catch {
+        if (canCommit()) setError("Notifications could not be updated.");
+      } finally {
+        viewedIds.forEach((id) => reconcilingIdsRef.current.delete(id));
+      }
+    }
   }, [userId]);
 
   const refreshSafely = useCallback(() => {
-    void refresh().catch((refreshError) => {
-      if (!mountedRef.current) return;
+    const pending = refresh();
+    const sequence = refreshSequenceRef.current;
+    void pending.catch((refreshError) => {
+      if (!mountedRef.current || sequence !== refreshSequenceRef.current) return;
       console.log("Client notification refresh failed:", refreshError);
       setError("Notifications could not be refreshed.");
     });
@@ -125,7 +143,9 @@ export function useClientNotifications(userId: string | null | undefined) {
         }
       );
 
-    channel.subscribe();
+    channel.subscribe((status) => {
+      if (active && status === "SUBSCRIBED") refreshSafely();
+    });
     return () => {
       active = false;
       void supabase.removeChannel(channel);
@@ -136,7 +156,8 @@ export function useClientNotifications(userId: string | null | undefined) {
     if (!userId) return;
 
     const handleReadStateChange = (event: Event) => {
-      const detail = (event as CustomEvent<{ notificationIds?: string[] }>).detail;
+      const detail = (event as CustomEvent<{ notificationIds?: string[]; userId?: string }>).detail;
+      if (detail?.userId !== userId) return;
       const notificationIds = new Set(detail?.notificationIds || []);
 
       if (notificationIds.size > 0) {
@@ -160,6 +181,7 @@ export function useClientNotifications(userId: string | null | undefined) {
       handleReadStateChange
     );
     window.addEventListener("focus", handleFocus);
+    window.addEventListener(CLIENT_CONVERSATION_VIEW_EVENT, refreshSafely);
     document.addEventListener("visibilitychange", handleVisibility);
     return () => {
       window.removeEventListener(
@@ -167,6 +189,7 @@ export function useClientNotifications(userId: string | null | undefined) {
         handleReadStateChange
       );
       window.removeEventListener("focus", handleFocus);
+      window.removeEventListener(CLIENT_CONVERSATION_VIEW_EVENT, refreshSafely);
       document.removeEventListener("visibilitychange", handleVisibility);
     };
   }, [refreshSafely, userId]);
@@ -178,26 +201,17 @@ export function useClientNotifications(userId: string | null | undefined) {
       requestId?: string;
       kind?: ClientNotificationReadKind;
     }) => {
-      const result = await markClientNotificationsRead(input);
-      if (result.error) setError(result.error.message);
+      const result = await confirmNotificationRead(() => markClientNotificationsRead(input), refresh);
+      if (result.error && mountedRef.current) setError(result.error.message);
       return result;
     },
-    []
+    [refresh]
   );
 
-  const clearAll = useCallback(async () => {
-    if (!userId) return;
-    const { error: deleteError } = await supabase
-      .from("notifications")
-      .delete()
-      .eq("user_id", userId);
-
-    if (deleteError) {
-      setError(deleteError.message);
-      return;
-    }
-    await refresh();
-  }, [refresh, userId]);
+  const markAllAsRead = useCallback(async () => {
+    if (!userId) return { error: null };
+    return acknowledge({ notificationIds: notifications.filter((item) => !item.is_read).map((item) => item.id) });
+  }, [acknowledge, notifications, userId]);
 
   const unreadCount = useMemo(
     () => notifications.filter((notification) => !notification.is_read).length,
@@ -219,7 +233,7 @@ export function useClientNotifications(userId: string | null | undefined) {
     reviewUnreadCount,
     error,
     acknowledge,
-    clearAll,
+    markAllAsRead,
     refresh,
   };
 }

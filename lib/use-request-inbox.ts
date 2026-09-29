@@ -15,6 +15,7 @@ import {
 import { supabase } from "@/lib/supabase";
 import { createRealtimeChannelTopic } from "@/lib/realtime-channel";
 import { markClientNotificationsRead } from "@/lib/client-notifications";
+import { useViewedClientConversation } from "@/lib/use-viewed-client-conversation";
 import {
   resolveClientIdentity,
   type ClientIdentityProfile,
@@ -67,6 +68,7 @@ export function useRequestInbox(role: RequestConversationRole) {
   const selectedRequestIdRef = useRef<string | null>(null);
   const loadSequenceRef = useRef(0);
   const mountedRef = useRef(true);
+  useViewedClientConversation(role === "client" ? userId : null, selectedRequestId);
 
   useEffect(() => {
     mountedRef.current = true;

@@ -1,9 +1,11 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useSearchParams } from "next/navigation";
+import { getProfessionalNotificationView } from "@/lib/professional-notifications";
 import { supabase } from "@/lib/supabase";
 import { createRealtimeChannelTopic } from "@/lib/realtime-channel";
-import { Bell, MessageCircle, Sparkles, CalendarDays, Clock, Search } from "lucide-react";
+import { MessageCircle, Sparkles, CalendarDays, Clock, Search } from "lucide-react";
 import ChatModal from "@/components/ChatModal";
 import ConsultationSnapshot from "@/components/ConsultationSnapshot";
 import IdentityAvatar from "@/components/IdentityAvatar";
@@ -108,16 +110,6 @@ is_deleted: boolean | null;
   created_at: string;
 };
 
-type Notification = {
-  id: string;
-  user_id: string;
-  request_id: string | null;
-  title: string;
-  message: string | null;
-  is_read: boolean | null;
-  created_at: string;
-};
-
 function formatMobileRequestSchedule(
   scheduledFor: string | null,
   date: string | null,
@@ -157,6 +149,8 @@ function formatMobileRequestSchedule(
 }
 
 export default function DashboardRequestsPage() {
+  const searchParams = useSearchParams();
+  const deepLinkKey = searchParams.toString();
   const [requests, setRequests] = useState<ClientRequest[]>([]);
   const [savingId, setSavingId] = useState<string | null>(null);
   const [responses, setResponses] = useState<Record<string, string>>({});
@@ -175,8 +169,6 @@ export default function DashboardRequestsPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const showingArchived = requestView === "archived";
   const [updates, setUpdates] = useState<Record<string, RequestUpdate[]>>({});
-  const [notifications, setNotifications] = useState<Notification[]>([]);
-  const [showNotifications, setShowNotifications] = useState(false);
   const [highlightedRequestId, setHighlightedRequestId] = useState<string | null>(null);
   const [consultationImageUrls, setConsultationImageUrls] = useState<
     Record<string, string[]>
@@ -197,35 +189,49 @@ export default function DashboardRequestsPage() {
   }, []);
 
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    if (params.get("view") !== "archived") return;
-    const frame = window.requestAnimationFrame(() => setRequestView("archived"));
+    const params = new URLSearchParams(deepLinkKey);
+    const view = params.get("view");
+    if (!["active", "history", "archived"].includes(view || "")) return;
+    const frame = window.requestAnimationFrame(() => {
+      setRequestView(view as RequestLifecycleView);
+      setActiveFilter("all");
+      setHistoryFilter("all");
+      setSearchQuery("");
+    });
     return () => window.cancelAnimationFrame(frame);
-  }, []);
+  }, [deepLinkKey]);
 
   useEffect(() => {
-    const requestId = new URLSearchParams(window.location.search).get("request");
-    if (!requestId || handledDeepLinkRef.current === requestId) return;
+    const params = new URLSearchParams(deepLinkKey);
+    const requestId = params.get("request");
+    if (!requestId || handledDeepLinkRef.current === deepLinkKey) return;
     const linkedRequest = requests.find((request) => request.id === requestId);
     if (!linkedRequest) return;
-
-    handledDeepLinkRef.current = requestId;
-    const frame = requestAnimationFrame(() => {
-      if (
-        requestView !== "archived" &&
-        !matchesRequestLifecycleView(linkedRequest, "active", false)
-      ) {
-        setRequestView("history");
+    const targetView = getProfessionalNotificationView(linkedRequest);
+    const frame = window.requestAnimationFrame(() => {
+      // Allow the correct branch and cleared filters to render before scrolling.
+      if (requestView !== targetView || searchQuery || activeFilter !== "all" || historyFilter !== "all") {
+        setRequestView(targetView);
+        setSearchQuery("");
+        setActiveFilter("all");
+        setHistoryFilter("all");
+        return;
       }
+      handledDeepLinkRef.current = deepLinkKey;
       setExpandedRequestId(requestId);
       setHighlightedRequestId(requestId);
-      requestRefs.current[requestId]?.scrollIntoView({
-        behavior: "smooth",
-        block: "center",
-      });
+      requestRefs.current[requestId]?.scrollIntoView({ behavior: "smooth", block: "center" });
+      if (params.get("chat") === "1") {
+        setChatRequest(linkedRequest);
+        void markRequestConversationRead(requestId, "artist").then(({ error }) => {
+          if (error) { alert(error.message); return; }
+          if (!routeActiveRef.current) return;
+          setUpdates((current) => ({ ...current, [requestId]: markConversationUpdatesRead(current[requestId] || [], "artist") }));
+        });
+      }
     });
-    return () => cancelAnimationFrame(frame);
-  }, [requestView, requests]);
+    return () => window.cancelAnimationFrame(frame);
+  }, [activeFilter, deepLinkKey, historyFilter, requestView, requests, searchQuery]);
 
   const fetchRequests = useCallback(async () => {
     const sequence = ++requestLoadSequenceRef.current;
@@ -237,15 +243,6 @@ export default function DashboardRequestsPage() {
 
     if (!canCommit()) return;
     if (!user) return;
-const { data: notificationData } = await supabase
-  .from("notifications")
-  .select("*")
-  .eq("user_id", user.id)
-  .order("created_at", { ascending: false });
-
-if (!canCommit()) return;
-setNotifications(notificationData || []);
-
     const { data, error } = await supabase
       .from("client_requests")
       .select("*")
@@ -413,22 +410,6 @@ useEffect(() => {
               }
             );
           }
-        }
-      )
-      .on(
-        "postgres_changes",
-        {
-          event: "INSERT",
-          schema: "public",
-          table: "notifications",
-          filter: `user_id=eq.${user.id}`,
-        },
-        (payload) => {
-          if (cancelled) return;
-          setNotifications((prev) => [
-            payload.new as Notification,
-            ...prev,
-          ]);
         }
       )
       .on(
@@ -722,79 +703,6 @@ const setRequestHidden = async (id: string, hidden: boolean) => {
 
   fetchRequests();
 };
-const unreadCount = notifications.filter((n) => !n.is_read).length;
-
-const openNotification = async (notification: Notification) => {
-  if (notification.request_id) {
-    setExpandedRequestId(notification.request_id);
-    setHighlightedRequestId(notification.request_id);
-
-    setTimeout(() => {
-      requestRefs.current[notification.request_id!]?.scrollIntoView({
-        behavior: "smooth",
-        block: "center",
-      });
-    }, 150);
-
-    setTimeout(() => {
-      setHighlightedRequestId(null);
-    }, 1200);
-  }
-
-  setShowNotifications(false);
-
-  if (!notification.is_read) {
-    await supabase
-      .from("notifications")
-      .update({ is_read: true })
-      .eq("id", notification.id);
-
-    setNotifications((prev) =>
-      prev.map((item) =>
-        item.id === notification.id ? { ...item, is_read: true } : item
-      )
-    );
-  }
-
-  if (
-    notification.title === "New Message" &&
-    notification.request_id
-  ) {
-    const request = requests.find(
-      (item) => item.id === notification.request_id
-    );
-
-    if (request) {
-      await markMessagesRead(request.id);
-      setChatRequest(request);
-      setDraftMessage("");
-    }
-  }
-};
-
-const clearNotifications = async () => {
-  if (!notifications.length) return;
-  if (!window.confirm("Clear all notifications?")) return;
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) return;
-
-  const { error } = await supabase
-    .from("notifications")
-    .delete()
-    .eq("user_id", user.id);
-
-  if (error) {
-    alert(error.message);
-    return;
-  }
-
-  setNotifications([]);
-};
-
   const markMessagesRead = async (requestId: string) => {
   setUpdates((prev) => ({
     ...prev,
@@ -893,99 +801,6 @@ const deleteMessage = async (messageId: string) => {
 };
 	  return (
 	    <div className="relative bg-lumina-surface text-lumina-text">
-	      <div className="hidden justify-end px-5 pt-5 md:px-10 lg:flex">
-        <button
-          onClick={() => setShowNotifications(!showNotifications)}
-          className="relative flex h-9 w-9 items-center justify-center rounded-full border border-lumina-border bg-lumina-surface transition hover:bg-lumina-surface-soft"
-          aria-label="Notifications"
-        >
-          <Bell size={18} strokeWidth={1.7} />
-
-          {unreadCount > 0 && (
-            <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-lumina-black px-1 text-[10px] text-white">
-              {unreadCount}
-            </span>
-          )}
-        </button>
-      </div>
-{showNotifications && (
-  <div className="absolute right-3 top-[64px] z-40 w-[min(320px,calc(100vw-24px))] rounded-[22px] border border-lumina-glass-border bg-lumina-glass p-4 shadow-sm backdrop-blur-[12px] md:right-5 lg:top-[72px]">
-    <div className="flex items-center justify-between gap-4">
-      <p className="text-[15px] font-medium">Notifications</p>
-      {notifications.length > 0 && (
-        <button
-          onClick={() => void clearNotifications()}
-          className="text-[12px] text-lumina-text-muted transition hover:text-lumina-text"
-        >
-          Clear all
-        </button>
-      )}
-    </div>
-
-    <div className="mt-4 max-h-[70vh] space-y-3 overflow-y-auto pr-1">
-      {notifications.length === 0 ? (
-        <p className="text-[14px] text-lumina-text-muted">
-          No notifications yet.
-        </p>
-      ) : (
-        notifications.map((notification) => {
-          const relatedRequest = requests.find(
-            (request) => request.id === notification.request_id
-          );
-          const senderName = relatedRequest?.client_name || "Your client";
-          const senderImage = relatedRequest?.client_image_url;
-          const notificationMessage =
-            notification.title === "New Message"
-              ? `${senderName} sent you a message.`
-              : notification.title === "Appointment Confirmed"
-              ? `${senderName} confirmed the appointment.`
-              : notification.title === "Proposal Declined"
-              ? `${senderName} declined the proposal.`
-              : notification.title === "Client Requested a New Time"
-              ? `${senderName} requested a different time.`
-              : notification.message;
-
-          return (
-          <div
-            key={notification.id}
-            onClick={() => openNotification(notification)}
-            className={`cursor-pointer rounded-[16px] p-3 transition hover:bg-lumina-pearl ${
-              notification.is_read ? "bg-lumina-surface" : "bg-lumina-surface-soft"
-            }`}
-          >
-            <div className="flex items-start gap-3">
-              <IdentityAvatar
-                name={senderName}
-                imageUrl={senderImage}
-                className="flex h-9 w-9 shrink-0 rounded-full bg-lumina-pearl text-[12px] font-medium text-lumina-text-muted"
-              />
-
-              <div className="min-w-0">
-                <p className="truncate text-[13px] font-medium text-lumina-text">
-                  {senderName}
-                </p>
-                <p className="text-[14px] font-medium">
-                  {notification.title}
-                </p>
-
-                {notificationMessage && (
-                  <p className="mt-1 text-[13px] text-lumina-text-muted">
-                    {notificationMessage}
-                  </p>
-                )}
-
-                <p className="mt-2 text-[11px] text-lumina-text-muted">
-                  {new Date(notification.created_at).toLocaleDateString()}
-                </p>
-              </div>
-            </div>
-          </div>
-          );
-        })
-      )}
-    </div>
-  </div>
-)}
       <section className="w-full px-3 py-4 md:px-8 md:py-7 lg:px-10 lg:py-14">
         <div className="flex items-start justify-between gap-4 lg:hidden">
           <div>
@@ -1000,18 +815,7 @@ const deleteMessage = async (messageId: string) => {
             </p>
           </div>
 
-          <button
-            onClick={() => setShowNotifications(!showNotifications)}
-            className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-lumina-border bg-lumina-surface transition hover:bg-lumina-surface-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lumina-black focus-visible:ring-offset-2"
-            aria-label="Notifications"
-          >
-            <Bell size={17} strokeWidth={1.7} />
-            {unreadCount > 0 && (
-              <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-lumina-black px-1 text-[10px] text-white">
-                {unreadCount > 99 ? "99+" : unreadCount}
-              </span>
-            )}
-          </button>
+
         </div>
 
         <h1

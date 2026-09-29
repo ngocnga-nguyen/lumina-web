@@ -455,7 +455,7 @@ export default function ClientWorkspaceShell({
               unreadCount={clientNotifications.unreadCount}
               error={clientNotifications.error}
               onAcknowledge={clientNotifications.acknowledge}
-              onClearAll={clientNotifications.clearAll}
+              onMarkAllAsRead={clientNotifications.markAllAsRead}
             />
             <AccountMenu />
           </div>

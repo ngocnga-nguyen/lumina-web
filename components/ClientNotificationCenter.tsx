@@ -3,6 +3,7 @@
 import { Bell } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
+import IdentityAvatar from "@/components/IdentityAvatar";
 import {
   getClientNotificationDestination,
   type ClientNotification,
@@ -20,7 +21,9 @@ type ClientNotificationCenterProps = {
     requestId?: string;
     kind?: ClientNotificationReadKind;
   }) => Promise<{ error: { message: string } | null }>;
-  onClearAll: () => Promise<void>;
+  onMarkAllAsRead: () => Promise<{ error: { message: string } | null }>;
+  role?: "client" | "professional";
+  resolveDestination?: (notification: ClientNotification) => Promise<string | null>;
 };
 
 export default function ClientNotificationCenter({
@@ -29,10 +32,14 @@ export default function ClientNotificationCenter({
   unreadCount,
   error,
   onAcknowledge,
-  onClearAll,
+  onMarkAllAsRead,
+  role = "client",
+  resolveDestination,
 }: ClientNotificationCenterProps) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
+  const [pending, setPending] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -52,17 +59,30 @@ export default function ClientNotificationCenter({
   }, [open]);
 
   const openNotification = async (notification: ClientNotification) => {
+    if (pending) return;
+    setPending(true);
+    setActionError(null);
+    try {
     const request = notification.request_id
       ? requestsById[notification.request_id]
       : undefined;
-    const destination = getClientNotificationDestination(notification, request);
+    const destination = resolveDestination
+      ? await resolveDestination(notification)
+      : getClientNotificationDestination(notification, request);
+    if (!destination) throw new Error("This request is no longer available.");
 
     if (!notification.is_read) {
-      await onAcknowledge({ notificationId: notification.id });
+      const result = await onAcknowledge({ notificationId: notification.id });
+      if (result.error) throw new Error(result.error.message);
     }
 
     setOpen(false);
     router.push(destination);
+    } catch (error) {
+      setActionError(error instanceof Error ? error.message : "Notifications could not be updated.");
+    } finally {
+      setPending(false);
+    }
   };
 
   return (
@@ -88,29 +108,35 @@ export default function ClientNotificationCenter({
 
       {open && (
         <section
-          className="absolute right-0 top-12 z-50 w-[min(320px,calc(100vw-24px))] rounded-[22px] border border-lumina-border bg-lumina-surface p-4 shadow-xl"
+          className="fixed right-3 top-16 z-50 w-[min(320px,calc(100vw-24px))] rounded-[22px] border border-lumina-border bg-lumina-surface p-4 shadow-xl sm:absolute sm:right-0 sm:top-12"
           aria-label="Notifications"
         >
           <div className="flex items-center justify-between gap-4">
             <p className="text-[15px] font-medium">Notifications</p>
-            {notifications.length > 0 && (
+            {unreadCount > 0 && (
               <button
                 type="button"
-                onClick={() => {
-                  if (window.confirm("Clear all notifications?")) {
-                    void onClearAll();
-                  }
+                disabled={pending}
+                onClick={async () => {
+                  setPending(true);
+                  setActionError(null);
+                  try {
+                    const result = await onMarkAllAsRead();
+                    if (result.error) setActionError(result.error.message);
+                  } catch {
+                    setActionError("Notifications could not be updated.");
+                  } finally { setPending(false); }
                 }}
                 className="text-[12px] text-lumina-text-muted transition hover:text-lumina-black"
               >
-                Clear all
+                Mark all as read
               </button>
             )}
           </div>
 
-          {error && (
+          {(actionError || error) && (
             <p className="mt-3 text-[11px] text-lumina-attention" role="status">
-              {error}
+              {actionError || error}
             </p>
           )}
 
@@ -124,9 +150,9 @@ export default function ClientNotificationCenter({
                 const request = notification.request_id
                   ? requestsById[notification.request_id]
                   : undefined;
-                const artistName = request?.artist_name || "Your professional";
+                const artistName = request?.artist_name || (role === "professional" ? "Your client" : "Your professional");
                 const artistImage = request?.artist_image_url;
-                const message =
+                const message = role === "professional" ? notification.message :
                   notification.title === "New Message"
                     ? `${artistName} sent you a message.`
                     : notification.title === "New Proposal"
@@ -141,6 +167,7 @@ export default function ClientNotificationCenter({
                   <button
                     key={notification.id}
                     type="button"
+                    disabled={pending}
                     onClick={() => void openNotification(notification)}
                     className={`flex w-full gap-3 rounded-[16px] p-3 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lumina-black ${
                       notification.is_read
@@ -148,7 +175,9 @@ export default function ClientNotificationCenter({
                         : "bg-lumina-blush/60 text-lumina-text hover:bg-lumina-blush/75"
                     }`}
                   >
-                    <span className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full bg-lumina-pearl text-[12px] font-medium">
+                    {role === "professional" ? (
+                      <IdentityAvatar name={artistName} imageUrl={artistImage} className="flex h-9 w-9 shrink-0 rounded-full bg-lumina-pearl text-[12px] font-medium text-lumina-text-muted" />
+                    ) : <span className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full bg-lumina-pearl text-[12px] font-medium">
                       {artistImage ? (
                         <img
                           src={artistImage}
@@ -158,7 +187,7 @@ export default function ClientNotificationCenter({
                       ) : (
                         artistName.charAt(0).toUpperCase()
                       )}
-                    </span>
+                    </span>}
                     <span className="min-w-0 flex-1">
                       <span className="block truncate text-[12px] font-medium">
                         {artistName}

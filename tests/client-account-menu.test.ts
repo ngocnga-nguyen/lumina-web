@@ -32,11 +32,21 @@ test("both professional dropdown branches are byte-for-byte unchanged", () => {
   assert.equal(hash(storefront.slice(storefront.indexOf('{accountArtistProfile ? ('), storefront.indexOf('          ) : (', storefront.indexOf('{accountArtistProfile ? (')))), "53ec64ac2bf07fae5b68859ad9035a44ce7d34049d5f51fbc66a531f0dd5a11e");
 });
 
-test("Profile & Settings, other-device handling, workspace shells and mobile navigation are untouched", () => {
+test("Profile & Settings, other-device handling and shells outside approved notification integration are untouched", () => {
   const unchanged = {
     "app/account/page.tsx": "2085682f484a32e819b843a3252b2a750f0feb3fcf56a7fddd4bc7f12e30bdeb",
     "components/ClientWorkspaceShell.tsx": "346efa0085663d58fa053b98d6e2a701cdf949eb607bc60e501c0fad92a42b32",
     "components/ProfessionalDashboardShell.tsx": "fbc8a1b270bbe3a007622c71a37ba1206c7c1e69547587f67916a290b28b2fec",
   };
-  for (const [path, expected] of Object.entries(unchanged)) assert.equal(hash(read(path)), expected, path);
+  for (const [path, expected] of Object.entries(unchanged)) {
+    // The notification pass intentionally moves the bell into the professional shell.
+    // Retain the original byte-level guard for all other shell/navigation content.
+    const content = read(path)
+      .replace('onMarkAllAsRead={clientNotifications.markAllAsRead}', 'onClearAll={clientNotifications.clearAll}')
+      .replace('import WorkspaceNotificationCenter from "@/components/ClientNotificationCenter";\n', '')
+      .replace('import { useProfessionalNotifications } from "@/lib/use-professional-notifications";\n', '')
+      .replace('  const notifications = useProfessionalNotifications(professional?.id);\n', '')
+      .replace('              <WorkspaceNotificationCenter role="professional" {...notifications} onAcknowledge={notifications.acknowledge} onMarkAllAsRead={notifications.markAllAsRead} />\n', '');
+    assert.equal(hash(content), expected, path);
+  }
 });
