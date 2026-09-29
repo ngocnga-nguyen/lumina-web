@@ -45,21 +45,21 @@ export function ProfessionalDashboardMobileSummary({
         <button
           type="button"
           onClick={onEditAvatar}
-          className="group relative h-16 w-16 shrink-0 overflow-hidden rounded-full bg-lumina-pearl text-lumina-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lumina-black focus-visible:ring-offset-2"
+          className="group relative h-16 w-16 shrink-0 overflow-hidden rounded-full bg-lumina-pearl text-lumina-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lumina-black focus-visible:ring-offset-2 max-sm:overflow-visible"
           aria-label="Change profile photo"
         >
           {professional.profile_image_url ? (
             <img
               src={professional.profile_image_url}
               alt={professional.name}
-              className="h-full w-full object-cover"
+              className="h-full w-full object-cover max-sm:rounded-full"
             />
           ) : (
             <span className="flex h-full w-full items-center justify-center text-[20px] font-medium">
               {(professional.name || "P").charAt(0).toUpperCase()}
             </span>
           )}
-          <span className="absolute bottom-0 right-0 inline-flex h-6 w-6 items-center justify-center rounded-full border border-lumina-surface bg-lumina-black text-white shadow-sm">
+          <span className="absolute bottom-0 right-0 inline-flex h-6 w-6 items-center justify-center rounded-full border border-lumina-surface bg-lumina-black text-white shadow-sm max-sm:-bottom-0.5 max-sm:-right-0.5 max-sm:h-5 max-sm:w-5 max-sm:shadow-none">
             <Pencil size={11} strokeWidth={1.8} aria-hidden="true" />
           </span>
         </button>

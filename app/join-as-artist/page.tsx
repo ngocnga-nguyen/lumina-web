@@ -8,19 +8,19 @@ export default function JoinAsArtistPage() {
   return (
     <main className="min-h-screen bg-lumina-surface text-lumina-text">
       <header className="border-b border-lumina-border bg-lumina-bg-soft">
-        <div className="grid h-[76px] w-full grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center px-3 sm:px-4 lg:px-5 xl:px-6">
-        <Link href="/" aria-label="Lumina home" className="block w-[116px] justify-self-start sm:w-[132px]">
+        <div className="grid h-[76px] w-full grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center px-3 sm:px-4 lg:px-5 xl:px-6 max-sm:flex max-sm:h-16 max-sm:justify-between max-sm:px-4">
+        <Link href="/" aria-label="Lumina home" className="block w-[116px] justify-self-start sm:w-[132px] max-sm:w-[100px] max-sm:shrink-0">
           <LuminaBrand variant="wordmark" priority className="h-auto w-full" />
         </Link>
 
         <div className="hidden justify-self-center text-[14px] md:block">Professional Accounts</div>
 
-        <nav className="flex items-center justify-self-end gap-5 text-sm md:gap-7">
-          <Link href="/browse" className="transition hover:text-lumina-attention">
+        <nav className="flex items-center justify-self-end gap-5 text-sm md:gap-7 max-sm:gap-3 max-sm:text-[13px] max-sm:whitespace-nowrap max-sm:shrink-0">
+          <Link href="/browse" className="transition hover:text-lumina-attention max-sm:inline-flex max-sm:min-h-11 max-sm:min-w-11 max-sm:items-center max-sm:text-lumina-text-muted">
             Browse
           </Link>
 
-          <Link href="/login" className="rounded-full bg-lumina-black px-4 py-2.5 text-white transition hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lumina-black focus-visible:ring-offset-2">
+          <Link href="/login" className="rounded-full bg-lumina-black px-4 py-2.5 text-white transition hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lumina-black focus-visible:ring-offset-2 max-sm:inline-flex max-sm:h-10 max-sm:items-center max-sm:px-3.5 max-sm:py-0">
             Login
           </Link>
         </nav>
