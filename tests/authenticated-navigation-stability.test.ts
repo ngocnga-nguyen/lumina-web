@@ -79,8 +79,11 @@ test("workspace auth failures stay contained and can be retried", async () => {
   ]);
 
   for (const shell of [clientShell, professionalShell]) {
-    assert.match(shell, /error: authError/);
-    assert.match(shell, /if \(authError\) throw authError/);
+    const authSource = shell === professionalShell
+      ? await readSource("../lib/professional-initialization.ts")
+      : shell;
+    assert.match(authSource, /error: authError/);
+    assert.match(authSource, /if \(authError\) throw authError/);
     assert.match(shell, /setAccountLoadError\(true\)/);
     assert.match(shell, /setAccountLoadAttempt\(\(current\) => current \+ 1\)/);
   }

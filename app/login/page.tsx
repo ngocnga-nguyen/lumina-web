@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
+import { initializeProfessional } from "@/lib/professional-initialization";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -13,37 +14,31 @@ export default function LoginPage() {
       ? redirect
       : null;
   };
+  const [accountError, setAccountError] = useState(false);
+  const [accountAttempt, setAccountAttempt] = useState(0);
   useEffect(() => {
     let mounted = true;
     const checkSession = async () => {
       try {
-        const {
-          data: { session }, error: sessionError,
-        } = await supabase.auth.getSession();
-        if (sessionError) throw sessionError;
-        if (!mounted || !session?.user) return;
-
-        const { data: artist, error: artistError } = await supabase
-          .from("artists")
-          .select("id")
-          .eq("id", session.user.id)
-          .maybeSingle();
-
-        if (artistError) throw artistError;
-        if (!mounted) return;
-        if (artist) {
-          router.push(getSafeRedirect() || "/dashboard");
+        setAccountError(false);
+        const result = await initializeProfessional(supabase);
+        if (!mounted || result.status === "unauthenticated") return;
+        if (result.status === "artist") {
+          router.push(getSafeRedirect() || (result.created ? "/dashboard/onboarding" : "/dashboard"));
         } else {
           router.push("/browse");
         }
       } catch (error) {
-        if (mounted) console.log("Account role check failed:", error);
+        if (mounted) {
+          console.log("Account role check failed:", error);
+          setAccountError(true);
+        }
       }
     };
 
     void checkSession();
     return () => { mounted = false; };
-  }, [router]);
+  }, [accountAttempt, router]);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
@@ -95,23 +90,16 @@ export default function LoginPage() {
       const user = data.user;
       if (!user) return;
 
-      // Authentication has persisted the session before resolving the role.
-      const { data: artist, error: artistError } = await supabase
-        .from("artists")
-        .select("id")
-        .eq("id", user.id)
-        .maybeSingle();
-
-      if (artistError) throw artistError;
-
-      if (artist) {
-        router.push(getSafeRedirect() || "/dashboard");
+      const result = await initializeProfessional(supabase);
+      if (result.status === "unauthenticated") throw new Error("Session unavailable");
+      if (result.status === "artist") {
+        router.push(getSafeRedirect() || (result.created ? "/dashboard/onboarding" : "/dashboard"));
         return;
       }
       router.push("/browse");
     } catch (error) {
       console.log("Account login or role check failed:", error);
-      alert("We couldn't confirm your account type. Please try again.");
+      setAccountError(true);
     } finally {
       setLoading(false);
     }
@@ -134,6 +122,15 @@ export default function LoginPage() {
         <p className="mt-4 text-[15px] text-lumina-text-muted">
           Login to continue browsing, saving artists, or managing your professional profile.
         </p>
+
+        {accountError && (
+          <div role="alert" className="mt-6 text-sm">
+            <p>We couldn&apos;t finish loading your account or setting up your professional profile. Please try again.</p>
+            <button type="button" className="mt-2 underline" onClick={() => setAccountAttempt((attempt) => attempt + 1)}>
+              Retry account setup
+            </button>
+          </div>
+        )}
 
         <form
   className="mt-8 space-y-4"

@@ -16,15 +16,12 @@ export default function ArtistSignupPage() {
   const [loading, setLoading] = useState(false);
 
   const handleSignup = async () => {
-    if (!email || !password || !fullName) {
+    if (!email || !password || !fullName.trim()) {
       alert("Please fill out your name, email, and password.");
       return;
     }
 
     setLoading(true);
-
-    const professionalName = fullName.trim();
-    const publicBusinessName = businessName.trim() || null;
 
     const { data, error } = await supabase.auth.signUp({
       email,
@@ -32,8 +29,8 @@ export default function ArtistSignupPage() {
       options: {
         emailRedirectTo: `${window.location.origin}/login?redirect=${encodeURIComponent("/dashboard/onboarding")}`,
         data: {
-          full_name: fullName,
-          business_name: businessName,
+          full_name: fullName.trim(),
+          business_name: businessName.trim(),
           account_type: "artist",
         },
       },
@@ -45,33 +42,11 @@ export default function ArtistSignupPage() {
       return;
     }
 
-    const user = data.user;
-
-    if (user) {
-      const { error: artistError } = await supabase.from("artists").insert([
-        {
-          id: user.id,
-          name: professionalName,
-          business_name: publicBusinessName,
-          category: "Beauty Professional",
-          location: "Location coming soon",
-          price_start: 0,
-          email,
-          is_active: false,
-        },
-      ]);
-
-      if (artistError) {
-        console.log(artistError);
-        alert(artistError.message);
-        setLoading(false);
-        return;
-      }
-    }
-
     setLoading(false);
 
-    alert("Professional account created ✨ Please check your email to confirm your account.");
+    if (!data.session) {
+      alert("Please check your email to confirm your professional account. We'll finish setting up your profile after you sign in.");
+    }
 
     setEmail("");
     setPassword("");

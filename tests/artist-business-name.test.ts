@@ -51,8 +51,8 @@ test("column privileges preserve the existing owner-RLS model", () => {
 });
 
 test("professional signup stores the two explicit identity fields independently", () => {
-  assert.match(signupPage, /name: professionalName/);
-  assert.match(signupPage, /business_name: publicBusinessName/);
+  assert.match(signupPage, /full_name: fullName\.trim\(\)/);
+  assert.match(signupPage, /business_name: businessName\.trim\(\)/);
   assert.doesNotMatch(signupPage, /displayName/);
   assert.doesNotMatch(signupPage, /\$\{.*\}\s*\(\$\{/);
 });

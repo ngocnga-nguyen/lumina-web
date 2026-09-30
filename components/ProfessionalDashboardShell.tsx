@@ -22,6 +22,7 @@ import {
   type ProfessionalWorkspaceProfile,
 } from "@/components/ProfessionalWorkspaceContext";
 import { supabase } from "@/lib/supabase";
+import { initializeProfessional } from "@/lib/professional-initialization";
 import { useWorkspaceActionCounts } from "@/lib/use-workspace-action-counts";
 import { useWorkspaceMessageUnreadCount } from "@/lib/use-workspace-message-unread-count";
 import { useWorkspaceSidebarPreference } from "@/lib/use-workspace-sidebar-preference";
@@ -67,34 +68,17 @@ export default function ProfessionalDashboardShell({ children }: ShellProps) {
     const loadProfessional = async () => {
       try {
         setAccountLoadError(false);
-        const {
-          data: { user },
-          error: authError,
-        } = await supabase.auth.getUser();
-
+        const result = await initializeProfessional(supabase);
         if (cancelled) return;
-        if (authError) throw authError;
-        if (!user) {
-          router.replace(
-            `/login?redirect=${encodeURIComponent(pathnameRef.current)}`
-          );
+        if (result.status === "unauthenticated") {
+          router.replace(`/login?redirect=${encodeURIComponent(pathnameRef.current)}`);
           return;
         }
-
-        const { data, error } = await supabase
-          .from("artists")
-          .select("id, name, category, profile_image_url")
-          .eq("id", user.id)
-          .maybeSingle();
-
-        if (cancelled) return;
-        if (error) throw error;
-        if (!data) {
+        if (result.status === "client") {
           router.replace("/client");
           return;
         }
-
-        setProfessional(data);
+        setProfessional(result.artist);
         setAccountResolved(true);
       } catch (error) {
         if (cancelled) return;
