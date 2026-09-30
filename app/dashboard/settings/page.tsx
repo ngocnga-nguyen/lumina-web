@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import ProfessionalActivationPanel from "@/components/ProfessionalActivationPanel";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
@@ -233,7 +234,7 @@ export default function ArtistSettingsPage() {
     if (
       verification?.status === "verified" &&
       !window.confirm(
-        "Resubmitting changed license information will return your verification to Pending review and temporarily remove the public License verified label. Continue?"
+        "Resubmitting changed license information will return your verification to Pending review and hide your public profile until verification is approved and you explicitly choose Go live again. Continue?"
       )
     ) {
       return;
@@ -300,6 +301,7 @@ export default function ArtistSettingsPage() {
 
   return (
     <div className="bg-lumina-surface text-lumina-text">
+      {!loading && activationStatus && <div className="mx-auto max-w-[1040px] px-5 pt-1 lg:px-10"><ProfessionalActivationPanel status={activationStatus} onActivate={() => void updateVisibility()} saving={visibilityLoading} /></div>}
       <section className="mx-auto max-w-2xl px-5 pb-10 pt-5 lg:hidden">
         {onboardingMode && <ProfessionalOnboardingContext step="license" title="Submit license verification" />}
         <p className="text-[11px] uppercase tracking-[0.16em] text-lumina-text-muted">Professional workspace</p>
@@ -317,7 +319,7 @@ export default function ArtistSettingsPage() {
             <MobileSettingsRow title="Password & security" detail="Get a secure reset link" onClick={() => setMobileSheet("password")} />
             <MobileSettingsRow title="Other signed-in devices" detail="Keep this device signed in" onClick={() => void signOutOtherDevices()} disabled={signingOutOthers} />
           </div></section>
-          <section id="license-verification-mobile" className="mt-7 scroll-mt-24" aria-label="Professional verification"><h2 className="text-[11px] font-semibold uppercase tracking-[0.14em] text-lumina-text-muted">Professional verification</h2><div className="mt-2 border-t border-lumina-border/70"><MobileSettingsRow title="License verification" detail={verification ? professionalVerificationStatusLabels[verification.status] : "Not submitted"} onClick={() => setMobileSheet("verification")} /></div>
+          <section id="license-verification-mobile" className="mt-7 scroll-mt-24" aria-label="Professional verification"><h2 className="text-[11px] font-semibold uppercase tracking-[0.14em] text-lumina-text-muted">Professional verification</h2><div className="mt-2 border-t border-lumina-border/70"><MobileSettingsRow title="License verification" detail={verification ? professionalVerificationStatusLabels[verification.status] : "Unverified"} onClick={() => setMobileSheet("verification")} /></div>
             {verification?.status === "rejected" && verification.decision_message && <p className="mt-2 rounded-[14px] bg-lumina-attention-soft p-3 text-[12px] leading-relaxed text-lumina-text-muted">Needs correction: {verification.decision_message}</p>}
           </section>
           <Link href="/dashboard/profile" className="mt-7 inline-flex min-h-10 items-center text-[12px] text-lumina-text-muted underline decoration-lumina-border underline-offset-4">View and edit public profile</Link>
@@ -513,7 +515,7 @@ export default function ArtistSettingsPage() {
                 >
                   {verification
                     ? professionalVerificationStatusLabels[verification.status]
-                    : "Not submitted"}
+                    : "Unverified"}
                 </span>
               </div>
               <p className="mt-2 max-w-[400px] text-[12px] leading-[1.6] text-lumina-text-muted">

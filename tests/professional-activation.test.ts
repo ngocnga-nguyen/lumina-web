@@ -39,7 +39,7 @@ test("pending verification prevents completion and activation readiness", () => 
   };
 
   assert.equal(areNonLicenseRequirementsComplete(pending), true);
-  assert.equal(getActivationCompletionPercent(pending), 88);
+  assert.equal(getActivationCompletionPercent(pending), 80);
   assert.equal(getFirstIncompleteOnboardingStep(pending), "license");
 });
 

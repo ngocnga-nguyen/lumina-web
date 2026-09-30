@@ -10,22 +10,22 @@ const expected = {
     "mobile": "995b2641b645f573f7dfc4c764664f210f7f369e8a862c083873cb91401cd869"
   },
   "app/dashboard/profile/page.tsx": {
-    "logic": "6e0ee295c3294a26ba3ad149e78222c31199b80fcf66d1eea0426a8a78363fc6",
-    "mobile": "828bbef5916355ee5b53d57eff607d0228a0d0a14fda90462997a5030eae34c8"
+    "logic": "0b386bc63cc6925923f3e72406ab2016e0d7a60e8beae87cafd6a3d44a83d63f",
+    "mobile": "bc6aaf52bcb159a5f96a7e101c2bae3dc3641df9bcf11814b1c9ede7b0fb2f8f"
   },
   "app/dashboard/settings/page.tsx": {
-    "logic": "7e1f45859e124da5900c7836246065bfdb18ff32ea93ed3ce2d40228c89eeade",
-    "mobile": "8d3bc9b7dbe102a81ec414365adb0bc12cf9b67aea46fc30a326b273590261c5"
+    "logic": "d3617ad193a5f87c304f6afb8bfbcde0fca058a089c3df5c4ff4d5dc7eab8bae",
+    "mobile": "18955898216c4deee68bcd8a90784619bd9d201238969a657c3408ebaf5c7021"
   }
 };
-test("account/profile mutations, validation, auth and loading flow remain identical", () => {
+test("account/profile mutations, validation, auth and loading flow match the reviewed Step 8.8A baseline", () => {
   for (const [path, fingerprints] of Object.entries(expected)) {
     const source = read(path);
     const logic = source.slice(source.indexOf("export default function"), source.indexOf("\n  return (\n")).replace(/  const sectionTitleClass =\n    "[^\n]+";\n\n/, "");
     assert.equal(hash(logic), fingerprints.logic, path);
   }
 });
-test("approved mobile settings markup remains byte-for-byte identical", () => {
+test("mobile settings markup matches the reviewed Step 8.8A baseline", () => {
   for (const [path, fingerprints] of Object.entries(expected)) {
     const source = read(path);
     const mobile = source.slice(source.indexOf('      <section'), source.indexOf('      <section className="mx-auto hidden'));
@@ -37,7 +37,7 @@ test("shared media, storage, activation, reset and public profile behavior are u
   "components/ProfessionalProfileMediaEditor.tsx": "d6cd4395cbc7d874287a31054ec350b9f77ca114859019c663be2a48e214586c",
   "components/MobileManagementSheet.tsx": "e8c91d6a4461dc077e5be69c0858d33fe899974ae8c5852ac7b7dee4b81ec59c",
   "app/account/reset-password/page.tsx": "4ec8d17189d3ed81d0b46577a6770a79a800ef0bc466e5313b4295b125e2ef2c",
-  "lib/professional-activation.ts": "90bf2c4f220d7bff70c457bbf05d094e1a8ab8b15aaeba20affb39286e8c2e5e",
+  "lib/professional-activation.ts": "7503142379028403bdc799d373d7a08b62351a72edfec28e09e3af82ac10f495",
   "lib/professional-activation-client.ts": "15d8096029f361097a478bb104be5aac834cf1491cd37de1d05ff4c49e5e8285",
   "lib/profile-image-upload.ts": "50fe92788283fcf11d9a5fb95b7d5b50c2a709f9785892b9ac8d4e72c61873f1",
   "lib/profile-image-storage.ts": "1e192be1d8079622fac2a47f885f4e7eb0ea606db862ef3bd9f72c3507fe53c2",
@@ -46,7 +46,7 @@ test("shared media, storage, activation, reset and public profile behavior are u
   for (const [path, expectedHash] of Object.entries(unchanged)) assert.equal(hash(read(path)), expectedHash, path);
   // Public presentation evolves independently; pin the fetch, access and mutation authority.
   const storefront = read("app/artist/[slug]/page.tsx");
-  assert.equal(hash(storefront.slice(storefront.indexOf("type Artist ="), storefront.indexOf("  return (\n    <main data-lumina-public-page"))), "f2ec26aad914ba1740557c4c6cb616da25a7ef85fb1fb9d1f21c4544e8de8906");
+  assert.equal(hash(storefront.slice(storefront.indexOf("type Artist ="), storefront.indexOf("  return (\n    <main data-lumina-public-page"))), "747ebe1c36dd89b72f0bb42687961cad4d427582ce86507b2f417897c46915b6");
 });
 test("desktop profile separates immediate media saves from ordinary profile edits", () => {
   const source = read("app/dashboard/profile/page.tsx");

@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import PublicArtistImage from "@/components/PublicArtistImage";
 import SaveArtistButton from "@/components/SaveArtistButton";
 
 type ArtistCardProps = {
@@ -62,20 +63,7 @@ export default function ArtistCard({
             : "aspect-video rounded-[16px] sm:aspect-[4/3] sm:rounded-[18px]"
         }`}
       >
-        {artist.profile_image_url ? (
-          <img
-            src={artist.profile_image_url}
-            alt={artist.name}
-            className="h-full w-full object-cover transition duration-500 group-hover:scale-[1.02]"
-          />
-        ) : (
-          <div className="flex h-full w-full items-center justify-center text-center text-lumina-text-muted">
-            <div>
-              <p className="text-[15px]">Profile Image</p>
-              <p className="mt-1 text-[12px]">Coming soon</p>
-            </div>
-          </div>
-        )}
+        <PublicArtistImage artistName={artist.name} profileImageUrl={artist.profile_image_url} />
 
         {!viewerIsArtist && (
           <div

@@ -361,7 +361,7 @@ export default function DashboardPortfolioPage() {
       setMobileEditorOpen(false);
       setSelectedEntryId(null);
       if (onboardingMode) {
-        router.push("/dashboard/onboarding?step=availability");
+        router.push("/dashboard/onboarding");
         return;
       }
       alert(

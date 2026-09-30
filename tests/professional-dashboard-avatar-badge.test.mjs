@@ -20,10 +20,10 @@ test("avatar remains the 64px edit target while its smaller badge is not clipped
   assert.match(mobile, /<Pencil size=\{11\}/);
 });
 
-test("desktop, dashboard data/actions, and shared media editor remain untouched", () => {
+test("desktop and dashboard match Step 8.8A; shared media editor stays unchanged", () => {
   const unchanged = {
-    "components/ProfessionalDashboardDesktopHome.tsx": "11c86d7e31447cb5b5f0ad4b9476e94101a642d6c1743215aafe56224c7257f7",
-    "app/dashboard/page.tsx": "353904949885364a69c152c539415c81972d0e9c8c105057a66b6e85fc9c6a1d",
+    "components/ProfessionalDashboardDesktopHome.tsx": "95b4d0fce58d67f994fa266fa243b8a287b52de4d77639341e0f3bcecd234bca",
+    "app/dashboard/page.tsx": "a8443f19c1409ae18508661aad24fd2ec127e1d67bc64cd2b1bcfed224274ae5",
     "components/ProfessionalProfileMediaEditor.tsx": "d6cd4395cbc7d874287a31054ec350b9f77ca114859019c663be2a48e214586c",
   };
   for (const [path, expected] of Object.entries(unchanged)) assert.equal(hash(read(path)), expected, path);

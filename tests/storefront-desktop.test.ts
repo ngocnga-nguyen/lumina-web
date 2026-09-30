@@ -9,14 +9,14 @@ const hero = read("components/StorefrontDesktopHero.tsx");
 const css = read("app/artist/[slug]/storefront.module.css");
 const hash = (value: string) => createHash("sha256").update(value).digest("hex");
 
-test("Storefront data, access, requests, reviews and derived state match the pre-polish baseline", () => {
+test("Storefront data, access, requests, reviews and derived state match the Step 8.8A baseline (blank bio is omitted)", () => {
   const logic = source.slice(source.indexOf("type Artist ="), source.indexOf("  return (\n    <main data-lumina-public-page"));
-  assert.equal(hash(logic), "f2ec26aad914ba1740557c4c6cb616da25a7ef85fb1fb9d1f21c4544e8de8906");
+  assert.equal(hash(logic), "747ebe1c36dd89b72f0bb42687961cad4d427582ce86507b2f417897c46915b6");
 });
 
-test("approved mobile hero remains byte-for-byte unchanged", () => {
+test("mobile hero matches Step 8.8A with blank bio omitted", () => {
   const mobile = source.slice(source.indexOf('      <section className="md:hidden">'), source.indexOf('      <section className="px-4 pb-10'));
-  assert.equal(hash(mobile), "d7f5bd0f52d37ba3b8d93e9cca01cdeb9af78fc8f33fdb14e534e19823575f39");
+  assert.equal(hash(mobile), "f81a0131aec5c1aee0a910f579b7b2d60f5e386b67c9fd312caa9ce9d4a87651");
   assert.match(hero, /hidden md:block/);
   assert.match(css, /@media \(min-width: 768px\)/);
   assert.doesNotMatch(css, /:global|@media \(max-width/);

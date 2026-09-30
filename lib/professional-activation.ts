@@ -6,6 +6,9 @@ export type ProfessionalActivationLicenseStatus =
 
 export type ProfessionalActivationStatus = {
   artist_id: string;
+  name_ready?: boolean;
+  category_ready?: boolean;
+  activation_hidden_by_owner?: boolean;
   profile_information_ready: boolean;
   profile_photo_ready: boolean;
   bio_ready: boolean;
@@ -21,6 +24,7 @@ export type ProfessionalActivationStatus = {
 };
 
 export type ProfessionalOnboardingStep =
+  | "location"
   | "about"
   | "services"
   | "portfolio"
@@ -33,13 +37,13 @@ export const professionalOnboardingSteps: Array<{
   id: ProfessionalOnboardingStep;
   label: string;
 }> = [
-  { id: "about", label: "About your business" },
+  { id: "about", label: "Professional identity" },
+  { id: "location", label: "Location or service area" },
   { id: "services", label: "Services" },
-  { id: "portfolio", label: "Portfolio / Results" },
-  { id: "availability", label: "Availability" },
+
   { id: "license", label: "License verification" },
-  { id: "requests", label: "How Requests work" },
-  { id: "ready", label: "Ready for activation" },
+
+  { id: "ready", label: "Go live" },
 ];
 
 export function isProfessionalOnboardingStep(
@@ -52,34 +56,11 @@ export function getActivationRequirements(
   status: ProfessionalActivationStatus
 ) {
   return [
-    {
-      id: "profile-information",
-      label: "professional profile information",
-      complete: status.profile_information_ready,
-    },
-    {
-      id: "profile-photo",
-      label: "profile photo",
-      complete: status.profile_photo_ready,
-    },
-    { id: "bio", label: "bio", complete: status.bio_ready },
-    { id: "location", label: "location", complete: status.location_ready },
-    { id: "services", label: "service", complete: status.services_ready },
-    {
-      id: "portfolio",
-      label: "portfolio photo or Result",
-      complete: status.portfolio_ready,
-    },
-    {
-      id: "availability",
-      label: "availability",
-      complete: status.availability_ready,
-    },
-    {
-      id: "license",
-      label: "license verification",
-      complete: status.license_verified,
-    },
+    { id: "name", label: "Add your professional name", complete: status.name_ready ?? status.profile_information_ready, href: "/dashboard/profile?onboarding=about" },
+    { id: "category", label: "Choose your professional category", complete: status.category_ready ?? status.profile_information_ready, href: "/dashboard/profile?onboarding=about" },
+    { id: "location", label: "Add your location or service area", complete: status.location_ready, href: "/dashboard/profile?onboarding=location#location" },
+    { id: "services", label: "Add at least one service", complete: status.services_ready, href: "/dashboard/services?onboarding=services" },
+    { id: "license", label: status.license_status === "pending" ? "License verification pending" : status.license_status === "rejected" ? "License information needs correction" : "Verify your professional license", complete: status.license_verified, href: "/dashboard/settings#license-verification" },
   ];
 }
 
@@ -104,13 +85,9 @@ export function isOnboardingStepComplete(
   step: ProfessionalOnboardingStep
 ) {
   if (step === "about") {
-    return (
-      status.profile_information_ready &&
-      status.profile_photo_ready &&
-      status.bio_ready &&
-      status.location_ready
-    );
+    return (status.name_ready ?? status.profile_information_ready) && (status.category_ready ?? status.profile_information_ready);
   }
+  if (step === "location") return status.location_ready;
   if (step === "services") return status.services_ready;
   if (step === "portfolio") return status.portfolio_ready;
   if (step === "availability") return status.availability_ready;
@@ -126,9 +103,8 @@ export function getFirstIncompleteOnboardingStep(
 
   const requiredSteps: ProfessionalOnboardingStep[] = [
     "about",
+    "location",
     "services",
-    "portfolio",
-    "availability",
     "license",
   ];
   return (
@@ -140,18 +116,12 @@ export function getFirstIncompleteOnboardingStep(
 export function areNonLicenseRequirementsComplete(
   status: ProfessionalActivationStatus
 ) {
-  return (
-    status.profile_information_ready &&
-    status.profile_photo_ready &&
-    status.bio_ready &&
-    status.location_ready &&
-    status.services_ready &&
-    status.portfolio_ready &&
-    status.availability_ready
-  );
+  return getActivationRequirements(status).filter((item) => item.id !== "license").every((item) => item.complete);
 }
 
 export type ProfessionalProfilePanelMode =
+  | "hidden"
+  | "rejected"
   | "incomplete"
   | "verification_pending"
   | "ready"
@@ -161,7 +131,8 @@ export function getProfessionalProfilePanelMode(
   status: ProfessionalActivationStatus
 ): ProfessionalProfilePanelMode {
   if (status.is_active && status.activation_ready) return "active";
-  if (status.activation_ready) return "ready";
+  if (status.activation_ready) return status.activation_hidden_by_owner ? "hidden" : "ready";
+  if (status.license_status === "rejected") return "rejected";
   if (
     status.license_status === "pending" &&
     areNonLicenseRequirementsComplete(status)
@@ -183,4 +154,8 @@ export function shouldShowProfessionalProfilePanel(
 
 export function getProfessionalProfilePanelDismissalKey(artistId: string) {
   return `lumina-profile-activation-panel-dismissed-v1:${artistId}`;
+}
+
+export function getProfessionalActivationLabel(status: ProfessionalActivationStatus) {
+  return { incomplete: "Setup needed", verification_pending: "Verification pending", rejected: "Needs correction", ready: "Ready to go live", active: "Live", hidden: "Hidden" }[getProfessionalProfilePanelMode(status)];
 }

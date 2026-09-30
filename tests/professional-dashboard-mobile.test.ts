@@ -24,7 +24,7 @@ test("mobile dashboard remains isolated below lg while the desktop home is separ
   assert.match(mobileHome, /Manage services/);
   assert.match(
     dashboard,
-    /panelMode === "incomplete"[\s\S]*lg:hidden/
+    /activationStatusLoaded && showProfilePanel[\s\S]*lg:hidden/
   );
 });
 

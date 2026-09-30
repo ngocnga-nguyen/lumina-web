@@ -100,7 +100,7 @@ export default function StorefrontDesktopHero(props: Props) {
                 </div>
               </div>
             </div>
-            <p className="mt-4 max-w-[800px] whitespace-pre-line text-[14px] leading-[1.65] text-lumina-text">{props.bio}</p>
+            {props.bio?.trim() && <p className="mt-4 max-w-[800px] whitespace-pre-line text-[14px] leading-[1.65] text-lumina-text">{props.bio}</p>}
           </div>
 
           <div className="min-w-0 border-t border-lumina-glass-border/70 pt-4 xl:border-l xl:border-t-0 xl:pl-6 xl:pt-0">

@@ -1007,9 +1007,7 @@ setAverageRating(updatedAverage);
   const availabilitySummary =
     artist.availability?.trim().split("\n").find(Boolean) ||
     "Availability coming soon.";
-  const profileBio =
-    artist.bio ||
-    `Professional ${artist.category.toLowerCase()} serving clients in ${artist.location}.`;
+  const profileBio = artist.bio?.trim() || "";
   const mobileCoverImage =
     artist.cover_image_url ||
     portfolioPhotos[0]?.image_url ||
@@ -1317,7 +1315,7 @@ setAverageRating(updatedAverage);
             </div>
           )}
 
-          <div className="mt-3">
+          {profileBio && <div className="mt-3">
             <p
               className={`whitespace-pre-line text-[14px] leading-[1.55] text-lumina-text ${
                 mobileBioExpanded ? "" : "line-clamp-3"
@@ -1335,7 +1333,7 @@ setAverageRating(updatedAverage);
                 {mobileBioExpanded ? "Show less" : "See more"}
               </button>
             )}
-          </div>
+          </div>}
 
           <div className="mt-3 rounded-[16px] border border-lumina-glass-border/70 bg-lumina-glass/50 px-3 py-1 shadow-[inset_0_1px_0_rgba(255,255,255,0.35)] backdrop-blur-[10px]">
             <button

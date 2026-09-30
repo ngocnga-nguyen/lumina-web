@@ -10,6 +10,7 @@ import {
   Pencil,
   X,
 } from "lucide-react";
+import ProfessionalActivationPanel from "@/components/ProfessionalActivationPanel";
 import IdentityAvatar from "@/components/IdentityAvatar";
 import WorkspaceNavigationIndicator, {
   getWorkspaceIndicatorLabel,
@@ -17,7 +18,6 @@ import WorkspaceNavigationIndicator, {
 import { useProfessionalWorkspace } from "@/components/ProfessionalWorkspaceContext";
 import {
   type ProfessionalActivationStatus,
-  type ProfessionalOnboardingStep,
   type ProfessionalProfilePanelMode,
 } from "@/lib/professional-activation";
 import { getProfessionalWorkspaceNavigation } from "@/lib/workspace-navigation";
@@ -46,9 +46,6 @@ type Props = {
   panelMode: ProfessionalProfilePanelMode | null;
   showProfilePanel: boolean;
   profileStatus: string | null;
-  profileCompletion: number;
-  missingProfileItems: string[];
-  firstIncompleteStep: ProfessionalOnboardingStep;
   activatingProfile: boolean;
   onActivateProfile: () => void;
   onDismissActivePanel: () => void;
@@ -66,9 +63,6 @@ export default function ProfessionalDashboardDesktopHome({
   panelMode,
   showProfilePanel,
   profileStatus,
-  profileCompletion,
-  missingProfileItems,
-  firstIncompleteStep,
   activatingProfile,
   onActivateProfile,
   onDismissActivePanel,
@@ -83,22 +77,6 @@ export default function ProfessionalDashboardDesktopHome({
     .filter((item): item is NonNullable<typeof item> => Boolean(item));
   const settingsItem = navigation.find((item) => item.id === "settings");
   const hasAttention = requestActionCount > 0 || messageUnreadCount > 0;
-
-  const setupAction =
-    activationStatus?.license_status === "rejected"
-      ? { href: "/dashboard/settings#license-verification", label: "Update verification details" }
-      : activationStatus?.license_status === "unverified"
-        ? { href: "/dashboard/settings#license-verification", label: "Complete verification" }
-        : { href: `/dashboard/onboarding?step=${firstIncompleteStep}`, label: "Continue setup" };
-  const setupDescription =
-    activationStatus?.license_status === "rejected"
-      ? activationStatus.license_decision_message ||
-        "Update your license verification details for another review."
-      : activationStatus?.license_status === "unverified"
-        ? "License verification must be completed before your profile can become active and public."
-        : activationStatus?.license_status === "pending"
-          ? "Your verification is pending, but other required profile details still need attention."
-          : "Complete the remaining profile requirements before activation.";
 
   return (
     <div className="mx-auto hidden max-w-[1240px] lg:block">
@@ -178,41 +156,7 @@ export default function ProfessionalDashboardDesktopHome({
         </div>
       </header>
 
-      {showProfilePanel && panelMode === "incomplete" && activationStatus && (
-        <section className="mt-6 rounded-[18px] border border-lumina-border bg-lumina-surface-soft/70 px-5 py-4" aria-label="Profile setup guidance">
-          <div className="flex flex-wrap items-center justify-between gap-4">
-            <div className="min-w-0 flex-1">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-lumina-text-muted">Your Lumina profile · {profileCompletion}% complete</p>
-              <div className="mt-3 h-1.5 max-w-[520px] overflow-hidden rounded-full bg-lumina-pearl"><div className="h-full rounded-full bg-lumina-black" style={{ width: `${profileCompletion}%` }} /></div>
-              <p className="mt-2 text-[13px] leading-relaxed text-lumina-text-muted">
-                {missingProfileItems.length > 0
-                  ? `Complete your ${missingProfileItems.join(", ")} before activation.`
-                  : "Complete the remaining profile requirements before activation."}
-              </p>
-              <p className="mt-1 text-[12px] text-lumina-text-muted">{setupDescription}</p>
-            </div>
-            <Link href={setupAction.href} className="inline-flex min-h-10 items-center rounded-full bg-lumina-black px-5 text-[12px] font-medium text-white transition hover:opacity-85">
-              {setupAction.label}
-            </Link>
-          </div>
-        </section>
-      )}
-
-      {showProfilePanel && panelMode === "verification_pending" && (
-        <section className="mt-6 flex flex-wrap items-center justify-between gap-3 rounded-[16px] border border-lumina-glass-border bg-lumina-glass px-5 py-3.5" aria-label="Profile verification guidance">
-          <p className="text-[12px] leading-relaxed text-lumina-text-muted">Lumina is reviewing your license details. Your dashboard remains available while you wait.</p>
-          <span className="text-[11px] text-lumina-text-muted">{profileCompletion}% complete</span>
-        </section>
-      )}
-
-      {showProfilePanel && panelMode === "ready" && (
-        <section className="mt-6 flex flex-wrap items-center justify-between gap-4 rounded-[16px] border border-lumina-border bg-lumina-surface-soft/70 px-5 py-3.5" aria-label="Profile activation guidance">
-          <p className="text-[13px] text-lumina-text-muted">Your profile meets every activation requirement.</p>
-          <button type="button" onClick={onActivateProfile} disabled={activatingProfile} className="inline-flex min-h-10 items-center rounded-full bg-lumina-black px-5 text-[12px] font-medium text-white transition hover:opacity-85 disabled:opacity-50">
-            {activatingProfile ? "Activating…" : "Activate profile"}
-          </button>
-        </section>
-      )}
+      {showProfilePanel && activationStatus && <ProfessionalActivationPanel status={activationStatus} onActivate={onActivateProfile} saving={activatingProfile} />}
 
       <div className="mt-7 grid gap-7 xl:grid-cols-[minmax(0,1.2fr)_minmax(300px,0.8fr)] xl:items-start">
         <div className="min-w-0 space-y-7">

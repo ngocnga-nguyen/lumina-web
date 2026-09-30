@@ -48,11 +48,11 @@ test("focused desktop media form fixes the chosen entry type and reuses existing
   assert.match(media, /renderEntryForm\(true\)/);
 });
 
-test("queries, mutations, crop, validation, ordering and onboarding match the approved baseline", () => {
+test("queries, mutations, crop, validation, ordering and onboarding match the Step 8.8A baseline with optional media onboarding", () => {
   // Fingerprints deliberately cover only the existing data/handler region, not presentation.
   const digest = (source: string, marker: string) => createHash("sha256").update(source.slice(0, source.indexOf(marker))).digest("hex");
-  assert.equal(digest(services, "  const serviceForm ="), "a02fbf5cd01257cf6b181f4729dadeb345a4d27d7b35adc55a6c0e076563e23f");
-  assert.equal(digest(media, "  const renderEntryForm ="), "c0996e316a6e7fc93bc4c002fe385813073c647716f7a556fe1126009e3ed05a");
+  assert.equal(digest(services, "  const serviceForm ="), "867b11dde72c343f610f8e0cb35ac460733d68de5cbc9f3990bb0155da871c67");
+  assert.equal(digest(media, "  const renderEntryForm ="), "1c85968ebed97144a2799869930555d15112d871ae057a83f63bfc783d443fa6");
   assert.doesNotMatch(services + media, /\.channel\(/);
   assert.doesNotMatch(media, /storage[\s\S]*?\.remove\(/);
 });

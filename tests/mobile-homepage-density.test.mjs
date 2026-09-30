@@ -32,7 +32,7 @@ test("single and multiple homepage cards opt in; skeleton matches the taller 4:3
 
 test("shared cards, Save, Search, and login remain untouched", () => {
   const expected = {
-    "components/ArtistCard.tsx": "8e5bfc08fe4ee1cfb282b7a232ca456fbd3860227f32b0f37fe6ba21a8feb7cc",
+    "components/ArtistCard.tsx": "91b3e03ef783d20b0a9af3a0a58b03cc1450e692935685e4762c62a9b96a3d15",
     "components/SaveArtistButton.tsx": "0d3cb0fca49669e3c815506c20fa80f2c3843e58097df11c56531a8232737615",
     "components/SearchBar.tsx": "e6af811e63d1c790e72babd24d0d920842acb0c666821185850678f6ccb1be84",
     "app/login/page.tsx": "dffa36e5c587113476171a8c48adf6b2a7866dcc242a57564d01fbf43dcbcf56",

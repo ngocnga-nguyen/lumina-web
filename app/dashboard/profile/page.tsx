@@ -65,7 +65,7 @@ export default function DashboardProfilePage() {
   const [locationSaved, setLocationSaved] = useState(false);
   const [portfolioCoverFallback, setPortfolioCoverFallback] = useState("");
   const [onboardingStep, setOnboardingStep] = useState<
-    "about" | "availability" | null
+    "about" | "location" | "availability" | null
   >(null);
   const [mobileGroup, setMobileGroup] = useState<MobileProfileGroup | null>(null);
   const [mobileDraftStart, setMobileDraftStart] = useState<ProfileForm | null>(null);
@@ -114,9 +114,9 @@ export default function DashboardProfilePage() {
       const requestedStep = new URLSearchParams(window.location.search).get(
         "onboarding"
       );
-      if (requestedStep === "about" || requestedStep === "availability") {
+      if (requestedStep === "about" || requestedStep === "location" || requestedStep === "availability") {
         setOnboardingStep(requestedStep);
-        setMobileGroup(requestedStep === "availability" ? "bio" : "identity");
+        setMobileGroup(requestedStep === "availability" ? "bio" : requestedStep === "location" ? "location" : "identity");
       }
 
       const { data, error } = await supabase
@@ -282,10 +282,6 @@ export default function DashboardProfilePage() {
       return;
     }
 
-    if (form.experience_unit !== "new" && (!experienceAmount || experienceAmount < 1)) {
-      alert(`Please enter your number of ${form.experience_unit}.`);
-      return;
-    }
 
     if (bookingLink && !/^https?:\/\//i.test(bookingLink)) {
       bookingLink = `https://${bookingLink}`;
@@ -316,7 +312,7 @@ export default function DashboardProfilePage() {
     let finalLongitude = form.longitude ? Number(form.longitude) : null;
 
     if (fullAddress) {
-      const coordinates = await getCoordinatesFromAddress(fullAddress);
+      const coordinates = await getCoordinatesFromAddress(fullAddress).catch(() => null);
 
       if (coordinates) {
         finalLatitude = coordinates.latitude;
@@ -386,6 +382,10 @@ export default function DashboardProfilePage() {
     }));
 
     if (onboardingStep === "about") {
+      router.push("/dashboard/onboarding?step=location");
+      return;
+    }
+    if (onboardingStep === "location") {
       router.push("/dashboard/onboarding?step=services");
       return;
     }
@@ -420,7 +420,7 @@ export default function DashboardProfilePage() {
   return (
     <div className="bg-lumina-surface text-lumina-text">
       <section className="px-5 pb-10 pt-5 lg:hidden">
-        {onboardingStep && <ProfessionalOnboardingContext step={onboardingStep} title={onboardingStep === "about" ? "About your business" : "Availability"} />}
+        {onboardingStep && <ProfessionalOnboardingContext step={onboardingStep} title={onboardingStep === "about" ? "Professional identity" : onboardingStep === "location" ? "Location or service area" : "Availability (optional)"} />}
         <div className="flex min-w-0 items-start justify-between gap-3">
           <div className="min-w-0"><p className="text-[11px] uppercase tracking-[0.16em] text-lumina-text-muted">What clients see</p><h1 className="mt-2 font-serif text-[31px] font-semibold leading-[1.05]">Profile</h1></div>
           {artistId && <Link href={`/artist/${artistId}`} className="mt-2 shrink-0 text-[12px] text-lumina-text-muted underline decoration-lumina-border underline-offset-4">View public profile</Link>}
@@ -478,7 +478,7 @@ export default function DashboardProfilePage() {
       </MobileManagementSheet>
 
       <section className="mx-auto hidden max-w-[1120px] px-6 py-8 lg:block xl:px-10">
-        {onboardingStep && <ProfessionalOnboardingContext step={onboardingStep} title={onboardingStep === "about" ? "About your business" : "Availability"} />}
+        {onboardingStep && <ProfessionalOnboardingContext step={onboardingStep} title={onboardingStep === "about" ? "Professional identity" : onboardingStep === "location" ? "Location or service area" : "Availability (optional)"} />}
         <header className="flex items-start justify-between gap-6">
           <div><p className="text-[10px] uppercase tracking-[0.16em] text-lumina-text-muted">What clients see</p><h1 className="mt-2 font-serif text-[36px] font-semibold leading-tight">Profile</h1><p className="mt-2 text-[13px] text-lumina-text-muted">Your public identity, appearance, and business details.</p></div>
           {artistId && <Link href={`/artist/${artistId}`} className="mt-3 shrink-0 text-[12px] text-lumina-text-muted underline decoration-lumina-border underline-offset-4">View public profile</Link>}
@@ -621,7 +621,7 @@ export default function DashboardProfilePage() {
 
               </div>
 </DesktopSettingsSection>
-          <DesktopSettingsSection title="Location & service area" summary={[form.city, form.region].filter(Boolean).join(", ") || "Location, travel, and address visibility"}>
+          <DesktopSettingsSection defaultOpen={onboardingStep === "location"} title="Location & service area" summary={[form.city, form.region].filter(Boolean).join(", ") || "Location, travel, and address visibility"}>
 
               <div className="space-y-4">                <div>
                   <p className="mb-2 text-[13px] font-medium text-lumina-text">Location type</p>

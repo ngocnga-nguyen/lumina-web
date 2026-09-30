@@ -155,7 +155,7 @@ export default function DashboardServicesPage() {
     resetForm();
     setMobileEditorOpen(false);
     if (onboardingMode) {
-      router.push("/dashboard/onboarding?step=portfolio");
+      router.push("/dashboard/onboarding?step=license");
     }
   };
 

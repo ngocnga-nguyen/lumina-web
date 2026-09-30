@@ -44,12 +44,10 @@ test("attention uses shell-owned counts and hides the entire section at zero", (
 });
 
 test("activation guidance is conditional and active dismissal stays in the identity header", () => {
-  for (const mode of ["incomplete", "verification_pending", "ready"]) {
-    assert.match(desktopHome, new RegExp(`showProfilePanel && panelMode === "${mode}"`));
-  }
+  assert.match(desktopHome, /showProfilePanel && activationStatus && <ProfessionalActivationPanel/);
   assert.match(desktopHome, /panelMode === "active" && showProfilePanel/);
   assert.match(desktopHome, /onClick={onDismissActivePanel}/);
-  assert.match(desktopHome, /onClick={onActivateProfile}/);
+  assert.match(desktopHome, /onActivate={onActivateProfile}/);
   assert.doesNotMatch(desktopHome, /View public profile[\s\S]*View public profile/);
 });
 
