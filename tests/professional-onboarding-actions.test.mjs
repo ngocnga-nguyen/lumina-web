@@ -34,9 +34,7 @@ const ready = { artist_id: "fixture", name_ready: true, category_ready: true, pr
   is_active: false, activation_hidden_by_owner: false, profile_photo_ready: false, bio_ready: false, availability_ready: false,
   portfolio_ready: false, license_decision_message: null };
 function renderOnboarding(patch = {}) {
-  let cursor = 0;
-  const states = [{ ...ready, ...patch }, false, 0, false];
-  const Page = load("app/dashboard/onboarding/page.tsx", { react: { ...React, useEffect() {}, useState: () => [states[cursor++], () => {}] } });
+  const Page = load("app/dashboard/onboarding/page.tsx", { react: { ...React, useState: () => [false, () => {}] }, "@/components/ProfessionalReadinessProvider": { useProfessionalReadiness: () => ({ status: { ...ready, ...patch }, error: false, refresh() {} }) } });
   return renderToStaticMarkup(React.createElement(Page));
 }
 

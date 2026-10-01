@@ -11,6 +11,7 @@ import {
   Settings,
   X,
 } from "lucide-react";
+import ProfessionalReadinessProvider from "@/components/ProfessionalReadinessProvider";
 import AccountMenu from "@/components/AccountMenu";
 import WorkspaceNotificationCenter from "@/components/ClientNotificationCenter";
 import { useProfessionalNotifications } from "@/lib/use-professional-notifications";
@@ -64,12 +65,16 @@ export default function ProfessionalDashboardShell({ children }: ShellProps) {
 
   useEffect(() => {
     let cancelled = false;
+    let sequence = 0;
+    let accountId: string | null = null;
+    let authTimer: ReturnType<typeof setTimeout>;
 
     const loadProfessional = async () => {
+      const request = ++sequence;
       try {
         setAccountLoadError(false);
         const result = await initializeProfessional(supabase);
-        if (cancelled) return;
+        if (cancelled || request !== sequence) return;
         if (result.status === "unauthenticated") {
           router.replace(`/login?redirect=${encodeURIComponent(pathnameRef.current)}`);
           return;
@@ -78,19 +83,33 @@ export default function ProfessionalDashboardShell({ children }: ShellProps) {
           router.replace("/client");
           return;
         }
+        accountId = result.artist.id;
         setProfessional(result.artist);
         setAccountResolved(true);
       } catch (error) {
-        if (cancelled) return;
+        if (cancelled || request !== sequence) return;
         console.log("Professional workspace account load failed:", error);
         setAccountLoadError(true);
       }
     };
 
     void loadProfessional();
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === "INITIAL_SESSION" || (event !== "SIGNED_OUT" && session?.user.id === accountId)) return;
+      // Drop the old workspace immediately; reload outside the auth callback lock.
+      sequence += 1;
+      accountId = session?.user.id || null;
+      setProfessional(null);
+      setAccountResolved(false);
+      clearTimeout(authTimer);
+      authTimer = setTimeout(() => { if (!cancelled) void loadProfessional(); }, 0);
+    });
 
     return () => {
       cancelled = true;
+      sequence += 1;
+      clearTimeout(authTimer);
+      subscription.unsubscribe();
     };
   }, [accountLoadAttempt, router]);
 
@@ -419,7 +438,7 @@ export default function ProfessionalDashboardShell({ children }: ShellProps) {
           </header>
 
           <main className="min-h-[calc(100vh-68px)] min-w-0 bg-lumina-bg text-lumina-text">
-            {children}
+            <ProfessionalReadinessProvider key={professional.id} userId={professional.id}>{children}</ProfessionalReadinessProvider>
           </main>
         </div>
       </div>

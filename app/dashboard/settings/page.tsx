@@ -1,8 +1,9 @@
 "use client";
 
 import Link from "next/link";
+import { useProfessionalReadiness } from "@/components/ProfessionalReadinessProvider";
 import ProfessionalActivationPanel from "@/components/ProfessionalActivationPanel";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useProfessionalActionTarget } from "@/lib/use-professional-action-target";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
@@ -11,11 +12,8 @@ import MobileManagementSheet from "@/components/MobileManagementSheet";
 import MobileSettingsRow from "@/components/MobileSettingsRow";
 import {
   professionalVerificationStatusLabels,
-  type ProfessionalLicenseVerification,
 } from "@/lib/professional-license-verification";
-import type { ProfessionalActivationStatus } from "@/lib/professional-activation";
 import {
-  loadMyProfessionalActivationStatus,
   setProfessionalProfileVisibility,
 } from "@/lib/professional-activation-client";
 
@@ -34,19 +32,17 @@ export default function ArtistSettingsPage() {
   const [showEmailChange, setShowEmailChange] = useState(false);
   const [changingEmail, setChangingEmail] = useState(false);
   const [sendingPasswordReset, setSendingPasswordReset] = useState(false);
-  const [isVisible, setIsVisible] = useState(true);
+  const { status: activationStatus, verification, refresh: refreshReadiness } = useProfessionalReadiness();
+  const isVisible = Boolean(activationStatus?.is_active);
   const [visibilityLoading, setVisibilityLoading] = useState(false);
   const [loading, setLoading] = useState(true);
   const [signingOutOthers, setSigningOutOthers] = useState(false);
-  const [verification, setVerification] =
-    useState<ProfessionalLicenseVerification | null>(null);
   const [verificationForm, setVerificationForm] = useState(
     emptyVerificationForm
   );
   const [savedVerificationForm, setSavedVerificationForm] = useState(emptyVerificationForm);
   const [submittingVerification, setSubmittingVerification] = useState(false);
-  const [activationStatus, setActivationStatus] =
-    useState<ProfessionalActivationStatus | null>(null);
+  const savedFormRef = useRef(emptyVerificationForm);
   const [onboardingMode, setOnboardingMode] = useState(false);
   const [mobileSheet, setMobileSheet] = useState<"email" | "password" | "verification" | null>(null);
 
@@ -77,57 +73,36 @@ export default function ArtistSettingsPage() {
       }
 
       setEmail(user.email || "");
-      setIsVisible(artist.is_active ?? false);
-
-      const activationResult = await loadMyProfessionalActivationStatus();
-      if (activationResult.error) {
-        console.log(
-          "Professional activation status fetch error:",
-          activationResult.error
-        );
-      } else if (activationResult.data) {
-        setActivationStatus(activationResult.data);
-        setIsVisible(activationResult.data.is_active);
-      }
-
-      const { data: verificationData, error: verificationError } =
-        await supabase
-          .from("professional_license_verifications")
-          .select("*")
-          .eq("artist_id", user.id)
-          .maybeSingle();
-
-      if (verificationError) {
-        console.log("License verification fetch error:", verificationError);
-      } else if (verificationData) {
-        const savedVerification =
-          verificationData as ProfessionalLicenseVerification;
-        setVerification(savedVerification);
-        const nextVerificationForm = {
-          legal_professional_name: savedVerification.legal_professional_name,
-          license_number: savedVerification.license_number,
-          license_jurisdiction: savedVerification.license_jurisdiction,
-          license_type: savedVerification.license_type,
-          business_name: savedVerification.business_name || "",
-        };
-        setVerificationForm(nextVerificationForm);
-        setSavedVerificationForm(nextVerificationForm);
-      } else {
-        const nextVerificationForm = {
-          ...emptyVerificationForm,
-          legal_professional_name:
-            user.user_metadata?.full_name || artist.name || "",
-          business_name: user.user_metadata?.business_name || "",
-        };
-        setVerificationForm(nextVerificationForm);
-        setSavedVerificationForm(nextVerificationForm);
-      }
+      const nextVerificationForm = {
+        ...emptyVerificationForm,
+        legal_professional_name: user.user_metadata?.full_name || artist.name || "",
+        business_name: user.user_metadata?.business_name || "",
+      };
+      savedFormRef.current = nextVerificationForm;
+      setVerificationForm(nextVerificationForm);
+      setSavedVerificationForm(nextVerificationForm);
 
       setLoading(false);
     };
 
     void loadSettings();
   }, [router]);
+
+  useEffect(() => {
+    if (loading || !verification) return;
+    const next = {
+      legal_professional_name: verification.legal_professional_name,
+      license_number: verification.license_number,
+      license_jurisdiction: verification.license_jurisdiction,
+      license_type: verification.license_type,
+      business_name: verification.business_name || "",
+    };
+    const previous = savedFormRef.current;
+    // Status refreshes must not erase license details currently being edited.
+    setVerificationForm((draft) => JSON.stringify(draft) === JSON.stringify(previous) ? next : draft);
+    savedFormRef.current = next;
+    setSavedVerificationForm(next);
+  }, [verification, loading]);
 
   useEffect(() => {
     if (loading) return;
@@ -204,7 +179,7 @@ export default function ArtistSettingsPage() {
 
     if (!user) return;
 
-    const { data, error } = await setProfessionalProfileVisibility(
+    const { error } = await setProfessionalProfileVisibility(
       nextVisibility
     );
 
@@ -215,8 +190,7 @@ export default function ArtistSettingsPage() {
       return;
     }
 
-    setActivationStatus(data);
-    setIsVisible(Boolean(data?.is_active));
+    await refreshReadiness();
   };
 
   const signOut = async () => {
@@ -246,7 +220,7 @@ export default function ArtistSettingsPage() {
     }
 
     setSubmittingVerification(true);
-    const { data, error } = await supabase.rpc(
+    const { error } = await supabase.rpc(
       "submit_professional_license_verification",
       {
         p_legal_professional_name: legalName,
@@ -263,7 +237,6 @@ export default function ArtistSettingsPage() {
       return;
     }
 
-    setVerification(data as ProfessionalLicenseVerification);
     const nextVerificationForm = {
       legal_professional_name: legalName,
       license_number: licenseNumber,
@@ -273,12 +246,9 @@ export default function ArtistSettingsPage() {
     };
     setVerificationForm(nextVerificationForm);
     setSavedVerificationForm(nextVerificationForm);
+    savedFormRef.current = nextVerificationForm;
     setMobileSheet(null);
-    const activationResult = await loadMyProfessionalActivationStatus();
-    if (activationResult.data) {
-      setActivationStatus(activationResult.data);
-      setIsVisible(activationResult.data.is_active);
-    }
+    await refreshReadiness();
 
     if (onboardingMode) {
       router.push("/dashboard/onboarding?step=requests");

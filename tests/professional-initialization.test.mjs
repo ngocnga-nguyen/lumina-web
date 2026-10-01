@@ -176,12 +176,12 @@ function pageHarness(path, client, pathname = "/login") {
       if (name === "react") return hooks;
       if (name === "react/jsx-runtime") return { jsx, jsxs: jsx, Fragment: "fragment" };
       if (name === "next/navigation") return { useRouter: () => router, usePathname: () => pathname };
-      if (name === "@/lib/supabase") return { supabase: client };
+      if (name === "@/lib/supabase") return { supabase: { ...client, auth: { ...client.auth, onAuthStateChange: client.auth.onAuthStateChange || (() => ({ data: { subscription: { unsubscribe() {} } } })) } } };
       if (name === "@/lib/professional-initialization") return { initializeProfessional };
       return stub;
     },
     window: { location: { origin: "https://lumina.example", search: "" } },
-    URLSearchParams, alert: (message) => alerts.push(message), console: { log() {} },
+    setTimeout, clearTimeout, URLSearchParams, alert: (message) => alerts.push(message), console: { log() {} },
   });
   const render = () => {
     cursor = 0; tree = exports.default({ children: "dashboard-content" });
@@ -288,4 +288,19 @@ test("ordinary client signup retains its existing profiles insert and confirmati
   assert.equal(writes.length, 1); assert.equal(writes[0].table, "profiles");
   assert.equal(writes[0].rows[0].account_type, "client"); assert.equal(state.inserts.length, 0);
   assert.ok(page.nodes().some((node) => node.props?.children === "Check your email ✨"));
+});
+
+
+test("professional account switch drops the old readiness owner before resolving the new account", async () => {
+  const { user, state, client } = fixture();
+  let changed;
+  client.auth.onAuthStateChange = (callback) => { changed = callback; return { data: { subscription: { unsubscribe() {} } } }; };
+  const page = pageHarness("components/ProfessionalDashboardShell.tsx", client, "/dashboard");
+  await page.settle();
+  assert.ok(page.nodes().some(node => node.props?.userId === "current-owner"));
+  user.id = "second-owner"; state.row = { id: user.id, name: "Second professional", is_active: false };
+  changed("SIGNED_IN", { user }); page.render();
+  assert.ok(!page.nodes().some(node => node.props?.userId === "current-owner"));
+  await new Promise(resolve => setTimeout(resolve, 5)); await page.settle();
+  assert.ok(page.nodes().some(node => node.props?.userId === "second-owner"));
 });

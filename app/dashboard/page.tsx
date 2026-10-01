@@ -1,5 +1,6 @@
 "use client";
 
+import { useProfessionalReadiness } from "@/components/ProfessionalReadinessProvider";
 import ProfessionalActivationPanel from "@/components/ProfessionalActivationPanel";
 import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
@@ -17,7 +18,6 @@ import {
   type ProfessionalActivationStatus,
 } from "@/lib/professional-activation";
 import {
-  loadMyProfessionalActivationStatus,
   setProfessionalProfileVisibility,
 } from "@/lib/professional-activation-client";
 
@@ -56,9 +56,7 @@ export default function DashboardPage() {
   const [mediaEditorMode, setMediaEditorMode] = useState<
     "cover" | "avatar" | null
   >(null);
-  const [activationStatus, setActivationStatus] =
-    useState<ProfessionalActivationStatus | null>(null);
-  const [activationStatusLoaded, setActivationStatusLoaded] = useState(false);
+  const { status: activationStatus, loaded: activationStatusLoaded, refresh: refreshActivationStatus } = useProfessionalReadiness();
   const [activatingProfile, setActivatingProfile] = useState(false);
   const [activePanelDismissed, setActivePanelDismissed] = useState(false);
   const [panelDismissalResolved, setPanelDismissalResolved] = useState(false);
@@ -76,17 +74,12 @@ export default function DashboardPage() {
     setPanelDismissalResolved(true);
   }, []);
 
-  const refreshActivationStatus = useCallback(async () => {
-    const result = await loadMyProfessionalActivationStatus();
-    if (result.error) {
-      console.log("Professional activation status fetch error:", result.error);
-    } else {
-      setActivationStatus(result.data);
-      if (result.data) reconcilePanelDismissal(result.data);
-    }
-    setActivationStatusLoaded(true);
-    return result.data;
-  }, [reconcilePanelDismissal]);
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      if (activationStatus) reconcilePanelDismissal(activationStatus);
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, [activationStatus, reconcilePanelDismissal]);
 
   useEffect(() => {
     const fetchDashboardData = async () => {
@@ -134,27 +127,10 @@ export default function DashboardPage() {
         setPortfolioCount(portfolioImageCount || 0);
       }
 
-      await refreshActivationStatus();
     };
 
     fetchDashboardData();
-  }, [refreshActivationStatus]);
-
-  useEffect(() => {
-    const refreshOnFocus = () => void refreshActivationStatus();
-    const refreshOnVisibility = () => {
-      if (document.visibilityState === "visible") {
-        void refreshActivationStatus();
-      }
-    };
-
-    window.addEventListener("focus", refreshOnFocus);
-    document.addEventListener("visibilitychange", refreshOnVisibility);
-    return () => {
-      window.removeEventListener("focus", refreshOnFocus);
-      document.removeEventListener("visibilitychange", refreshOnVisibility);
-    };
-  }, [refreshActivationStatus]);
+  }, []);
 
 const activateProfile = async () => {
   setActivatingProfile(true);
@@ -169,8 +145,7 @@ const activateProfile = async () => {
     return;
   }
 
-  setActivationStatus(result.data);
-  reconcilePanelDismissal(result.data);
+  await refreshActivationStatus();
 };
 
 const dismissActivePanel = () => {

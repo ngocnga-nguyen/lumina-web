@@ -1,30 +1,21 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import ProfessionalActionLink from "@/components/ProfessionalActionLink";
 import ProfessionalActivationPanel from "@/components/ProfessionalActivationPanel";
-import { type ProfessionalActivationStatus } from "@/lib/professional-activation";
-import { loadMyProfessionalActivationStatus, setProfessionalProfileVisibility } from "@/lib/professional-activation-client";
+import { useProfessionalReadiness } from "@/components/ProfessionalReadinessProvider";
+import { setProfessionalProfileVisibility } from "@/lib/professional-activation-client";
 
 export default function ProfessionalOnboardingPage() {
-  const [status, setStatus] = useState<ProfessionalActivationStatus | null>(null);
-  const [error, setError] = useState(false);
-  const [attempt, setAttempt] = useState(0);
+  const { status, error, refresh } = useProfessionalReadiness();
   const [saving, setSaving] = useState(false);
-  useEffect(() => {
-    let cancelled = false;
-    loadMyProfessionalActivationStatus().then((result) => {
-      if (!cancelled) { setError(Boolean(result.error || !result.data)); setStatus(result.data); }
-    }).catch(() => { if (!cancelled) setError(true); });
-    return () => { cancelled = true; };
-  }, [attempt]);
   const activate = async () => {
     setSaving(true);
     try {
       const result = await setProfessionalProfileVisibility(true);
       if (result.error || !result.data) throw result.error || new Error("Please try again.");
-      setStatus(result.data);
+      await refresh();
     } catch { alert("We couldn't activate your profile. Check your required setup and try again."); }
     finally { setSaving(false); }
   };
@@ -32,7 +23,7 @@ export default function ProfessionalOnboardingPage() {
     <p className="text-xs uppercase tracking-[0.16em] text-lumina-text-muted">Professional onboarding</p>
     <h1 className="mt-3 font-serif text-[36px] leading-tight md:text-[48px]">Get ready to go live.</h1>
     <p className="mt-4 max-w-2xl text-sm leading-relaxed text-lumina-text-muted">Complete the essentials, then choose when to publish.</p>
-    {error ? <div role="alert" className="mt-6">We couldn&apos;t load your setup. <button className="underline" onClick={() => { setError(false); setAttempt((value) => value + 1); }}>Try again</button></div> : status ? <>
+    {error ? <div role="alert" className="mt-6">We couldn&apos;t load your setup. <button className="underline" onClick={() => void refresh()}>Try again</button></div> : status ? <>
       <div id="activation"><ProfessionalActivationPanel presentation="onboarding" status={status} onActivate={() => void activate()} saving={saving} /></div>
       <aside className="mt-8 border-t border-lumina-border pt-6" aria-label="Optional profile enrichment">
         <h2 className="font-serif text-2xl">Improve your profile · optional</h2>
