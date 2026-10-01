@@ -1,6 +1,7 @@
 "use client";
 
-import Link from "next/link";
+import ProfessionalActionLink from "@/components/ProfessionalActionLink";
+import { professionalActionHrefs } from "@/lib/professional-action-targets";
 import { ArrowRight, Check, CircleAlert, Clock3, EyeOff } from "lucide-react";
 import {
   getActivationRequirements,
@@ -21,16 +22,17 @@ const statusStyles = {
   action: "bg-lumina-attention-soft text-lumina-attention",
   review: "bg-[#f5efe3] text-[#765c31]",
   correction: "bg-[#f7eae5] text-[#8a5145]",
-  ready: "bg-[#f1f5ef] text-[#536b56]",
+  ready: "bg-lumina-success-soft/60 text-lumina-success",
   live: "bg-lumina-success-soft text-lumina-success",
-  hidden: "bg-[#efedeb] text-[#68615b]",
+  hidden: "bg-lumina-pearl text-lumina-text-muted",
 };
 const actionClass = "inline-flex min-h-11 w-full items-center justify-center gap-3 rounded-full px-5 py-3 text-[13px] font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lumina-black focus-visible:ring-offset-2 sm:w-auto sm:shrink-0";
 
-export default function ProfessionalDashboardReadinessPanel({ status, onActivate, saving = false }: {
+export default function ProfessionalDashboardReadinessPanel({ status, onActivate, saving = false, detailed = false }: {
   status: ProfessionalActivationStatus;
   onActivate?: () => void;
   saving?: boolean;
+  detailed?: boolean;
 }) {
   const requirements = getActivationRequirements(status);
   const missing = requirements.filter((item) => !item.complete);
@@ -62,7 +64,7 @@ export default function ProfessionalDashboardReadinessPanel({ status, onActivate
     : `${missing.length} ${missing.length === 1 ? "thing" : "things"} left before you can go live.`;
 
   return (
-    <section aria-label="Professional activation status" className="my-6 overflow-hidden rounded-[20px] border border-lumina-border bg-lumina-surface-soft">
+    <section aria-label="Professional activation status" className="my-6 overflow-hidden rounded-[20px] border border-lumina-border/70 bg-lumina-bg">
       <div className="p-4 sm:p-6">
         <p className={`inline-flex items-center gap-2 rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] ${statusStyles[tone]}`}>
           {waitingOnly ? <Clock3 size={14} aria-hidden="true" /> : correctionOnly ? <CircleAlert size={14} aria-hidden="true" /> : hidden ? <EyeOff size={14} aria-hidden="true" /> : <span className="h-1.5 w-1.5 rounded-full bg-current" aria-hidden="true" />}
@@ -79,6 +81,8 @@ export default function ProfessionalDashboardReadinessPanel({ status, onActivate
         )}
 
         {actions.length > 0 && (
+          <>
+          {detailed && <h3 className="mt-5 text-[11px] font-semibold uppercase tracking-[0.12em] text-lumina-text-muted">Required setup</h3>}
           <ol aria-label="Setup actions" className="mt-3 space-y-3 sm:mt-5">
             {actions.map((item, index) => {
               const copy = requirementCopy[item.id];
@@ -93,15 +97,16 @@ export default function ProfessionalDashboardReadinessPanel({ status, onActivate
                         <p className="mt-0.5 text-[13px] leading-relaxed text-lumina-text-muted sm:mt-1">{correction ? "Review the feedback and update your license details." : copy.detail}</p>
                       </div>
                     </div>
-                    <Link href={item.href} className={`${actionClass} ${index === 0 ? "bg-lumina-black text-white hover:opacity-85" : "border border-lumina-border bg-lumina-surface text-lumina-text hover:bg-lumina-surface-soft"}`}>
+                    <ProfessionalActionLink href={professionalActionHrefs[item.id] || item.href} className={`${actionClass} ${index === 0 ? "bg-lumina-black text-white hover:opacity-85" : "border border-lumina-border bg-lumina-surface text-lumina-text hover:bg-lumina-surface-soft"}`}>
                       {correction ? "Review license" : copy.action} <ArrowRight size={15} aria-hidden="true" />
-                    </Link>
+                    </ProfessionalActionLink>
                   </div>
                   {correction && status.license_decision_message && <p className="mt-3 whitespace-pre-line border-t border-lumina-border pt-3 text-[13px] leading-relaxed text-lumina-text-muted">{status.license_decision_message}</p>}
                 </li>
               );
             })}
           </ol>
+          </>
         )}
 
         {pending && (

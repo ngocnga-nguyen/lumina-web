@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useProfessionalActionTarget } from "@/lib/use-professional-action-target";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Pencil } from "lucide-react";
@@ -57,6 +58,7 @@ type MobileProfileGroup = "identity" | "location" | "contact" | "bio";
 
 export default function DashboardProfilePage() {
   const router = useRouter();
+  const [profileLoaded, setProfileLoaded] = useState(false);
   const [artistId, setArtistId] = useState("");
   const [loading, setLoading] = useState(false);
   const [mediaEditorMode, setMediaEditorMode] = useState<
@@ -181,6 +183,8 @@ export default function DashboardProfilePage() {
               ? data.years_experience.toString()
               : ""),
         });
+
+        setProfileLoaded(true);
 
         const { data: portfolioFallbackData } = await supabase
           .from("portfolio_images")
@@ -409,6 +413,14 @@ export default function DashboardProfilePage() {
     setMobileGroup(null);
   };
 
+  useProfessionalActionTarget("profile", profileLoaded, (target) => {
+    const group = target === "location" ? "location" : target === "bio" || target === "availability" ? "bio" : "identity";
+    if (window.matchMedia("(max-width: 1023px)").matches) {
+      if (target === "photo" || target === "cover") setMobileGroup(null);
+      else openMobileGroup(group);
+    }
+  });
+
   const inputClass =
     "w-full rounded-[14px] border border-lumina-border bg-lumina-surface px-4 py-3 text-[15px] text-lumina-text outline-none transition placeholder:text-lumina-text-muted/75 focus:border-lumina-text-muted/60";
 
@@ -428,12 +440,12 @@ export default function DashboardProfilePage() {
         <p className="mt-2 text-[13px] text-lumina-text-muted">Keep your public details current.</p>
 
         <section className="mt-6 overflow-hidden rounded-[20px] bg-lumina-surface-soft/70" aria-label="Profile appearance">
-          <button type="button" onClick={() => setMediaEditorMode("cover")} disabled={!artistId} className="relative block h-32 w-full overflow-hidden bg-lumina-pearl text-left" aria-label="Edit cover image">
+          <button type="button" data-professional-focus="cover" onClick={() => setMediaEditorMode("cover")} disabled={!artistId} className="relative block h-32 w-full overflow-hidden bg-lumina-pearl text-left" aria-label="Edit cover image">
             {coverPreviewImage ? <><img src={coverPreviewImage} alt="Cover preview" className={coverPreviewClass} style={getArtistCoverFramingStyle({ positionX: form.cover_position_x, positionY: form.cover_position_y, scale: form.cover_scale }, form.cover_style)} />{coverPreviewOverlayClass && <span className={coverPreviewOverlayClass} aria-hidden="true" />}</> : <span className="flex h-full items-center justify-center text-[12px] text-lumina-text-muted">Add a cover image</span>}
             <span className="absolute bottom-2 right-3 inline-flex items-center gap-1 rounded-full bg-lumina-surface/90 px-2.5 py-1.5 text-[11px] backdrop-blur"><Pencil size={12} />Edit cover</span>
           </button>
           <div className="flex items-end gap-3 px-4 pb-4">
-            <button type="button" onClick={() => setMediaEditorMode("avatar")} disabled={!artistId} className="relative -mt-8 h-[70px] w-[70px] shrink-0 rounded-full outline outline-2 outline-lumina-surface" aria-label="Change profile photo">
+            <button type="button" data-professional-focus="photo" onClick={() => setMediaEditorMode("avatar")} disabled={!artistId} className="relative -mt-8 h-[70px] w-[70px] shrink-0 rounded-full outline outline-2 outline-lumina-surface" aria-label="Change profile photo">
               <IdentityAvatar name={form.name || "Professional"} imageUrl={form.profile_image_url} className="block h-full w-full rounded-full bg-lumina-blush" fallbackClassName="font-serif text-[25px]" />
               <span className="absolute -bottom-1 -right-1 flex h-7 w-7 items-center justify-center rounded-full bg-lumina-black text-white"><Pencil size={12} /></span>
             </button>
@@ -455,24 +467,24 @@ export default function DashboardProfilePage() {
       <MobileManagementSheet open={mobileGroup !== null} title={{ identity: "Identity & business", location: "Location & service area", contact: "Contact & booking", bio: "Bio & availability" }[mobileGroup || "identity"]} busy={loading} onClose={closeMobileGroup}>
         <div className="space-y-4 pb-2">
           {mobileGroup === "identity" && <>
-            <label className="block text-[13px]">Professional name<input value={form.name} maxLength={160} onChange={(e) => setForm({ ...form, name: e.target.value })} className={`${inputClass} mt-2`} /></label>
+            <label className="block text-[13px]">Professional name<input data-professional-focus="identity" value={form.name} maxLength={160} onChange={(e) => setForm({ ...form, name: e.target.value })} className={`${inputClass} mt-2`} /></label>
             <label className="block text-[13px]">Business / studio name <span className="text-lumina-text-muted">(optional)</span><input value={form.business_name} maxLength={160} onChange={(e) => setForm({ ...form, business_name: e.target.value })} className={`${inputClass} mt-2`} /></label>
-            <label className="block text-[13px]">Service category<input value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} className={`${inputClass} mt-2`} /></label>
+            <label className="block text-[13px]">Service category<input data-professional-focus="category" value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} className={`${inputClass} mt-2`} /></label>
             <label className="block text-[13px]">Starting price<input type="number" min="0" value={form.price_start} onChange={(e) => setForm({ ...form, price_start: e.target.value })} className={`${inputClass} mt-2`} /></label>
             <div><p className="text-[13px]">Professional experience</p><div className="mt-2 grid grid-cols-3 gap-2">{(["new", "months", "years"] as const).map((unit) => <button key={unit} type="button" onClick={() => setForm({ ...form, experience_unit: unit, experience_amount: unit === "new" ? "" : form.experience_amount })} className={`min-h-11 rounded-full px-2 text-[12px] capitalize ${form.experience_unit === unit ? "bg-lumina-black text-white" : "border border-lumina-border"}`}>{unit === "new" ? "New artist" : unit}</button>)}</div>{form.experience_unit !== "new" && <input type="number" min="1" value={form.experience_amount} onChange={(e) => setForm({ ...form, experience_amount: e.target.value })} placeholder={`Number of ${form.experience_unit}`} className={`${inputClass} mt-3`} />}</div>
           </>}
           {mobileGroup === "location" && <>
             <div><p className="text-[13px]">Location type</p><div className="mt-2 grid grid-cols-2 gap-2">{([["salon", "Salon or studio"], ["home_studio", "Home-based studio"], ["mobile_salon", "Mobile salon"], ["travels", "I travel to clients"]] as const).map(([value, label]) => <button type="button" key={value} onClick={() => setForm({ ...form, location_type: value, travels_to_clients: value === "travels", hide_street_address: value === "home_studio" ? true : form.hide_street_address })} className={`min-h-11 rounded-[12px] px-2 text-[12px] ${form.location_type === value ? "bg-lumina-black text-white" : "border border-lumina-border"}`}>{label}</button>)}</div></div>
             <label className="block text-[13px]">Street address<input value={form.address_line_1} onChange={(e) => { setLocationSaved(false); setForm({ ...form, address_line_1: e.target.value }); }} className={`${inputClass} mt-2`} /></label>
-            <div className="grid grid-cols-2 gap-3"><label className="min-w-0 text-[13px]">City<input value={form.city} onChange={(e) => { setLocationSaved(false); setForm({ ...form, city: e.target.value }); }} className={`${inputClass} mt-2`} /></label><label className="min-w-0 text-[13px]">State<input value={form.region} onChange={(e) => { setLocationSaved(false); setForm({ ...form, region: e.target.value }); }} className={`${inputClass} mt-2`} /></label></div>
+            <div className="grid grid-cols-2 gap-3"><label className="min-w-0 text-[13px]">City<input data-professional-focus={form.location_type === "travels" || form.location_type === "mobile_salon" ? undefined : "location"} value={form.city} onChange={(e) => { setLocationSaved(false); setForm({ ...form, city: e.target.value }); }} className={`${inputClass} mt-2`} /></label><label className="min-w-0 text-[13px]">State<input value={form.region} onChange={(e) => { setLocationSaved(false); setForm({ ...form, region: e.target.value }); }} className={`${inputClass} mt-2`} /></label></div>
             <label className="block text-[13px]">ZIP code<input inputMode="numeric" value={form.postal_code} onChange={(e) => { setLocationSaved(false); setForm({ ...form, postal_code: e.target.value }); }} className={`${inputClass} mt-2`} /></label>
-            {(form.location_type === "travels" || form.location_type === "mobile_salon") && <label className="block text-[13px]">Service area<input value={form.service_area} onChange={(e) => setForm({ ...form, service_area: e.target.value })} className={`${inputClass} mt-2`} /></label>}
+            {(form.location_type === "travels" || form.location_type === "mobile_salon") && <label className="block text-[13px]">Service area<input data-professional-focus={"location"} value={form.service_area} onChange={(e) => setForm({ ...form, service_area: e.target.value })} className={`${inputClass} mt-2`} /></label>}
             {form.location_type === "mobile_salon" && <label className="block text-[13px]">Usual locations or schedule<textarea value={form.mobile_location_details} onChange={(e) => setForm({ ...form, mobile_location_details: e.target.value })} className={`${inputClass} mt-2 min-h-24`} /></label>}
             <label className="flex items-start gap-3 text-[13px]"><input type="checkbox" checked={form.hide_street_address} onChange={(e) => setForm({ ...form, hide_street_address: e.target.checked })} className="mt-1 h-4 w-4 accent-black" /><span>{form.location_type === "mobile_salon" || form.location_type === "travels" ? "Keep my base address private" : "Hide my exact street address from clients"}</span></label>
             <p className="text-[12px] text-lumina-text-muted">Your map pin will be created from this address when you save.{locationSaved ? " Map location saved." : ""}</p>
           </>}
           {mobileGroup === "contact" && <><label className="block text-[13px]">Phone number<input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} className={`${inputClass} mt-2`} /></label><label className="block text-[13px]">Booking link<input value={form.social_link} onChange={(e) => setForm({ ...form, social_link: e.target.value })} placeholder="GlossGenius, Square, Fresha, Instagram..." className={`${inputClass} mt-2`} /></label></>}
-          {mobileGroup === "bio" && <><label className="block text-[13px]">Bio<textarea value={form.bio} onChange={(e) => setForm({ ...form, bio: e.target.value })} className={`${inputClass} mt-2 min-h-32`} placeholder="Your style, specialties, and what clients can expect" /></label><label className="block text-[13px]">Availability<textarea value={form.availability} onChange={(e) => setForm({ ...form, availability: e.target.value })} className={`${inputClass} mt-2 min-h-28`} placeholder="Your usual working days and hours" /></label></>}
+          {mobileGroup === "bio" && <><label className="block text-[13px]">Bio<textarea data-professional-focus="bio" value={form.bio} onChange={(e) => setForm({ ...form, bio: e.target.value })} className={`${inputClass} mt-2 min-h-32`} placeholder="Your style, specialties, and what clients can expect" /></label><label className="block text-[13px]">Availability<textarea data-professional-focus="availability" value={form.availability} onChange={(e) => setForm({ ...form, availability: e.target.value })} className={`${inputClass} mt-2 min-h-28`} placeholder="Your usual working days and hours" /></label></>}
           <div className="flex justify-end gap-2 border-t border-lumina-border/70 pt-4"><button type="button" onClick={closeMobileGroup} disabled={loading} className="min-h-11 rounded-full border border-lumina-border px-5 text-[13px]">Cancel</button><button type="button" onClick={() => void saveProfile()} disabled={loading} className="min-h-11 rounded-full bg-lumina-black px-5 text-[13px] text-white disabled:opacity-50">{loading ? "Saving…" : onboardingStep ? "Save and continue" : "Save changes"}</button></div>
         </div>
       </MobileManagementSheet>
@@ -497,7 +509,7 @@ export default function DashboardProfilePage() {
                   </div>
                   <button
                     type="button"
-                    onClick={() => setMediaEditorMode("cover")}
+                    data-professional-focus="cover" onClick={() => setMediaEditorMode("cover")}
                     disabled={!artistId}
                     className="group relative block h-[160px] w-full overflow-hidden rounded-[14px] border border-lumina-border/70 bg-lumina-surface-soft text-lumina-text-muted"
                     aria-label={form.cover_image_url ? "Edit cover image" : "Add cover image"}
@@ -539,7 +551,7 @@ export default function DashboardProfilePage() {
 
                   <button
                     type="button"
-                    onClick={() => setMediaEditorMode("avatar")}
+                    data-professional-focus="photo" onClick={() => setMediaEditorMode("avatar")}
                     disabled={!artistId}
                     className="group relative flex h-[112px] w-[112px] items-center justify-center overflow-hidden rounded-[18px] border border-dashed border-lumina-text-muted/35 bg-lumina-surface-soft transition hover:bg-lumina-pearl disabled:opacity-50"
                   >
@@ -573,7 +585,7 @@ export default function DashboardProfilePage() {
 
                 <label className="block">
                   <span className="mb-2 block text-[13px] font-medium text-lumina-text">Professional name</span>
-                  <input type="text" maxLength={160} placeholder="Example: Maya Nguyen" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className={inputClass} />
+                  <input data-professional-focus="identity" type="text" maxLength={160} placeholder="Example: Maya Nguyen" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className={inputClass} />
                 </label>
 
                 <label className="block">
@@ -585,7 +597,7 @@ export default function DashboardProfilePage() {
 
                 <label className="block">
                   <span className="mb-2 block text-[13px] font-medium text-lumina-text">Service category</span>
-                  <input type="text" placeholder="Example: Nail Technician" value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} className={inputClass} />
+                  <input data-professional-focus="category" type="text" placeholder="Example: Nail Technician" value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} className={inputClass} />
                 </label>
 
                 <label className="block">
@@ -660,7 +672,7 @@ export default function DashboardProfilePage() {
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   <label className="block">
                     <span className="mb-2 block text-[13px] font-medium text-lumina-text">City</span>
-                    <input type="text" placeholder="Example: Tulsa" value={form.city} onChange={(e) => { setLocationSaved(false); setForm({ ...form, city: e.target.value }); }} className={inputClass} />
+                    <input data-professional-focus={form.location_type === "travels" || form.location_type === "mobile_salon" ? undefined : "location"} type="text" placeholder="Example: Tulsa" value={form.city} onChange={(e) => { setLocationSaved(false); setForm({ ...form, city: e.target.value }); }} className={inputClass} />
                   </label>
                   <label className="block">
                     <span className="mb-2 block text-[13px] font-medium text-lumina-text">State</span>
@@ -677,7 +689,7 @@ export default function DashboardProfilePage() {
                   {(form.location_type === "travels" || form.location_type === "mobile_salon") && (
                     <label className="block">
                       <span className="mb-2 block text-[13px] font-medium text-lumina-text">Service area</span>
-                      <input type="text" placeholder="Example: Tulsa and surrounding areas" value={form.service_area} onChange={(e) => setForm({ ...form, service_area: e.target.value })} className={inputClass} />
+                      <input data-professional-focus={"location"} type="text" placeholder="Example: Tulsa and surrounding areas" value={form.service_area} onChange={(e) => setForm({ ...form, service_area: e.target.value })} className={inputClass} />
                     </label>
                   )}
                   {form.location_type === "mobile_salon" && (
@@ -735,7 +747,7 @@ export default function DashboardProfilePage() {
 
               <div className="space-y-4">
 
-                <textarea
+                <textarea data-professional-focus="bio"
                   placeholder="Short bio — describe your style, specialties, and what clients can expect."
                   value={form.bio}
                   onChange={(e) =>
@@ -755,7 +767,7 @@ export default function DashboardProfilePage() {
                     Share your usual working days and hours. Mention if you also
                     accept flexible requests.
                   </p>
-                  <textarea
+                  <textarea data-professional-focus="availability"
                     id="artist-availability"
                     placeholder="Example: Monday–Friday, 9 AM–5 PM. Flexible times available by request."
                     value={form.availability}

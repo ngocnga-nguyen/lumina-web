@@ -1,0 +1,17 @@
+.target:focus-visible {
+  outline: 2px solid var(--lumina-attention);
+  outline-offset: 3px;
+}
+.highlight {
+  animation: arrival 1.8s ease-out;
+}
+@keyframes arrival {
+  0%, 65% { box-shadow: 0 0 0 5px var(--lumina-attention-soft), 0 0 0 6px var(--lumina-attention); }
+  100% { box-shadow: 0 0 0 5px transparent, 0 0 0 6px transparent; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .highlight {
+    animation: none;
+    box-shadow: 0 0 0 5px var(--lumina-attention-soft), 0 0 0 6px var(--lumina-attention);
+  }
+}

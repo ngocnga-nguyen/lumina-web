@@ -3,6 +3,7 @@
 import Link from "next/link";
 import ProfessionalActivationPanel from "@/components/ProfessionalActivationPanel";
 import { useEffect, useState } from "react";
+import { useProfessionalActionTarget } from "@/lib/use-professional-action-target";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import ProfessionalOnboardingContext from "@/components/ProfessionalOnboardingContext";
@@ -141,6 +142,10 @@ export default function ArtistSettingsPage() {
     window.addEventListener("hashchange", scrollToVerification);
     return () => window.removeEventListener("hashchange", scrollToVerification);
   }, [loading]);
+
+  useProfessionalActionTarget("settings", !loading, () => {
+    if (window.matchMedia("(max-width: 1023px)").matches) setMobileSheet("verification");
+  });
 
   const requestEmailChange = async () => {
     const cleanEmail = newEmail.trim().toLowerCase();
@@ -340,7 +345,7 @@ export default function ArtistSettingsPage() {
         <p className="text-[12px] leading-relaxed text-lumina-text-muted">Submit professional-license details for Lumina review. This does not verify identity, insurance, background, or service quality.</p>
         {verification?.status === "rejected" && verification.decision_message && <p className="mt-3 rounded-[14px] bg-lumina-attention-soft p-3 text-[12px]">Needs correction: {verification.decision_message}</p>}
         <div className="mt-4 space-y-3">
-          {([ ["legal_professional_name", "Legal / professional name"], ["license_number", "License number"], ["license_jurisdiction", "License jurisdiction / state"], ["license_type", "License type"], ["business_name", "Business name (optional)"] ] as const).map(([key, label]) => <label key={key} className="block text-[12px] text-lumina-text-muted">{label}<input value={verificationForm[key]} maxLength={key === "license_number" || key === "license_jurisdiction" ? 100 : key === "license_type" ? 120 : 160} autoComplete={key === "license_number" ? "off" : undefined} onChange={(event) => setVerificationForm((current) => ({ ...current, [key]: event.target.value }))} className="mt-2 w-full rounded-[14px] border border-lumina-border bg-lumina-surface px-4 py-3 text-[14px] text-lumina-text outline-none focus:border-lumina-text-muted" /></label>)}
+          {([ ["legal_professional_name", "Legal / professional name"], ["license_number", "License number"], ["license_jurisdiction", "License jurisdiction / state"], ["license_type", "License type"], ["business_name", "Business name (optional)"] ] as const).map(([key, label]) => <label key={key} className="block text-[12px] text-lumina-text-muted">{label}<input data-professional-focus={key === "legal_professional_name" ? "license" : undefined} value={verificationForm[key]} maxLength={key === "license_number" || key === "license_jurisdiction" ? 100 : key === "license_type" ? 120 : 160} autoComplete={key === "license_number" ? "off" : undefined} onChange={(event) => setVerificationForm((current) => ({ ...current, [key]: event.target.value }))} className="mt-2 w-full rounded-[14px] border border-lumina-border bg-lumina-surface px-4 py-3 text-[14px] text-lumina-text outline-none focus:border-lumina-text-muted" /></label>)}
         </div>
         {verification?.submitted_at && <p className="mt-3 text-[11px] text-lumina-text-muted">Last submitted {new Date(verification.submitted_at).toLocaleString()}</p>}
         <div className="mt-5 flex justify-end gap-2"><button type="button" onClick={closeVerificationEditor} disabled={submittingVerification} className="min-h-11 rounded-full border border-lumina-border px-5 text-[13px]">Cancel</button><button type="button" onClick={() => void submitLicenseVerification()} disabled={submittingVerification} className="min-h-11 rounded-full bg-lumina-black px-5 text-[13px] text-white disabled:opacity-50">{submittingVerification ? "Submitting…" : onboardingMode ? "Submit and continue" : verification ? "Resubmit for review" : "Submit for review"}</button></div>
@@ -545,6 +550,7 @@ export default function ArtistSettingsPage() {
                     Legal / professional name
                   </span>
                   <input
+                    data-professional-focus="license"
                     value={verificationForm.legal_professional_name}
                     maxLength={160}
                     onChange={(event) =>

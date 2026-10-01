@@ -6,6 +6,7 @@ import vm from "node:vm";
 import ts from "typescript";
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
+import { professionalActionHrefs } from "../lib/professional-action-targets.ts";
 import * as activation from "../lib/professional-activation.ts";
 
 const require = createRequire(import.meta.url);
@@ -17,6 +18,8 @@ function loadComponent(name) {
   } }).outputText;
   const exports = {};
   vm.runInNewContext(code, { exports, require(id) {
+    if (id === "@/components/ProfessionalActionLink") return { default: Link };
+    if (id === "@/lib/professional-action-targets") return { professionalActionHrefs };
     if (id === "next/link") return { default: Link };
     if (id === "@/lib/professional-activation") return activation;
     if (id === "@/components/ProfessionalDashboardReadinessPanel") return { default: Panel };
@@ -47,7 +50,7 @@ test("Mina-equivalent has one category action and quiet completed essentials", (
   assert.match(html, /Action required/);
   assert.match(html, /1 thing left before you can go live/);
   assert.deepEqual(links.map(text), ["Choose category "]);
-  assert.equal(links[0].props.href, "/dashboard/profile?onboarding=about");
+  assert.equal(links[0].props.href, "/dashboard/profile?onboarding=about&focus=category");
   for (const label of ["Name added", "Location added", "Services added", "License verified"]) assert.ok(html.includes(label));
   assert.doesNotMatch(html, /Add location|Add service|Verify license|Go live/);
 });
@@ -56,7 +59,7 @@ test("multiple blockers render only actual missing steps in next-action order", 
   const { html, links } = render({ category_ready: false, location_ready: false, services_ready: false, activation_ready: false });
   assert.match(html, /3 things left before you can go live/);
   assert.deepEqual(links.map(text), ["Choose category ", "Add location ", "Add service "]);
-  assert.deepEqual(links.map(n => n.props.href), ["/dashboard/profile?onboarding=about", "/dashboard/profile?onboarding=location#location", "/dashboard/services?onboarding=services"]);
+  assert.deepEqual(links.map(n => n.props.href), ["/dashboard/profile?onboarding=about&focus=category", "/dashboard/profile?onboarding=location&focus=location", "/dashboard/services?onboarding=services&focus=service"]);
   assert.match(links[0].props.className, /bg-lumina-black/);
   assert.doesNotMatch(links[1].props.className, /bg-lumina-black/);
 });
@@ -90,7 +93,7 @@ test("license correction has a review action and escaped reviewer feedback", () 
   assert.match(html, /Update license information/);
   assert.match(html, /Check &lt;jurisdiction&gt; &amp; resubmit/);
   assert.deepEqual(links.map(text), ["Review license "]);
-  assert.equal(links[0].props.href, "/dashboard/settings#license-verification");
+  assert.equal(links[0].props.href, "/dashboard/settings?onboarding=license&focus=license");
 });
 
 test("ready and hidden use the supplied activation handler without redefining authority", () => {
@@ -116,7 +119,7 @@ test("live is quiet and respects existing dismissal logic", () => {
   assert.equal(activation.shouldShowProfessionalProfilePanel({ ...ready, is_active: true }, true), false);
 });
 
-test("dashboard presentation is opt-in; onboarding and settings keep the original panel", () => {
+test("new presentation is opt-in; default Settings panel retains its original layout", () => {
   const status = { ...ready, category_ready: false, activation_ready: false };
   const original = renderToStaticMarkup(React.createElement(SharedPanel, { status }));
   const dashboard = renderToStaticMarkup(React.createElement(SharedPanel, { status, presentation: "dashboard" }));

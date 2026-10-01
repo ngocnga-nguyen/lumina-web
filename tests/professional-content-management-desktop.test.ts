@@ -49,9 +49,12 @@ test("focused desktop media form fixes the chosen entry type and reuses existing
 });
 
 test("queries, mutations, crop, validation, ordering and onboarding match the Step 8.8A baseline with optional media onboarding", () => {
-  // Fingerprints deliberately cover only the existing data/handler region, not presentation.
+  // Exclude only the new editor-arrival wiring; the existing data/handler fingerprint stays fixed.
+  const serviceDataSource = services
+    .replace('import { useProfessionalActionTarget } from "@/lib/use-professional-action-target";\n', "")
+    .replace('  useProfessionalActionTarget("services", Boolean(artistId), () => addService());\n\n', "");
   const digest = (source: string, marker: string) => createHash("sha256").update(source.slice(0, source.indexOf(marker))).digest("hex");
-  assert.equal(digest(services, "  const serviceForm ="), "867b11dde72c343f610f8e0cb35ac460733d68de5cbc9f3990bb0155da871c67");
+  assert.equal(digest(serviceDataSource, "  const serviceForm ="), "867b11dde72c343f610f8e0cb35ac460733d68de5cbc9f3990bb0155da871c67");
   assert.equal(digest(media, "  const renderEntryForm ="), "1c85968ebed97144a2799869930555d15112d871ae057a83f63bfc783d443fa6");
   assert.doesNotMatch(services + media, /\.channel\(/);
   assert.doesNotMatch(media, /storage[\s\S]*?\.remove\(/);

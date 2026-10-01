@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useProfessionalActionTarget } from "@/lib/use-professional-action-target";
 import { useRouter } from "next/navigation";
 import { Clock3, ExternalLink, MoreHorizontal, Plus } from "lucide-react";
 import { supabase } from "@/lib/supabase";
@@ -97,6 +98,8 @@ export default function DashboardServicesPage() {
     setMobileEditorOpen(true);
   };
 
+  useProfessionalActionTarget("services", Boolean(artistId), () => addService());
+
   const saveService = async () => {
     if (!artistId) {
       alert("Artist profile not found.");
@@ -190,6 +193,8 @@ export default function DashboardServicesPage() {
       <div className="space-y-4">
         <input
           type="text"
+          data-professional-focus="service"
+          aria-label="Service name"
           placeholder="Service name"
           value={form.service_name}
           onChange={(e) => setForm({ ...form, service_name: e.target.value })}
