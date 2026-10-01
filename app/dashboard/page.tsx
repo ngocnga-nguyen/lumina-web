@@ -205,7 +205,7 @@ const dashboardProfileStatus = activationStatus ? getProfessionalActivationLabel
           />
         )}
 
-        {activationStatus && activationStatusLoaded && showProfilePanel && <div className="lg:hidden"><ProfessionalActivationPanel status={activationStatus} onActivate={() => void activateProfile()} saving={activatingProfile} /></div>}
+        {activationStatus && activationStatusLoaded && showProfilePanel && <div className="lg:hidden"><ProfessionalActivationPanel presentation="dashboard" status={activationStatus} onActivate={() => void activateProfile()} saving={activatingProfile} /></div>}
 
         {artist && (
           <ProfessionalDashboardMobileWorkspace

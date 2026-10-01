@@ -156,7 +156,7 @@ export default function ProfessionalDashboardDesktopHome({
         </div>
       </header>
 
-      {showProfilePanel && activationStatus && <ProfessionalActivationPanel status={activationStatus} onActivate={onActivateProfile} saving={activatingProfile} />}
+      {showProfilePanel && activationStatus && <ProfessionalActivationPanel presentation="dashboard" status={activationStatus} onActivate={onActivateProfile} saving={activatingProfile} />}
 
       <div className="mt-7 grid gap-7 xl:grid-cols-[minmax(0,1.2fr)_minmax(300px,0.8fr)] xl:items-start">
         <div className="min-w-0 space-y-7">

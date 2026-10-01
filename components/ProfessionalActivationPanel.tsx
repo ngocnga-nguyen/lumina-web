@@ -1,11 +1,15 @@
 "use client";
 
 import Link from "next/link";
+import ProfessionalDashboardReadinessPanel from "@/components/ProfessionalDashboardReadinessPanel";
 import { getActivationRequirements, getProfessionalActivationLabel, type ProfessionalActivationStatus } from "@/lib/professional-activation";
 
-export default function ProfessionalActivationPanel({ status, onActivate, saving = false }: {
-  status: ProfessionalActivationStatus; onActivate?: () => void; saving?: boolean;
+export default function ProfessionalActivationPanel({ status, onActivate, saving = false, presentation }: {
+  status: ProfessionalActivationStatus; onActivate?: () => void; saving?: boolean; presentation?: "dashboard";
 }) {
+  if (presentation === "dashboard") {
+    return <ProfessionalDashboardReadinessPanel status={status} onActivate={onActivate} saving={saving} />;
+  }
   const blockers = getActivationRequirements(status).filter((item) => !item.complete);
   return <section className="my-6 rounded-[20px] border border-lumina-border bg-lumina-surface-soft p-5 sm:p-6" aria-label="Professional activation status">
     <p className="text-[11px] uppercase tracking-[0.16em] text-lumina-text-muted">Your Lumina profile</p>
