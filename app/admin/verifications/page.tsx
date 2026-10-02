@@ -1,29 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useState } from "react";
+import { useAdminLicenseModerationRealtime } from "@/hooks/useAdminLicenseModerationRealtime";
+import type { VerificationQueueItem } from "@/lib/admin-license-moderation-sync";
 import { supabase } from "@/lib/supabase";
 import {
   professionalVerificationStatusLabels,
   type ProfessionalLicenseVerificationStatus,
 } from "@/lib/professional-license-verification";
-
-type VerificationQueueItem = {
-  artist_id: string;
-  professional_name: string;
-  legal_professional_name: string;
-  business_name: string | null;
-  license_number: string;
-  license_jurisdiction: string;
-  license_type: string;
-  status: ProfessionalLicenseVerificationStatus;
-  submitted_at: string;
-  updated_at: string;
-  last_reviewed_at: string | null;
-  last_reviewed_by: string | null;
-  decision_message: string | null;
-};
 
 function formatDateTime(value: string | null | undefined) {
   if (!value) return "Not recorded";
@@ -47,54 +32,12 @@ function statusClasses(status: ProfessionalLicenseVerificationStatus) {
 }
 
 export default function LicenseVerificationAdminPage() {
-  const router = useRouter();
-  const [items, setItems] = useState<VerificationQueueItem[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [authorized, setAuthorized] = useState(false);
+  const { items, loading, authorized, errorMessage: queueError, refresh: loadQueue } = useAdminLicenseModerationRealtime();
   const [filter, setFilter] = useState<"pending" | "all">("pending");
   const [workingArtistId, setWorkingArtistId] = useState<string | null>(null);
   const [correctionArtistId, setCorrectionArtistId] = useState<string | null>(null);
   const [correctionMessage, setCorrectionMessage] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
-
-  const loadQueue = async () => {
-    const { data, error } = await supabase.rpc(
-      "get_professional_license_verification_queue"
-    );
-
-    if (error) {
-      setErrorMessage(error.message || "The verification queue could not be loaded.");
-      return;
-    }
-
-    setItems(Array.isArray(data) ? (data as VerificationQueueItem[]) : []);
-  };
-
-  useEffect(() => {
-    const authorizeAndLoad = async () => {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-
-      if (!user) {
-        router.replace("/login");
-        return;
-      }
-
-      const { data: isAdmin, error } = await supabase.rpc("is_lumina_admin");
-
-      if (error || !isAdmin) {
-        router.replace("/");
-        return;
-      }
-
-      setAuthorized(true);
-      await loadQueue();
-      setLoading(false);
-    };
-
-    void authorizeAndLoad();
-  }, [router]);
 
   const saveDecision = async (
     item: VerificationQueueItem,
@@ -147,7 +90,12 @@ export default function LicenseVerificationAdminPage() {
     return (
       <main className="min-h-screen bg-lumina-bg px-5 py-12 text-lumina-text">
         <p className="mx-auto max-w-[1280px] text-[14px] text-lumina-text-muted">
-          Checking verification access…
+          {queueError || "Checking verification access…"}
+          {queueError && (
+            <button type="button" onClick={() => void loadQueue()} className="ml-3 underline">
+              Retry
+            </button>
+          )}
         </p>
       </main>
     );
@@ -219,9 +167,9 @@ export default function LicenseVerificationAdminPage() {
           </div>
         </div>
 
-        {errorMessage && (
+        {(errorMessage || queueError) && (
           <p role="alert" className="mt-6 rounded-[16px] border border-lumina-attention/30 bg-lumina-attention-soft px-4 py-3 text-[13px] text-lumina-attention">
-            {errorMessage}
+            {errorMessage || queueError}
           </p>
         )}
 
