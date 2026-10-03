@@ -11,6 +11,9 @@ export type ClientNotification = {
   message: string | null;
   is_read: boolean | null;
   created_at: string;
+  event_type?: string | null;
+  reminder_id?: string | null;
+  reminder_schedule_version?: number | null;
 };
 
 export type ClientNotificationRequest = {

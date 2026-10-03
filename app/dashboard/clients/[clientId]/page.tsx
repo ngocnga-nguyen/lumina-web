@@ -53,6 +53,7 @@ import {
   getRequestServices,
 } from "@/lib/request-services";
 import { supabase } from "@/lib/supabase";
+import { PROFESSIONAL_REMINDERS_ENABLED } from "@/lib/professional-reminders-config";
 
 type ClientRequest = {
   id: string;
@@ -301,7 +302,7 @@ export default function ClientCardPage() {
         linkedClientId
           ? loadRelatedClientIdentities([linkedClientId]).then(({ data, error }) => ({ data: data[0] || null, error }))
           : Promise.resolve({ data: null, error: null }),
-        supabase.from("artist_client_notes").select("id, artist_id, client_id, client_card_id, request_id, note_type, title, body, is_pinned, reminder_due_on, reminder_due_time, reminder_completed_at, created_at, updated_at").eq("client_card_id", loadedCard.id).order("is_pinned", { ascending: false }).order("updated_at", { ascending: false }),
+        supabase.from("artist_client_notes").select("id, artist_id, client_id, client_card_id, request_id, note_type, title, body, is_pinned, reminder_due_on, reminder_due_time, reminder_completed_at, created_at, updated_at" + (PROFESSIONAL_REMINDERS_ENABLED ? ", reminder_timezone, reminder_due_at, reminder_schedule_version, reminder_alert_armed" : "")).eq("client_card_id", loadedCard.id).order("is_pinned", { ascending: false }).order("updated_at", { ascending: false }),
         supabase.from("artist_client_service_entries").select("id, client_card_id, service_name, service_date, price, created_at").eq("client_card_id", loadedCard.id).order("service_date", { ascending: false }),
       ]);
       if (cancelled) return;
@@ -321,7 +322,7 @@ export default function ClientCardPage() {
       setPreferencesMessage("");
       setTags(Array.isArray(loadedCard.tags) ? loadedCard.tags : []);
       setWorkspacePreferences(parseClientCardWorkspacePreferences(loadedCard.workspace_preferences));
-      setClientNotes(sortClientNotes((noteData || []) as ClientNote[]));
+      setClientNotes(sortClientNotes((noteData || []) as unknown as ClientNote[]));
       setManualServices((manualServiceResponse.data || []) as ManualServiceEntry[]);
 
       const completedRequestIds = relatedRequests.filter((request) => request.booking_status === "completed").map((request) => request.id);

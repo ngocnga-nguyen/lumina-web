@@ -22,6 +22,10 @@ export type ClientNote = {
   reminder_due_on: string | null;
   reminder_due_time: string | null;
   reminder_completed_at: string | null;
+  reminder_timezone?: string | null;
+  reminder_due_at?: string | null;
+  reminder_schedule_version?: number;
+  reminder_alert_armed?: boolean;
   created_at: string;
   updated_at: string;
 };
@@ -94,7 +98,7 @@ export function getClientNoteReminderStatus(note: ClientNote, now = new Date()):
   if (note.reminder_completed_at) return "completed";
   if (!note.reminder_due_on) return "unscheduled";
 
-  const today = localDateKey(now);
+  const today = note.reminder_timezone ? dateInReminderTimezone(now, note.reminder_timezone) : localDateKey(now);
   if (!note.reminder_due_time) {
     if (note.reminder_due_on < today) return "due";
     if (note.reminder_due_on === today) return "due_today";
@@ -103,13 +107,19 @@ export function getClientNoteReminderStatus(note: ClientNote, now = new Date()):
 
   const [year, month, day] = note.reminder_due_on.split("-").map(Number);
   const [hour, minute, second = 0] = note.reminder_due_time.split(":").map(Number);
-  const dueAt = new Date(year, month - 1, day, hour, minute, second);
+  const dueAt = note.reminder_due_at ? new Date(note.reminder_due_at) : new Date(year, month - 1, day, hour, minute, second);
   if (Number.isNaN(dueAt.getTime())) return "unscheduled";
   return dueAt.getTime() <= now.getTime() ? "due" : "upcoming";
 }
 
 export function getClientNoteReminderTransition(note: ClientNote, now = new Date()) {
   if (note.note_type !== "reminder" || note.reminder_completed_at || !note.reminder_due_on) return null;
+  if (note.reminder_due_at) {
+    const instant = new Date(note.reminder_due_at);
+    return instant.getTime() > now.getTime() ? instant : null;
+  }
+  // A bounded clock refresh handles date-only midnight transitions in the saved zone.
+  if (note.reminder_timezone) return new Date(now.getTime() + 60_000);
   const [year, month, day] = note.reminder_due_on.split("-").map(Number);
   const [hour, minute, second = 0] = note.reminder_due_time?.split(":").map(Number) || [0, 0, 0];
   const transition = new Date(year, month - 1, day, hour, minute, second);
@@ -124,6 +134,7 @@ function reminderPreviewRank(note: ClientNote, now: Date) {
 }
 
 function reminderDueTimestamp(note: ClientNote) {
+  if (note.reminder_due_at) return new Date(note.reminder_due_at).getTime();
   if (!note.reminder_due_on) return Number.POSITIVE_INFINITY;
   const [year, month, day] = note.reminder_due_on.split("-").map(Number);
   const [hour, minute, second = 0] = note.reminder_due_time?.split(":").map(Number) || [0, 0, 0];
@@ -177,4 +188,10 @@ export function formatClientNoteTimestamp(value: string) {
     hour: "numeric",
     minute: "2-digit",
   });
+}
+
+export function dateInReminderTimezone(date: Date, timeZone: string) {
+  const parts = new Intl.DateTimeFormat("en-US", { timeZone, year: "numeric", month: "2-digit", day: "2-digit" }).formatToParts(date);
+  const part = (name: string) => parts.find((item) => item.type === name)?.value;
+  return `${part("year")}-${part("month")}-${part("day")}`;
 }

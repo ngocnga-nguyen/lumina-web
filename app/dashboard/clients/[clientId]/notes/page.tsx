@@ -21,6 +21,9 @@ import {
 import { attachSignedClientNoteImageUrls } from "@/lib/client-note-images";
 import { formatRequestServiceSummary } from "@/lib/request-services";
 import { supabase } from "@/lib/supabase";
+import { createRefreshGeneration, mutateAndRefresh } from "@/lib/authoritative-refresh";
+import { createRealtimeChannelTopic } from "@/lib/realtime-channel";
+import { PROFESSIONAL_REMINDERS_ENABLED } from "@/lib/professional-reminders-config";
 
 type NoteRequest = {
   id: string;
@@ -41,7 +44,7 @@ const filters: Array<{ value: Filter; label: string }> = [
   ...CLIENT_NOTE_TYPES.map((type) => ({ value: type, label: CLIENT_NOTE_TYPE_LABELS[type] })),
 ];
 
-const NOTE_SELECT = "id, artist_id, client_id, client_card_id, request_id, note_type, title, body, is_pinned, reminder_due_on, reminder_due_time, reminder_completed_at, created_at, updated_at";
+const NOTE_SELECT = "id, artist_id, client_id, client_card_id, request_id, note_type, title, body, is_pinned, reminder_due_on, reminder_due_time, reminder_completed_at, created_at, updated_at" + (PROFESSIONAL_REMINDERS_ENABLED ? ", reminder_timezone, reminder_due_at, reminder_schedule_version, reminder_alert_armed" : "");
 const ATTACHMENT_SELECT = "id, note_id, storage_path, caption, sort_order, created_at";
 
 const NOTE_CREATION_COPY: Record<ClientNoteType, { action: string; emptyTitle: string; emptyCopy: string }> = {
@@ -118,6 +121,8 @@ export default function ClientNotesWorkspacePage() {
   const [saving, setSaving] = useState(false);
   const [busyNoteId, setBusyNoteId] = useState<string | null>(null);
   const [noteToDelete, setNoteToDelete] = useState<ClientNote | null>(null);
+  const refreshGenerationRef = useRef(createRefreshGeneration());
+  const reloadNotesRef = useRef<() => Promise<void>>(async () => {});
   const typePickerRef = useRef<HTMLDivElement>(null);
   const mobileTypePickerRef = useRef<HTMLDivElement>(null);
   const newNoteButtonRef = useRef<HTMLButtonElement>(null);
@@ -187,7 +192,7 @@ export default function ClientNotesWorkspacePage() {
         return;
       }
 
-      const loadedNotes = sortClientNotes((noteData || []) as ClientNote[]);
+      const loadedNotes = sortClientNotes((noteData || []) as unknown as ClientNote[]);
       let loadedAttachments: ClientNoteAttachment[] = [];
       if (loadedNotes.length > 0) {
         const { data: attachmentData, error: attachmentError } = await supabase
@@ -203,6 +208,7 @@ export default function ClientNotesWorkspacePage() {
           loadedAttachments = await attachSignedClientNoteImageUrls((attachmentData || []) as ClientNoteAttachment[]);
         }
       }
+      if (cancelled) return;
       const profileName = typeof profileData?.full_name === "string" ? profileData.full_name.trim() : "";
       const fallbackName = relatedRequests.find((request) => request.client_name?.trim())?.client_name?.trim();
 
@@ -293,6 +299,47 @@ export default function ClientNotesWorkspacePage() {
       if (timeout !== null) window.clearTimeout(timeout);
     };
   }, [notes, reminderNow]);
+
+  useEffect(() => {
+    if (!artistId || !clientCardId) return;
+    let active = true;
+    const generation = refreshGenerationRef.current;
+    const refreshReminders = async () => {
+      if (!active) return;
+      const attempt = generation.beginRead();
+      if (attempt === null) return;
+      const { data, error } = await supabase.from("artist_client_notes").select(NOTE_SELECT)
+        .eq("artist_id", artistId).eq("client_card_id", clientCardId);
+      if (!active || !generation.isCurrent(attempt) || error) return;
+      const refreshed = (data || []) as unknown as ClientNote[];
+      let images: ClientNoteAttachment[] = [];
+      if (refreshed.length) {
+        const attachments = await supabase.from("artist_client_note_attachments").select(ATTACHMENT_SELECT)
+          .in("note_id", refreshed.map((note) => note.id)).order("sort_order");
+        if (attachments.error) return;
+        images = await attachSignedClientNoteImageUrls((attachments.data || []) as ClientNoteAttachment[]);
+      }
+      if (!active || !generation.isCurrent(attempt)) return;
+      // The in-progress editor draft stays independent; saves detect stale updates.
+      setNotes(sortClientNotes(refreshed));
+      setAttachmentsByNote(images.reduce<Record<string, ClientNoteAttachment[]>>((grouped, image) => {
+        (grouped[image.note_id] ||= []).push(image); return grouped;
+      }, {}));
+    };
+    const reload = async () => {
+      try { await refreshReminders(); }
+      catch { /* Keep the last confirmed state until the next refresh. */ }
+    };
+    reloadNotesRef.current = reload;
+    const refresh = () => { if (document.visibilityState === "visible") void reload(); };
+    const channel = supabase.channel(createRealtimeChannelTopic(`client-notes-${clientCardId}`))
+      .on("postgres_changes", { event: "*", schema: "public", table: "artist_client_notes", filter: `client_card_id=eq.${clientCardId}` }, refresh)
+      .subscribe((status) => { if (active && status === "SUBSCRIBED") refresh(); });
+    const timer = window.setInterval(refresh, 60_000);
+    window.addEventListener("focus", refresh);
+    document.addEventListener("visibilitychange", refresh);
+    return () => { active = false; generation.invalidate(); reloadNotesRef.current = async () => {}; window.clearInterval(timer); window.removeEventListener("focus", refresh); document.removeEventListener("visibilitychange", refresh); void supabase.removeChannel(channel); };
+  }, [artistId, clientCardId]);
 
   const requestOptions = useMemo(
     () => requests.map((request) => ({ id: request.id, label: getRequestLabel(request) })),
@@ -400,127 +447,142 @@ export default function ClientNotesWorkspacePage() {
 
   const saveNote = async (draft: ClientNoteDraft) => {
     if (!artistId || !clientCardId) return;
-    setSaving(true);
-    setEditorError("");
+    return mutateAndRefresh(refreshGenerationRef.current, async () => {
+      setSaving(true);
+      setEditorError("");
 
-    const payload = {
-      note_type: draft.note_type,
-      title: draft.title,
-      body: draft.body,
-      request_id: draft.request_id,
-      reminder_due_on: draft.note_type === "reminder" ? draft.reminder_due_on : null,
-      reminder_due_time: draft.note_type === "reminder" ? draft.reminder_due_time : null,
-      reminder_completed_at: draft.note_type === "reminder" ? editingNote?.reminder_completed_at || null : null,
-    };
-    const originalAttachments = editingNote ? attachmentsByNote[editingNote.id] || [] : [];
-    const attachmentsToRemove = originalAttachments.filter((attachment) => draft.removed_attachment_ids.includes(attachment.id));
-    const changingAwayFromInspiration = editingNote?.note_type === "inspiration" && draft.note_type !== "inspiration";
-    let createdNoteId: string | null = null;
+      const timingChanged = !editingNote || editingNote.note_type !== draft.note_type
+        || editingNote.reminder_due_on !== draft.reminder_due_on
+        || (editingNote.reminder_due_time?.slice(0, 5) || null) !== draft.reminder_due_time;
+      const payload = {
+        ...(PROFESSIONAL_REMINDERS_ENABLED ? { reminder_timezone: draft.note_type === "reminder" && draft.reminder_due_on
+          ? (timingChanged || draft.reminder_timezone_changed || editingNote?.reminder_timezone ? draft.reminder_timezone.trim() : null) : null } : {}),
+        note_type: draft.note_type,
+        title: draft.title,
+        body: draft.body,
+        request_id: draft.request_id,
+        reminder_due_on: draft.note_type === "reminder" ? draft.reminder_due_on : null,
+        reminder_due_time: draft.note_type === "reminder" ? draft.reminder_due_time : null,
+        reminder_completed_at: draft.note_type === "reminder" ? editingNote?.reminder_completed_at || null : null,
+      };
+      const originalAttachments = editingNote ? attachmentsByNote[editingNote.id] || [] : [];
+      const attachmentsToRemove = originalAttachments.filter((attachment) => draft.removed_attachment_ids.includes(attachment.id));
+      const changingAwayFromInspiration = editingNote?.note_type === "inspiration" && draft.note_type !== "inspiration";
+      let createdNoteId: string | null = null;
 
-    try {
-      if (changingAwayFromInspiration) await removeAttachments(attachmentsToRemove);
+      try {
+        if (changingAwayFromInspiration) await removeAttachments(attachmentsToRemove);
 
-      const response = editingNote
-        ? await supabase.from("artist_client_notes").update(payload).eq("id", editingNote.id).eq("artist_id", artistId).select(NOTE_SELECT).single()
-        : await supabase.from("artist_client_notes").insert({ artist_id: artistId, client_id: linkedClientId, client_card_id: clientCardId, ...payload }).select(NOTE_SELECT).single();
-      if (response.error) throw response.error;
+        const response = editingNote
+          ? await supabase.from("artist_client_notes").update(payload).eq("id", editingNote.id).eq("artist_id", artistId).eq("updated_at", editingNote.updated_at).select(NOTE_SELECT).single()
+          : await supabase.from("artist_client_notes").insert({ artist_id: artistId, client_id: linkedClientId, client_card_id: clientCardId, ...payload }).select(NOTE_SELECT).single();
+        if (response.error) throw response.error;
 
-      const saved = response.data as ClientNote;
-      if (!editingNote) createdNoteId = saved.id;
-      if (!changingAwayFromInspiration) await removeAttachments(attachmentsToRemove);
+        const saved = response.data as unknown as ClientNote;
+        if (!editingNote) createdNoteId = saved.id;
+        if (!changingAwayFromInspiration) await removeAttachments(attachmentsToRemove);
 
-      const retainedAttachments = originalAttachments.filter((attachment) => !draft.removed_attachment_ids.includes(attachment.id));
-      const captionUpdates = draft.existing_attachments.filter((item) => {
-        const original = retainedAttachments.find((attachment) => attachment.id === item.id);
-        return original && (original.caption || "") !== item.caption;
-      });
-      for (const update of captionUpdates) {
-        const { error } = await supabase.from("artist_client_note_attachments").update({ caption: update.caption || null }).eq("id", update.id);
-        if (error) throw error;
+        const retainedAttachments = originalAttachments.filter((attachment) => !draft.removed_attachment_ids.includes(attachment.id));
+        const captionUpdates = draft.existing_attachments.filter((item) => {
+          const original = retainedAttachments.find((attachment) => attachment.id === item.id);
+          return original && (original.caption || "") !== item.caption;
+        });
+        for (const update of captionUpdates) {
+          const { error } = await supabase.from("artist_client_note_attachments").update({ caption: update.caption || null }).eq("id", update.id);
+          if (error) throw error;
+        }
+
+        const retainedWithCaptions = retainedAttachments.map((attachment) => {
+          const update = draft.existing_attachments.find((item) => item.id === attachment.id);
+          return update ? { ...attachment, caption: update.caption || null } : attachment;
+        });
+        const addedAttachments = draft.note_type === "inspiration"
+          ? await addAttachments(saved.id, retainedWithCaptions, draft.new_images)
+          : [];
+        const nextAttachments = [...retainedWithCaptions, ...addedAttachments].sort((a, b) => a.sort_order - b.sort_order);
+
+        setNotes((current) => sortClientNotes(editingNote ? current.map((note) => note.id === saved.id ? saved : note) : [saved, ...current]));
+        setAttachmentsByNote((current) => ({ ...current, [saved.id]: nextAttachments }));
+        setSaving(false);
+        closeEditor();
+      } catch (error) {
+        console.error("Client Note save failed:", error);
+        if (createdNoteId) await supabase.from("artist_client_notes").delete().eq("id", createdNoteId).eq("artist_id", artistId);
+        setSaving(false);
+        setEditorError(error && typeof error === "object" && "message" in error && typeof error.message === "string" && /timezone|does not exist in that timezone/.test(error.message)
+          ? error.message : "This note or its private images couldn't be saved. Please try again.");
       }
-
-      const retainedWithCaptions = retainedAttachments.map((attachment) => {
-        const update = draft.existing_attachments.find((item) => item.id === attachment.id);
-        return update ? { ...attachment, caption: update.caption || null } : attachment;
-      });
-      const addedAttachments = draft.note_type === "inspiration"
-        ? await addAttachments(saved.id, retainedWithCaptions, draft.new_images)
-        : [];
-      const nextAttachments = [...retainedWithCaptions, ...addedAttachments].sort((a, b) => a.sort_order - b.sort_order);
-
-      setNotes((current) => sortClientNotes(editingNote ? current.map((note) => note.id === saved.id ? saved : note) : [saved, ...current]));
-      setAttachmentsByNote((current) => ({ ...current, [saved.id]: nextAttachments }));
-      setSaving(false);
-      closeEditor();
-    } catch (error) {
-      console.error("Client Note save failed:", error);
-      if (createdNoteId) await supabase.from("artist_client_notes").delete().eq("id", createdNoteId).eq("artist_id", artistId);
-      setSaving(false);
-      setEditorError("This note or its private images couldn't be saved. Please try again.");
-    }
+    }, () => reloadNotesRef.current());
   };
 
   const togglePin = async (note: ClientNote) => {
     if (!artistId) return;
-    setBusyNoteId(note.id);
-    const { data, error } = await supabase.from("artist_client_notes").update({ is_pinned: !note.is_pinned }).eq("id", note.id).eq("artist_id", artistId).select(NOTE_SELECT).single();
-    setBusyNoteId(null);
-    if (error) {
-      console.error("Client Note pin update failed:", error);
-      setErrorMessage("The pinned state couldn't be updated. Please try again.");
-      return;
-    }
-    const updated = data as ClientNote;
-    setNotes((current) => sortClientNotes(current.map((item) => item.id === updated.id ? updated : item)));
+    return mutateAndRefresh(refreshGenerationRef.current, async () => {
+      setBusyNoteId(note.id);
+      const { data, error } = await supabase.from("artist_client_notes").update({ is_pinned: !note.is_pinned }).eq("id", note.id).eq("artist_id", artistId).select(NOTE_SELECT).single();
+      setBusyNoteId(null);
+      if (error) {
+        console.error("Client Note pin update failed:", error);
+        setErrorMessage("The pinned state couldn't be updated. Please try again.");
+        return;
+      }
+      const updated = data as unknown as ClientNote;
+      setNotes((current) => sortClientNotes(current.map((item) => item.id === updated.id ? updated : item)));
+    }, () => reloadNotesRef.current());
   };
 
   const toggleReminderComplete = async (note: ClientNote) => {
     if (!artistId || note.note_type !== "reminder") return;
-    setBusyNoteId(note.id);
-    const { data, error } = await supabase
-      .from("artist_client_notes")
-      .update({ reminder_completed_at: note.reminder_completed_at ? null : new Date().toISOString() })
-      .eq("id", note.id)
-      .eq("artist_id", artistId)
-      .select(NOTE_SELECT)
-      .single();
-    setBusyNoteId(null);
-    if (error) {
-      console.error("Client Note reminder update failed:", error);
-      setErrorMessage("The reminder status couldn't be updated. Please try again.");
-      return;
-    }
-    const updated = data as ClientNote;
-    setNotes((current) => sortClientNotes(current.map((item) => item.id === updated.id ? updated : item)));
-    setReminderNow(new Date());
+    return mutateAndRefresh(refreshGenerationRef.current, async () => {
+      setBusyNoteId(note.id);
+      const { data, error } = await supabase
+        .from("artist_client_notes")
+        .update({ reminder_completed_at: note.reminder_completed_at ? null : new Date().toISOString() })
+        .eq("id", note.id)
+        .eq("artist_id", artistId)
+        .eq("updated_at", note.updated_at)
+        .select(NOTE_SELECT)
+        .single();
+      setBusyNoteId(null);
+      if (error) {
+        console.error("Client Note reminder update failed:", error);
+        setErrorMessage("The reminder status couldn't be updated. Please try again.");
+        return;
+      }
+      const updated = data as unknown as ClientNote;
+      setNotes((current) => sortClientNotes(current.map((item) => item.id === updated.id ? updated : item)));
+      setReminderNow(new Date());
+    }, () => reloadNotesRef.current());
   };
 
   const deleteNote = async () => {
     if (!noteToDelete || !artistId) return;
-    setBusyNoteId(noteToDelete.id);
-    const noteAttachments = attachmentsByNote[noteToDelete.id] || [];
-    try {
-      await removeAttachments(noteAttachments);
-    } catch (error) {
+    return mutateAndRefresh(refreshGenerationRef.current, async () => {
+      setBusyNoteId(noteToDelete.id);
+      const noteAttachments = attachmentsByNote[noteToDelete.id] || [];
+      try {
+        await removeAttachments(noteAttachments);
+      } catch (error) {
+        setBusyNoteId(null);
+        console.error("Client Note image cleanup failed:", error);
+        setErrorMessage("The private images couldn't be removed, so the note was kept. Please try again.");
+        return;
+      }
+      const { error } = await supabase.from("artist_client_notes").delete().eq("id", noteToDelete.id).eq("artist_id", artistId);
       setBusyNoteId(null);
-      console.error("Client Note image cleanup failed:", error);
-      setErrorMessage("The private images couldn't be removed, so the note was kept. Please try again.");
-      return;
-    }
-    const { error } = await supabase.from("artist_client_notes").delete().eq("id", noteToDelete.id).eq("artist_id", artistId);
-    setBusyNoteId(null);
-    if (error) {
-      console.error("Client Note delete failed:", error);
-      setErrorMessage("This note couldn't be deleted. Please try again.");
-      return;
-    }
-    setNotes((current) => current.filter((note) => note.id !== noteToDelete.id));
-    setAttachmentsByNote((current) => {
-      const next = { ...current };
-      delete next[noteToDelete.id];
-      return next;
-    });
-    setNoteToDelete(null);
+      if (error) {
+        console.error("Client Note delete failed:", error);
+        setErrorMessage("This note couldn't be deleted. Please try again.");
+        return;
+      }
+      setNotes((current) => current.filter((note) => note.id !== noteToDelete.id));
+      setAttachmentsByNote((current) => {
+        const next = { ...current };
+        delete next[noteToDelete.id];
+        return next;
+      });
+      setNoteToDelete(null);
+    }, () => reloadNotesRef.current());
   };
 
   if (loading) return <PageState message="Loading notes..." />;

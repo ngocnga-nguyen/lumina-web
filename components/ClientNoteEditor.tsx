@@ -3,6 +3,7 @@
 /* eslint-disable @next/next/no-img-element -- This editor combines short-lived signed URLs with local blob previews. */
 
 import { useEffect, useRef, useState } from "react";
+import { PROFESSIONAL_REMINDERS_ENABLED } from "@/lib/professional-reminders-config";
 import { ImagePlus, X } from "lucide-react";
 import {
   CLIENT_NOTE_ATTACHMENT_CAPTION_MAX_LENGTH,
@@ -32,6 +33,8 @@ export type ClientNoteDraft = {
   request_id: string | null;
   reminder_due_on: string | null;
   reminder_due_time: string | null;
+  reminder_timezone: string;
+  reminder_timezone_changed: boolean;
   existing_attachments: Array<{ id: string; caption: string }>;
   removed_attachment_ids: string[];
   new_images: NewClientNoteImage[];
@@ -70,6 +73,8 @@ export default function ClientNoteEditor({
     request_id: note?.request_id || null,
     reminder_due_on: note?.reminder_due_on || null,
     reminder_due_time: note?.reminder_due_time?.slice(0, 5) || null,
+    reminder_timezone: note?.reminder_timezone || Intl.DateTimeFormat().resolvedOptions().timeZone,
+    reminder_timezone_changed: false,
     existing_attachments: attachments.map((attachment) => ({ id: attachment.id, caption: attachment.caption || "" })),
     removed_attachment_ids: [],
     new_images: [],
@@ -179,8 +184,10 @@ export default function ClientNoteEditor({
           </label> : <div><span className="inline-flex rounded-full border border-lumina-glass-border bg-lumina-glass px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.11em] text-lumina-text-muted">{CLIENT_NOTE_TYPE_LABELS[draft.note_type]}</span></div>}
 
           {draft.note_type === "reminder" && (
-            <fieldset className="rounded-[16px] border border-lumina-border/75 bg-lumina-surface/70 p-4">
-              <legend className="px-1 text-[12px] font-medium text-lumina-text">Reminder timing <span className="font-normal text-lumina-text-muted">Optional</span></legend>
+            <fieldset aria-labelledby="reminder-timing-label" aria-describedby="reminder-timing-optional" className="min-w-0 rounded-[16px] border border-lumina-border/75 bg-lumina-surface/70 p-4">
+              <legend className="sr-only">Reminder timing</legend>
+              <p id="reminder-timing-label" className="text-[12px] font-medium text-lumina-text">Reminder timing</p>
+              <p id="reminder-timing-optional" className="mt-1 text-[11px] text-lumina-text-muted">Optional</p>
               <div className="mt-2 grid gap-4 sm:grid-cols-2">
                 <label className="grid gap-2 text-[12px] font-medium text-lumina-text">Due date
                   <input type="date" value={draft.reminder_due_on || ""} onChange={(event) => setDraft((current) => ({ ...current, reminder_due_on: event.target.value || null, reminder_due_time: event.target.value ? current.reminder_due_time : null }))} className="min-h-12 rounded-[14px] border border-lumina-border bg-lumina-surface px-4 text-[14px] font-normal outline-none focus:border-lumina-text-muted" />
@@ -189,7 +196,12 @@ export default function ClientNoteEditor({
                   <input type="time" value={draft.reminder_due_time || ""} disabled={!draft.reminder_due_on} onChange={(event) => setDraft((current) => ({ ...current, reminder_due_time: event.target.value || null }))} className="min-h-12 rounded-[14px] border border-lumina-border bg-lumina-surface px-4 text-[14px] font-normal outline-none focus:border-lumina-text-muted disabled:cursor-not-allowed disabled:bg-lumina-surface-soft disabled:text-lumina-text-muted" />
                 </label>
               </div>
-              <p className="mt-3 text-[11px] leading-[1.5] text-lumina-text-muted">Date-only reminders will show as Due today throughout the selected day.</p>
+              {PROFESSIONAL_REMINDERS_ENABLED && <label className="mt-4 grid gap-2 text-[12px] font-medium text-lumina-text">Timezone
+                <input value={draft.reminder_timezone} onChange={(event) => setDraft((current) => ({ ...current, reminder_timezone: event.target.value, reminder_timezone_changed: true }))} placeholder="America/Chicago" className="min-h-12 min-w-0 rounded-[14px] border border-lumina-border bg-lumina-surface px-4 text-[14px] font-normal" />
+                <span className="text-[11px] font-normal text-lumina-text-muted">Saved with this reminder. Repeated daylight-saving times use standard time.</span>
+              </label>}
+              <p className="mt-3 text-[11px] leading-[1.5] text-lumina-text-muted">Date-only reminders will show as Due today throughout the selected day.{PROFESSIONAL_REMINDERS_ENABLED && " Add a time for one in-app alert. Reopening does not send another alert; change the schedule to request one."}</p>
+              {PROFESSIONAL_REMINDERS_ENABLED && note?.note_type === "reminder" && !note.reminder_timezone && <p className="mt-2 text-[11px] text-lumina-text-muted">This older reminder has no scheduled alert. Change its date, time, or timezone to schedule one.</p>}
             </fieldset>
           )}
 

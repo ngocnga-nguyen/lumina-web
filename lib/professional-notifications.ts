@@ -6,7 +6,7 @@ export function getProfessionalNotificationView(request: CompletionRequestLike &
 }
 
 export function getProfessionalNotificationDestination(
-  notification: { id: string; request_id: string | null; title: string },
+  notification: { id: string; request_id: string | null; title: string; reminder_id?: string | null },
   request?: CompletionRequestLike & { artist_hidden?: boolean | null },
 ) {
   if (!notification.request_id) return "/dashboard/requests";
@@ -15,4 +15,9 @@ export function getProfessionalNotificationDestination(
     view: getProfessionalNotificationView(request), notification: notification.id });
   if (notification.title === "New Message") params.set("chat", "1");
   return `/dashboard/requests?${params}`;
+}
+
+export function getReminderNotificationDestination(note: { id: string; client_card_id: string } | null) {
+  if (!note) return "/dashboard?reminder=unavailable";
+  return `/dashboard/clients/${encodeURIComponent(note.client_card_id)}/notes?edit=${encodeURIComponent(note.id)}`;
 }

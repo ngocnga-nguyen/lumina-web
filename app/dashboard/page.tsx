@@ -1,6 +1,9 @@
 "use client";
 
 import { useProfessionalReadiness } from "@/components/ProfessionalReadinessProvider";
+import ReminderNotificationNotice from "@/components/ReminderNotificationNotice";
+import ProfessionalToday from "@/components/ProfessionalToday";
+import { PROFESSIONAL_REMINDERS_ENABLED } from "@/lib/professional-reminders-config";
 import ProfessionalActivationPanel from "@/components/ProfessionalActivationPanel";
 import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
@@ -205,6 +208,8 @@ const dashboardProfileStatus = activationStatus ? getProfessionalActivationLabel
             onEditCover={() => setMediaEditorMode("cover")}
           />
         )}
+        <ReminderNotificationNotice />
+        {artist && PROFESSIONAL_REMINDERS_ENABLED && <ProfessionalToday key={artist.id} artistId={artist.id} />}
       </section>
 
       {artist && mediaEditorMode && (

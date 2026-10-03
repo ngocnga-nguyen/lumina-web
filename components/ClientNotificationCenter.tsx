@@ -77,7 +77,8 @@ export default function ClientNotificationCenter({
     }
 
     setOpen(false);
-    router.push(destination);
+    if (role === "professional" && notification.event_type === "professional_reminder_due") window.location.assign(destination);
+    else router.push(destination);
     } catch (error) {
       setActionError(error instanceof Error ? error.message : "Notifications could not be updated.");
     } finally {

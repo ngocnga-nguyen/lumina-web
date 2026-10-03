@@ -34,13 +34,16 @@ const reminderStyles = {
 
 function formatReminderDue(note: ClientNote) {
   if (!note.reminder_due_on) return null;
+  if (note.reminder_due_at && note.reminder_timezone) {
+    return `${new Intl.DateTimeFormat("en-US", { timeZone: note.reminder_timezone, month: "short", day: "numeric", year: "numeric", hour: "numeric", minute: "2-digit" }).format(new Date(note.reminder_due_at))} · ${note.reminder_timezone}`;
+  }
   const [year, month, day] = note.reminder_due_on.split("-").map(Number);
   const date = new Date(year, month - 1, day);
   const dateLabel = date.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
-  if (!note.reminder_due_time) return dateLabel;
+  if (!note.reminder_due_time) return `${dateLabel}${note.reminder_timezone ? ` · ${note.reminder_timezone}` : ""}`;
   const [hour, minute] = note.reminder_due_time.split(":").map(Number);
   date.setHours(hour, minute, 0, 0);
-  return `${dateLabel} at ${date.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}`;
+  return `${dateLabel} at ${date.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}${note.reminder_timezone ? ` · ${note.reminder_timezone}` : ""}`;
 }
 
 export default function ClientNoteCard({ note, attachments, requestLabel, now, busy, onEdit, onDelete, onTogglePin, onToggleReminderComplete }: ClientNoteCardProps) {

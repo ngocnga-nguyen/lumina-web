@@ -178,6 +178,7 @@ test("professional listener reloads INSERT, UPDATE, DELETE and reconnect from pe
   };
   const hook = moduleWithMocks("lib/use-professional-notifications.ts", {
     react: fakeReact,
+    "@/lib/professional-reminders-config": { PROFESSIONAL_REMINDERS_ENABLED: true },
     "@/lib/supabase": { supabase: { from: () => query, channel: () => channel, removeChannel: () => { removed++; } } },
     "@/lib/client-notifications": { CLIENT_NOTIFICATION_READ_STATE_EVENT: "read", markNotificationsRead: () => {} },
     "@/lib/notification-reconciliation": { confirmNotificationRead, preserveNotificationSnapshot },
@@ -229,3 +230,26 @@ for (const viewport of [375, 390, 430]) {
     assert.ok(right <= viewport - 12);
   });
 }
+
+
+test("reminder destinations use exact client-card ownership results and a safe missing fallback", () => {
+  const destinations = moduleWithMocks("lib/professional-notifications.ts", { "@/lib/request-completion": { isActiveRequestState: () => true } });
+  assert.equal(destinations.getReminderNotificationDestination({ id: "note", client_card_id: "manual-card" }), "/dashboard/clients/manual-card/notes?edit=note");
+  assert.equal(destinations.getReminderNotificationDestination(null), "/dashboard?reminder=unavailable");
+});
+
+
+test("task feed pagination includes records beyond the first page and rejects partial failures", async () => {
+  const feed = moduleWithMocks("lib/use-professional-tasks.ts", {
+    react: {}, "@/lib/authoritative-refresh": {}, "@/lib/supabase": {}, "@/lib/realtime-channel": {}, "@/lib/client-identity-query": {},
+  });
+  const calls: number[] = [];
+  const rows = await feed.readAllTaskPages(async (from: number, to: number) => {
+    calls.push(from); assert.equal(to, from + 499);
+    return { data: Array.from({ length: from === 0 ? 500 : 1 }, (_, i) => ({ id: from + i })), error: null };
+  });
+  assert.equal((rows as unknown as unknown[]).length, 501); assert.deepEqual(calls, [0, 500]);
+  await assert.rejects(async () => feed.readAllTaskPages(async (from: number) => from === 0
+    ? { data: Array.from({ length: 500 }, (_, i) => ({ id: i })), error: null }
+    : { data: null, error: { message: "offline" } }), /offline/);
+});

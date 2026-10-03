@@ -7,7 +7,7 @@ import { confirmNotificationRead, preserveNotificationSnapshot } from "@/lib/not
 import { createRealtimeChannelTopic } from "@/lib/realtime-channel";
 import { loadRelatedClientIdentities } from "@/lib/client-identity-query";
 import { resolveClientIdentity, type ClientIdentityProfile } from "@/lib/client-identity";
-import { getProfessionalNotificationDestination } from "@/lib/professional-notifications";
+import { getReminderNotificationDestination, getProfessionalNotificationDestination } from "@/lib/professional-notifications";
 
 export function useProfessionalNotifications(userId: string | null | undefined) {
   const [notifications, setNotifications] = useState<ClientNotification[]>([]);
@@ -29,13 +29,16 @@ export function useProfessionalNotifications(userId: string | null | undefined) 
       return;
     }
     const { data, error: readError } = await supabase.from("notifications")
-      .select("id, user_id, request_id, title, message, is_read, created_at")
+      // Optional event metadata must survive a feature rollback. Star also works
+      // before migration, when those columns do not exist. The owner filter stays.
+      .select("*")
       .eq("user_id", userId).order("created_at", { ascending: false });
     if (!current()) return;
     if (readError) { setError(readError.message); return; }
+    const notificationRows = (data || []) as unknown as ClientNotification[];
     // Preserve the professional bell's existing history/count semantics, including archived requests.
-    setNotifications((current) => preserveNotificationSnapshot(current, (data || []) as ClientNotification[]));
-    const ids = [...new Set((data || []).flatMap((item) => item.request_id ? [item.request_id as string] : []))];
+    setNotifications((current) => preserveNotificationSnapshot(current, notificationRows));
+    const ids = [...new Set(notificationRows.flatMap((item) => item.request_id ? [item.request_id as string] : []))];
     if (ids.length === 0) { setRequestsById({}); setError(null); return; }
     const { data: requests, error: requestError } = await supabase.from("client_requests")
       .select("id, client_id, client_name").eq("artist_id", userId).in("id", ids);
@@ -97,6 +100,13 @@ export function useProfessionalNotifications(userId: string | null | undefined) 
   }, [refresh]);
   const markAllAsRead = () => acknowledge({ notificationIds: notifications.filter((item) => !item.is_read).map((item) => item.id) });
   const resolveDestination = async (notification: ClientNotification) => {
+    if (notification.event_type === "professional_reminder_due") {
+      if (!notification.reminder_id) return getReminderNotificationDestination(null);
+      const { data, error } = await supabase.from("artist_client_notes").select("id, client_card_id")
+        .eq("id", notification.reminder_id).eq("artist_id", userId).eq("note_type", "reminder").maybeSingle();
+      if (error) throw error;
+      return getReminderNotificationDestination(data);
+    }
     if (!notification.request_id) return "/dashboard/requests";
     // Recheck archive/lifecycle at click time, not from a potentially old dropdown snapshot.
     const { data, error: requestError } = await supabase.from("client_requests")
