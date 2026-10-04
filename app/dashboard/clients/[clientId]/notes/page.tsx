@@ -2,6 +2,9 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
+import WorkspaceLoadError from "@/components/WorkspaceLoadError";
+import { loadWorkspaceUser, runWorkspaceLoad } from "@/lib/workspace-load-recovery";
+
 import { useParams, useRouter } from "next/navigation";
 import { ArrowLeft, ChevronDown, NotebookPen, Plus, X } from "lucide-react";
 import ClientNoteCard from "@/components/ClientNoteCard";
@@ -111,6 +114,8 @@ export default function ClientNotesWorkspacePage() {
   const [reminderNow, setReminderNow] = useState(() => new Date());
   const [filter, setFilter] = useState<Filter>("all");
   const [loading, setLoading] = useState(true);
+  const [loadAttempt, setLoadAttempt] = useState(0);
+  const [loadFailed, setLoadFailed] = useState(false);
   const [unavailable, setUnavailable] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const [editorOpen, setEditorOpen] = useState(false);
@@ -132,10 +137,12 @@ export default function ClientNotesWorkspacePage() {
 
     const loadNotes = async () => {
       setLoading(true);
+      setLoadFailed(false);
       setErrorMessage("");
       setUnavailable(false);
 
-      const { data: { user } } = await supabase.auth.getUser();
+      const user = await loadWorkspaceUser(() => supabase.auth.getUser());
+      if (cancelled) return;
       if (!user) {
         router.replace(`/login?redirect=${encodeURIComponent(`/dashboard/clients/${clientId}/notes`)}`);
         return;
@@ -151,12 +158,10 @@ export default function ClientNotesWorkspacePage() {
       if (cancelled) return;
       if (cardError) {
         setErrorMessage("We couldn't load this client relationship. Please try again.");
-        setLoading(false);
         return;
       }
       if (!cardData) {
         setUnavailable(true);
-        setLoading(false);
         return;
       }
 
@@ -172,7 +177,6 @@ export default function ClientNotesWorkspacePage() {
       if (cancelled) return;
       if (requestResponse.error) {
         setErrorMessage("We couldn't load this client relationship. Please try again.");
-        setLoading(false);
         return;
       }
       const relatedRequests = (requestResponse.data || []) as NoteRequest[];
@@ -188,7 +192,6 @@ export default function ClientNotesWorkspacePage() {
       if (notesError) {
         console.error("Client Notes load failed:", notesError);
         setErrorMessage("We couldn't load the private notes workspace. Please try again.");
-        setLoading(false);
         return;
       }
 
@@ -222,7 +225,6 @@ export default function ClientNotesWorkspacePage() {
         return grouped;
       }, {}));
       setClientName(profileName || card.manual_name?.trim() || fallbackName || "Lumina client");
-      setLoading(false);
 
       const query = new URLSearchParams(window.location.search);
       const editId = query.get("edit");
@@ -242,9 +244,17 @@ export default function ClientNotesWorkspacePage() {
       }
     };
 
-    if (clientId) void loadNotes();
+    if (clientId) void runWorkspaceLoad(loadNotes, {
+      isCurrent: () => !cancelled,
+      onError: (error) => {
+        console.error("Notes load failed:", error);
+        setLoadFailed(true);
+        setErrorMessage("The private notes workspace couldn’t be loaded. Please try again.");
+      },
+      onSettled: () => setLoading(false),
+    });
     return () => { cancelled = true; };
-  }, [clientId, router]);
+  }, [clientId, router, loadAttempt]);
 
   useEffect(() => {
     const handlePointerDown = (event: PointerEvent) => {
@@ -587,7 +597,7 @@ export default function ClientNotesWorkspacePage() {
 
   if (loading) return <PageState message="Loading notes..." />;
   if (unavailable) return <PageState message="This client workspace is unavailable for your professional account." clientId={clientId} />;
-  if (errorMessage && notes.length === 0) return <PageState message={errorMessage} clientId={clientId} />;
+  if (loadFailed || (errorMessage && notes.length === 0)) return <PageState message={errorMessage} clientId={clientId} onRetry={() => setLoadAttempt((current) => current + 1)} />;
 
   const renderNotes = (items: ClientNote[]) => (
     <div className="grid gap-4 xl:grid-cols-2">
@@ -660,6 +670,6 @@ export default function ClientNotesWorkspacePage() {
   );
 }
 
-function PageState({ message, clientId }: { message: string; clientId?: string }) {
-  return <div className="bg-lumina-surface text-lumina-text"><section className="mx-auto max-w-[1280px] px-5 py-10 md:px-10 md:py-14">{clientId && <Link href={`/dashboard/clients/${clientId}`} className="inline-flex items-center gap-2 text-[13px] font-medium text-lumina-text-muted"><ArrowLeft size={16} /> Back to client card</Link>}<div className={`${clientId ? "mt-7" : ""} rounded-[20px] border border-lumina-border/65 p-6 text-[14px] text-lumina-text-muted`}>{message}</div></section></div>;
+function PageState({ message, clientId, onRetry }: { message: string; clientId?: string; onRetry?: () => void }) {
+  return <div className="bg-lumina-surface text-lumina-text"><section className="mx-auto max-w-[1280px] px-5 py-10 md:px-10 md:py-14">{clientId && <Link href={`/dashboard/clients/${clientId}`} className="inline-flex items-center gap-2 text-[13px] font-medium text-lumina-text-muted"><ArrowLeft size={16} /> Back to client card</Link>}<div className={`${clientId ? "mt-7" : ""} ${onRetry ? "" : "rounded-[20px] border border-lumina-border/65 p-6 text-[14px] text-lumina-text-muted"}`}>{onRetry ? <WorkspaceLoadError message={message} onRetry={onRetry} /> : message}</div></section></div>;
 }

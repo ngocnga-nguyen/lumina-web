@@ -1,6 +1,9 @@
 "use client";
 
 import Link from "next/link";
+import WorkspaceLoadError from "@/components/WorkspaceLoadError";
+import { loadWorkspaceUser, runWorkspaceLoad } from "@/lib/workspace-load-recovery";
+
 import { useProfessionalReadiness } from "@/components/ProfessionalReadinessProvider";
 import ProfessionalActivationPanel from "@/components/ProfessionalActivationPanel";
 import { useEffect, useRef, useState } from "react";
@@ -36,6 +39,8 @@ export default function ArtistSettingsPage() {
   const isVisible = Boolean(activationStatus?.is_active);
   const [visibilityLoading, setVisibilityLoading] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [loadAttempt, setLoadAttempt] = useState(0);
+  const [loadError, setLoadError] = useState(false);
   const [signingOutOthers, setSigningOutOthers] = useState(false);
   const [verificationForm, setVerificationForm] = useState(
     emptyVerificationForm
@@ -47,10 +52,12 @@ export default function ArtistSettingsPage() {
   const [mobileSheet, setMobileSheet] = useState<"email" | "password" | "verification" | null>(null);
 
   useEffect(() => {
+    let cancelled = false;
     const loadSettings = async () => {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
+      setLoading(true);
+      setLoadError(false);
+      const user = await loadWorkspaceUser(() => supabase.auth.getUser());
+      if (cancelled) return;
 
       if (!user) {
         router.push("/login");
@@ -61,12 +68,14 @@ export default function ArtistSettingsPage() {
       setOnboardingMode(isLicenseOnboarding);
       if (isLicenseOnboarding) setMobileSheet("verification");
 
-      const { data: artist } = await supabase
+      const { data: artist, error: artistError } = await supabase
         .from("artists")
         .select("is_active, name")
         .eq("id", user.id)
         .maybeSingle();
 
+      if (cancelled) return;
+      if (artistError) throw artistError;
       if (!artist) {
         router.push("/account");
         return;
@@ -82,11 +91,18 @@ export default function ArtistSettingsPage() {
       setVerificationForm(nextVerificationForm);
       setSavedVerificationForm(nextVerificationForm);
 
-      setLoading(false);
     };
 
-    void loadSettings();
-  }, [router]);
+    void runWorkspaceLoad(loadSettings, {
+      isCurrent: () => !cancelled,
+      onError: (error) => {
+        console.error("Settings load failed:", error);
+        setLoadError(true);
+      },
+      onSettled: () => setLoading(false),
+    });
+    return () => { cancelled = true; };
+  }, [router, loadAttempt]);
 
   useEffect(() => {
     if (loading || !verification) return;
@@ -276,13 +292,13 @@ export default function ArtistSettingsPage() {
 
   return (
     <div className="bg-lumina-surface text-lumina-text">
-      {!loading && activationStatus && <div className="mx-auto max-w-[1040px] px-5 pt-1 lg:px-10"><ProfessionalActivationPanel status={activationStatus} onActivate={() => void updateVisibility()} saving={visibilityLoading} /></div>}
+      {!loading && !loadError && activationStatus && <div className="mx-auto max-w-[1040px] px-5 pt-1 lg:px-10"><ProfessionalActivationPanel status={activationStatus} onActivate={() => void updateVisibility()} saving={visibilityLoading} /></div>}
       <section className="mx-auto max-w-2xl px-5 pb-10 pt-5 lg:hidden">
         {onboardingMode && <ProfessionalOnboardingContext step="license" title="Submit license verification" />}
         <p className="text-[11px] uppercase tracking-[0.16em] text-lumina-text-muted">Professional workspace</p>
         <h1 className="mt-2 font-serif text-[31px] font-semibold leading-[1.05]">Settings</h1>
         <p className="mt-2 text-[13px] text-lumina-text-muted">Account, verification, and privacy.</p>
-        {loading ? <p className="mt-7 rounded-[18px] bg-lumina-surface-soft p-4 text-[13px] text-lumina-text-muted">Loading settings…</p> : <>
+        {loading ? <p className="mt-7 rounded-[18px] bg-lumina-surface-soft p-4 text-[13px] text-lumina-text-muted">Loading settings…</p> : loadError ? <div className="mt-7"><WorkspaceLoadError message="Settings couldn’t be loaded. Please try again." onRetry={() => setLoadAttempt((current) => current + 1)} /></div> : <>
           <section className="mt-7 rounded-[18px] bg-lumina-surface-soft/75 p-4" aria-label="Public profile visibility">
             <div className="flex items-start justify-between gap-3"><div className="min-w-0"><p className="text-[14px] font-medium">Public profile</p><p className="mt-1 text-[12px] leading-relaxed text-lumina-text-muted">{isVisible ? "Visible to clients in browse, search, and map." : activationStatus?.activation_ready ? "Ready to become visible when you choose." : "Hidden until activation and license verification are complete."}</p></div>
               <button type="button" onClick={() => void updateVisibility()} disabled={visibilityLoading || (!isVisible && !activationStatus?.activation_ready)} aria-label="Professional profile visibility" aria-pressed={isVisible} className={`relative h-7 w-12 shrink-0 rounded-full transition disabled:opacity-50 ${isVisible ? "bg-lumina-black" : "bg-lumina-pearl"}`}><span className={`absolute top-1 h-5 w-5 rounded-full bg-lumina-surface transition ${isVisible ? "left-6" : "left-1"}`} /></button>
@@ -343,6 +359,8 @@ export default function ArtistSettingsPage() {
           <div className="mt-8 rounded-[22px] bg-lumina-surface-soft p-5 text-[14px] text-lumina-text-muted">
             Loading settings…
           </div>
+        ) : loadError ? (
+          <div className="mt-8"><WorkspaceLoadError message="Settings couldn’t be loaded. Please try again." onRetry={() => setLoadAttempt((current) => current + 1)} /></div>
         ) : (
           <div className="mt-7 space-y-2">            <section className="border-b border-lumina-border/70 py-6">
               <p className="text-[12px] uppercase tracking-[0.14em] text-lumina-text-muted">

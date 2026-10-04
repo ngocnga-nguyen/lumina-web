@@ -3,6 +3,8 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import WorkspaceLoadError from "@/components/WorkspaceLoadError";
+import { loadWorkspaceUser, runWorkspaceLoad } from "@/lib/workspace-load-recovery";
 import ProfessionalClientListControls from "@/components/ProfessionalClientListControls";
 import ProfessionalClientRowMenu from "@/components/ProfessionalClientRowMenu";
 import ProfessionalClientsMobileList from "@/components/ProfessionalClientsMobileList";
@@ -42,6 +44,7 @@ export default function DashboardClientsPage() {
   const [clientFilter, setClientFilter] =
     useState<ProfessionalClientFilter>("all");
   const [loading, setLoading] = useState(true);
+  const [loadAttempt, setLoadAttempt] = useState(0);
   const [errorMessage, setErrorMessage] = useState("");
   const [actionError, setActionError] = useState("");
   const [changingClientId, setChangingClientId] = useState<string | null>(null);
@@ -53,77 +56,86 @@ export default function DashboardClientsPage() {
     let cancelled = false;
     let loadSequence = 0;
 
-    const loadClients = async () => {
+    const loadClients = async (showLoading = false) => {
       const sequence = ++loadSequence;
       const canCommit = () => !cancelled && sequence === loadSequence;
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-
-      if (!canCommit()) return;
-      if (!user) {
-        router.replace("/login");
-        return;
-      }
-
-      setArtistId(user.id);
-
-      const [requestResult, cardResult, manualServiceResult] = await Promise.all([
-        supabase
-          .from("client_requests")
-          .select(
-            "id, client_id, client_name, service_requested, requested_services, preferred_date, preferred_time, proposed_date, proposed_time, scheduled_for, booking_status, completed_at, created_at"
-          )
-          .eq("artist_id", user.id)
-          .not("client_id", "is", null)
-          .order("created_at", { ascending: false }),
-        supabase
-          .from("artist_client_cards")
-          .select("id, client_id, source, manual_name, manual_phone, manual_email, archived_at, created_at")
-          .eq("artist_id", user.id)
-          .order("created_at", { ascending: false }),
-        supabase
-          .from("artist_client_service_entries")
-          .select("id, client_card_id, service_name, service_date, price, created_at")
-          .order("service_date", { ascending: false }),
-      ]);
-
-      if (requestResult.error || cardResult.error || manualServiceResult.error) {
-        if (canCommit()) {
-          setErrorMessage("We couldn't load your clients. Please try again.");
-          setLoading(false);
+      return runWorkspaceLoad(async () => {
+        if (showLoading) {
+          setLoading(true);
+          setErrorMessage("");
         }
-        return;
-      }
-
-      const requests = (requestResult.data || []) as ProfessionalClientRequest[];
-      const cards = (cardResult.data || []) as ProfessionalClientCardRecord[];
-      const manualServices = (manualServiceResult.data || []) as ProfessionalManualServiceEntry[];
-      const clientIds = [...new Set(cards.map((card) => card.client_id).filter((id): id is string => Boolean(id)))];
-      let profiles: ProfessionalClientProfile[] = [];
-
-      if (clientIds.length > 0) {
-        const profileResult = await loadRelatedClientIdentities(clientIds);
+        const user = await loadWorkspaceUser(() => supabase.auth.getUser());
 
         if (!canCommit()) return;
-        if (profileResult.error) {
-          console.log("Client profile fetch error:", profileResult.error);
-        } else {
-          profiles = (profileResult.data || []) as ProfessionalClientProfile[];
+        if (!user) {
+          router.replace("/login");
+          return;
         }
 
-      }
+        setArtistId(user.id);
 
-      if (canCommit()) {
-        setClients(
-          buildProfessionalClientSummaries(requests, profiles, cards, new Date(), manualServices)
-        );
-        setErrorMessage("");
-        setLoading(false);
-      }
+        const [requestResult, cardResult, manualServiceResult] = await Promise.all([
+          supabase
+            .from("client_requests")
+            .select(
+              "id, client_id, client_name, service_requested, requested_services, preferred_date, preferred_time, proposed_date, proposed_time, scheduled_for, booking_status, completed_at, created_at"
+            )
+            .eq("artist_id", user.id)
+            .not("client_id", "is", null)
+            .order("created_at", { ascending: false }),
+          supabase
+            .from("artist_client_cards")
+            .select("id, client_id, source, manual_name, manual_phone, manual_email, archived_at, created_at")
+            .eq("artist_id", user.id)
+            .order("created_at", { ascending: false }),
+          supabase
+            .from("artist_client_service_entries")
+            .select("id, client_card_id, service_name, service_date, price, created_at")
+            .order("service_date", { ascending: false }),
+        ]);
+
+        if (requestResult.error || cardResult.error || manualServiceResult.error) {
+          if (canCommit()) {
+            setErrorMessage("We couldn't load your clients. Please try again.");
+          }
+          return;
+        }
+
+        const requests = (requestResult.data || []) as ProfessionalClientRequest[];
+        const cards = (cardResult.data || []) as ProfessionalClientCardRecord[];
+        const manualServices = (manualServiceResult.data || []) as ProfessionalManualServiceEntry[];
+        const clientIds = [...new Set(cards.map((card) => card.client_id).filter((id): id is string => Boolean(id)))];
+        let profiles: ProfessionalClientProfile[] = [];
+
+        if (clientIds.length > 0) {
+          const profileResult = await loadRelatedClientIdentities(clientIds);
+
+          if (!canCommit()) return;
+          if (profileResult.error) {
+            console.log("Client profile fetch error:", profileResult.error);
+          } else {
+            profiles = (profileResult.data || []) as ProfessionalClientProfile[];
+          }
+
+        }
+
+        if (canCommit()) {
+          setClients(
+            buildProfessionalClientSummaries(requests, profiles, cards, new Date(), manualServices)
+          );
+          setErrorMessage("");
+        }
+      }, {
+        isCurrent: canCommit,
+        onError: (error) => {
+          console.error("Clients load failed:", error);
+          setErrorMessage("Clients couldn’t be loaded. Please try again.");
+        },
+        onSettled: () => setLoading(false),
+      });
     };
 
-    void loadClients();
+    void loadClients(true);
     const handleFocus = () => void loadClients();
     const handleVisibility = () => {
       if (document.visibilityState === "visible") void loadClients();
@@ -137,7 +149,7 @@ export default function DashboardClientsPage() {
       window.removeEventListener("focus", handleFocus);
       document.removeEventListener("visibilitychange", handleVisibility);
     };
-  }, [router]);
+  }, [router, loadAttempt]);
 
   const activeCount = useMemo(
     () => clients.filter((client) => !client.archivedAt).length,
@@ -303,9 +315,7 @@ export default function DashboardClientsPage() {
               Loading clients...
             </div>
           ) : errorMessage ? (
-            <div className="rounded-[22px] border border-lumina-border p-6 text-[14px] text-lumina-text-muted">
-              {errorMessage}
-            </div>
+            <WorkspaceLoadError message={errorMessage} onRetry={() => setLoadAttempt((current) => current + 1)} />
           ) : clients.length === 0 ? (
             <div className="rounded-[22px] border border-lumina-border bg-lumina-surface p-6">
               <h2 className="text-[16px] font-medium text-lumina-text">No clients yet</h2>

@@ -2,6 +2,9 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import WorkspaceLoadError from "@/components/WorkspaceLoadError";
+import { loadWorkspaceUser, runWorkspaceLoad } from "@/lib/workspace-load-recovery";
+
 import { useParams, useRouter } from "next/navigation";
 import {
   ArrowLeft,
@@ -217,6 +220,7 @@ export default function ClientCardPage() {
     useState<ClientCardWorkspacePreferences>(() => parseClientCardWorkspacePreferences(null));
   const [loadedAt, setLoadedAt] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadAttempt, setLoadAttempt] = useState(0);
   const [savingPreferences, setSavingPreferences] = useState(false);
   const [editingPreferences, setEditingPreferences] = useState(false);
   const [savingTags, setSavingTags] = useState(false);
@@ -246,7 +250,8 @@ export default function ClientCardPage() {
       setLoading(true);
       setUnavailable(false);
       setErrorMessage("");
-      const { data: { user } } = await supabase.auth.getUser();
+      const user = await loadWorkspaceUser(() => supabase.auth.getUser());
+      if (cancelled) return;
       if (!user) {
         router.replace("/login");
         return;
@@ -261,12 +266,10 @@ export default function ClientCardPage() {
       if (cancelled) return;
       if (cardError) {
         setErrorMessage("We couldn't load this client record. Please try again.");
-        setLoading(false);
         return;
       }
       if (!cardData) {
         setUnavailable(true);
-        setLoading(false);
         return;
       }
 
@@ -283,7 +286,6 @@ export default function ClientCardPage() {
       if (cancelled) return;
       if (requestResponse.error) {
         setErrorMessage("We couldn't load this client record. Please try again.");
-        setLoading(false);
         return;
       }
 
@@ -311,7 +313,6 @@ export default function ClientCardPage() {
       if (noteError || manualServiceResponse.error) {
         console.error("Client Notes preview load failed:", noteError);
         setErrorMessage("We couldn't load the private client notes. Please try again.");
-        setLoading(false);
         return;
       }
 
@@ -352,11 +353,17 @@ export default function ClientCardPage() {
         setPortfolioChoices([]);
       }
       setConsultationUrls(Object.fromEntries(signedUrlEntries));
-      setLoading(false);
     };
-    if (clientId) void loadClientCard();
+    if (clientId) void runWorkspaceLoad(loadClientCard, {
+      isCurrent: () => !cancelled,
+      onError: (error) => {
+        console.error("Card load failed:", error);
+        setErrorMessage("This client record couldn’t be loaded. Please try again.");
+      },
+      onSettled: () => setLoading(false),
+    });
     return () => { cancelled = true; };
-  }, [clientId, router]);
+  }, [clientId, router, loadAttempt]);
 
   useEffect(() => {
     if (!card?.client_id) return;
@@ -832,7 +839,7 @@ export default function ClientCardPage() {
       <div className="bg-lumina-surface text-lumina-text"><section className="mx-auto max-w-[1280px] px-5 py-10 md:px-10 md:py-14"><BackToClients /><div className="mt-8 max-w-[620px] rounded-[24px] border border-lumina-border p-7"><h1 className="text-[32px] font-semibold leading-tight font-serif">Client record unavailable</h1><p className="mt-3 text-[15px] leading-[1.65] text-lumina-text-muted">This record does not exist or is not connected to your professional account.</p></div></section></div>
     );
   }
-  if (errorMessage) return <PageMessage message={errorMessage} showBack />;
+  if (errorMessage) return <PageMessage message={errorMessage} showBack onRetry={() => setLoadAttempt((current) => current + 1)} />;
 
   const relevantRequest = nextAppointment || requests[0] || null;
   const requestWorkspaceHref = relevantRequest
@@ -1107,8 +1114,8 @@ function MobilePreviewBlock({ title, value, empty, actionLabel, onOpen }: { titl
   );
 }
 
-function PageMessage({ message, showBack = false }: { message: string; showBack?: boolean }) {
-  return <div className="bg-lumina-surface text-lumina-text"><section className="mx-auto max-w-[1280px] px-5 py-10 md:px-10 md:py-14">{showBack && <BackToClients />}<div className={`${showBack ? "mt-8" : ""} rounded-[22px] bg-lumina-surface-soft p-6 text-[14px] text-lumina-text-muted`}>{message}</div></section></div>;
+function PageMessage({ message, showBack = false, onRetry }: { message: string; showBack?: boolean; onRetry?: () => void }) {
+  return <div className="bg-lumina-surface text-lumina-text"><section className="mx-auto max-w-[1280px] px-5 py-10 md:px-10 md:py-14">{showBack && <BackToClients />}<div className={`${showBack ? "mt-8" : ""} ${onRetry ? "" : "rounded-[22px] bg-lumina-surface-soft p-6 text-[14px] text-lumina-text-muted"}`}>{onRetry ? <WorkspaceLoadError message={message} onRetry={onRetry} /> : message}</div></section></div>;
 }
 
 function HistoryField({ label, children, mobile = false }: { label: string; children: React.ReactNode; mobile?: boolean }) {
