@@ -27,8 +27,8 @@ test("desktop presentation receives existing dashboard data and activation handl
   ]) {
     assert.ok(dashboard.includes(prop), `missing ${prop}`);
   }
-  assert.match(desktopHome, /hidden max-w-\[1240px\] lg:block/);
-  assert.match(desktopHome, /xl:grid-cols-/);
+  assert.match(desktopHome, /className=\{styles.page\}/);
+  assert.doesNotMatch(desktopHome, /hidden max-w-/);
 });
 
 test("attention uses shell-owned counts and hides the entire section at zero", () => {
@@ -36,9 +36,9 @@ test("attention uses shell-owned counts and hides the entire section at zero", (
   assert.match(shell, /messageUnreadCount,/);
   assert.match(desktopHome, /useProfessionalWorkspace\(\)/);
   assert.match(desktopHome, /requestActionCount > 0 \|\| messageUnreadCount > 0/);
-  assert.match(desktopHome, /\{hasAttention && \(/);
-  assert.match(desktopHome, /\{requestActionCount > 0 && \(/);
-  assert.match(desktopHome, /\{messageUnreadCount > 0 && \(/);
+  assert.match(desktopHome, /\{hasAttention &&/);
+  assert.match(desktopHome, /\{requestActionCount > 0 &&/);
+  assert.match(desktopHome, /\{messageUnreadCount > 0 &&/);
   assert.match(desktopHome, /requestIssueCount > 0/);
   assert.doesNotMatch(desktopHome, /supabase|useWorkspaceActionCounts|useWorkspaceMessageUnreadCount|\.channel\(/);
 });
@@ -62,8 +62,8 @@ test("business links, media actions, snapshot, and short service preview retain 
   assert.match(desktopHome, /href="\/dashboard\/profile"/);
   assert.match(desktopHome, /portfolioCount/);
   assert.match(desktopHome, /artist\.availability/);
-  assert.match(desktopHome, /services\.slice\(0, 3\)/);
-  assert.match(desktopHome, /Manage services/);
+  assert.match(desktopHome, /services.length/);
+  assert.match(desktopHome, /Manage your business/);
   assert.match(desktopHome, /Professional workspace/);
-  assert.match(desktopHome, /View my profile/);
+  assert.match(desktopHome, /View profile/);
 });

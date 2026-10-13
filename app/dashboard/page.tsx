@@ -4,15 +4,11 @@ import { useProfessionalReadiness } from "@/components/ProfessionalReadinessProv
 import ReminderNotificationNotice from "@/components/ReminderNotificationNotice";
 import ProfessionalToday from "@/components/ProfessionalToday";
 import { PROFESSIONAL_REMINDERS_ENABLED } from "@/lib/professional-reminders-config";
-import ProfessionalActivationPanel from "@/components/ProfessionalActivationPanel";
 import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import ProfessionalDashboardDesktopHome from "@/components/ProfessionalDashboardDesktopHome";
 import ProfessionalProfileMediaEditor from "@/components/ProfessionalProfileMediaEditor";
-import {
-  ProfessionalDashboardMobileSummary,
-  ProfessionalDashboardMobileWorkspace,
-} from "@/components/ProfessionalDashboardMobileHome";
+
 import {
   getProfessionalActivationLabel,
   getProfessionalProfilePanelDismissalKey,
@@ -174,24 +170,7 @@ const dashboardProfileStatus = activationStatus ? getProfessionalActivationLabel
 
   return (
     <div className="bg-lumina-surface text-lumina-text">
-      <section className="px-3 py-6 md:px-8 md:py-10 lg:px-10">
-        {artist && (
-          <ProfessionalDashboardMobileSummary
-            profileStatus={dashboardProfileStatus}
-            profileIsActive={panelMode === "active"}
-            onEditAvatar={() => setMediaEditorMode("avatar")}
-          />
-        )}
-
-        {activationStatus && activationStatusLoaded && showProfilePanel && <div className="lg:hidden"><ProfessionalActivationPanel presentation="dashboard" status={activationStatus} onActivate={() => void activateProfile()} saving={activatingProfile} /></div>}
-
-        {artist && (
-          <ProfessionalDashboardMobileWorkspace
-            serviceCount={services.length}
-            portfolioEntryCount={portfolioCount}
-          />
-        )}
-
+      <section className="px-5 py-6 md:px-8 md:py-10 lg:px-10">
         {artist && (
           <ProfessionalDashboardDesktopHome
             artist={artist}

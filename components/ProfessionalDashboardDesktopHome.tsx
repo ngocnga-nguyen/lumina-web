@@ -1,26 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import {
-  ArrowUpRight,
-  CheckCircle2,
-  ChevronRight,
-  Inbox,
-  MessageCircle,
-  Pencil,
-  X,
-} from "lucide-react";
+import { Inbox, MessageCircle, Pencil, X } from "lucide-react";
 import ProfessionalActivationPanel from "@/components/ProfessionalActivationPanel";
 import IdentityAvatar from "@/components/IdentityAvatar";
-import WorkspaceNavigationIndicator, {
-  getWorkspaceIndicatorLabel,
-} from "@/components/WorkspaceNavigationIndicator";
+import { getWorkspaceIndicatorLabel } from "@/components/WorkspaceNavigationIndicator";
 import { useProfessionalWorkspace } from "@/components/ProfessionalWorkspaceContext";
-import {
-  type ProfessionalActivationStatus,
-  type ProfessionalProfilePanelMode,
-} from "@/lib/professional-activation";
+import { type ProfessionalActivationStatus, type ProfessionalProfilePanelMode } from "@/lib/professional-activation";
 import { getProfessionalWorkspaceNavigation } from "@/lib/workspace-navigation";
+import styles from "./ProfessionalDashboardHome.module.css";
 
 type Artist = {
   id: string;
@@ -55,187 +43,38 @@ type Props = {
 
 const businessShortcutOrder = ["clients", "services", "portfolio", "reviews"] as const;
 
-export default function ProfessionalDashboardDesktopHome({
-  artist,
-  services,
-  portfolioCount,
-  activationStatus,
-  panelMode,
-  showProfilePanel,
-  profileStatus,
-  activatingProfile,
-  onActivateProfile,
-  onDismissActivePanel,
-  onEditAvatar,
-  onEditCover,
-}: Props) {
-  const { requestActionCount, requestIssueCount, messageUnreadCount } =
-    useProfessionalWorkspace();
+// Shared responsive presentation. Data and activation authority remain in the existing route/shell.
+export default function ProfessionalDashboardDesktopHome({ artist, services, portfolioCount, activationStatus, panelMode, showProfilePanel, profileStatus, activatingProfile, onActivateProfile, onDismissActivePanel, onEditAvatar, onEditCover }: Props) {
+  const { requestActionCount, requestIssueCount, messageUnreadCount } = useProfessionalWorkspace();
   const navigation = getProfessionalWorkspaceNavigation(artist.id);
-  const businessShortcuts = businessShortcutOrder
-    .map((id) => navigation.find((item) => item.id === id))
-    .filter((item): item is NonNullable<typeof item> => Boolean(item));
-  const settingsItem = navigation.find((item) => item.id === "settings");
+  const businessShortcuts = businessShortcutOrder.map(id => navigation.find(item => item.id === id)).filter((item): item is NonNullable<typeof item> => Boolean(item));
+  const settingsItem = navigation.find(item => item.id === "settings");
   const hasAttention = requestActionCount > 0 || messageUnreadCount > 0;
-
-  return (
-    <div className="mx-auto hidden max-w-[1240px] lg:block">
-      <header className="flex flex-col gap-5 border-b border-lumina-border/70 pb-6 xl:flex-row xl:items-center xl:justify-between">
-        <div className="flex min-w-0 items-start gap-4">
-          <button
-            type="button"
-            onClick={onEditAvatar}
-            aria-label="Change profile photo"
-            className="group relative h-[76px] w-[76px] shrink-0 rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lumina-black focus-visible:ring-offset-2"
-          >
-            <IdentityAvatar
-              name={artist.name}
-              imageUrl={artist.profile_image_url}
-              className="block h-full w-full rounded-full bg-lumina-pearl"
-              fallbackClassName="font-serif text-[25px] text-lumina-text"
-            />
-            <span className="absolute -bottom-0.5 -right-0.5 flex h-7 w-7 items-center justify-center rounded-full border border-lumina-border bg-lumina-surface text-lumina-text shadow-[0_2px_8px_rgba(17,17,17,0.07)] transition group-hover:bg-lumina-surface-soft">
-              <Pencil size={13} strokeWidth={1.7} aria-hidden="true" />
-            </span>
-          </button>
-          <div className="min-w-0">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-lumina-text-muted">
-              Professional workspace
-            </p>
-            <h1 className="mt-1 font-serif text-[30px] font-semibold leading-[1.1] text-lumina-text xl:text-[34px]">
-              {artist.name}
-            </h1>
-            <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1.5 text-[13px] text-lumina-text-muted">
-              <span>{artist.category || "Lumina professional"}</span>
-              {profileStatus && (
-                <span className="inline-flex items-center gap-1.5 font-medium text-lumina-text">
-                  {panelMode === "active" ? (
-                    <CheckCircle2 size={14} strokeWidth={1.7} className="text-lumina-success" aria-hidden="true" />
-                  ) : (
-                    <span className="h-1.5 w-1.5 rounded-full bg-lumina-text-muted" aria-hidden="true" />
-                  )}
-                  {profileStatus}
-                </span>
-              )}
-            </div>
-            {panelMode === "active" && showProfilePanel && (
-              <div className="mt-2 flex items-center gap-3 text-[12px] text-lumina-text-muted">
-                <span>Clients can discover your profile across Lumina.</span>
-                <button
-                  type="button"
-                  onClick={onDismissActivePanel}
-                  aria-label="Dismiss profile completion note"
-                  className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full transition hover:bg-lumina-surface-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lumina-black"
-                >
-                  <X size={14} strokeWidth={1.7} aria-hidden="true" />
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
-        <div className="flex shrink-0 flex-wrap items-center gap-x-3 gap-y-2 xl:justify-end">
-          <Link
-            href={`/artist/${artist.id}`}
-            className="inline-flex min-h-10 items-center gap-1.5 rounded-full bg-lumina-black px-5 text-[12px] font-medium text-white transition hover:opacity-85 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lumina-black focus-visible:ring-offset-2"
-          >
-            View my profile <ArrowUpRight size={14} strokeWidth={1.7} aria-hidden="true" />
-          </Link>
-          <Link
-            href="/dashboard/profile"
-            className="inline-flex min-h-10 items-center rounded-full border border-lumina-border px-4 text-[12px] font-medium transition hover:bg-lumina-surface-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lumina-black focus-visible:ring-offset-2"
-          >
-            Edit profile
-          </Link>
-          <button
-            type="button"
-            onClick={onEditCover}
-            className="inline-flex min-h-10 items-center gap-1.5 px-2 text-[12px] text-lumina-text-muted underline decoration-lumina-border underline-offset-4 transition hover:text-lumina-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lumina-black focus-visible:ring-offset-2"
-          >
-            <Pencil size={12} strokeWidth={1.7} aria-hidden="true" /> Edit cover
-          </button>
-        </div>
-      </header>
-
-      {showProfilePanel && activationStatus && <ProfessionalActivationPanel presentation="dashboard" status={activationStatus} onActivate={onActivateProfile} saving={activatingProfile} />}
-
-      <div className="mt-7 grid gap-7 xl:grid-cols-[minmax(0,1.2fr)_minmax(300px,0.8fr)] xl:items-start">
-        <div className="min-w-0 space-y-7">
-          {hasAttention && (
-            <section aria-label="Needs your attention">
-              <h2 className="font-serif text-[23px] leading-tight">Needs your attention</h2>
-              <div className="mt-3 divide-y divide-lumina-border/60 border-y border-lumina-border/70">
-                {requestActionCount > 0 && (
-                  <Link href="/dashboard/requests" aria-label={getWorkspaceIndicatorLabel(requestActionCount, "request action", requestIssueCount)} className="group flex min-h-[58px] items-center gap-3 py-3 transition hover:bg-lumina-surface-soft/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-lumina-black">
-                    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-lumina-pearl"><Inbox size={16} strokeWidth={1.7} aria-hidden="true" /></span>
-                    <span className="min-w-0 flex-1 text-[13px] font-medium">{requestActionCount === 1 ? "1 client request waiting" : `${requestActionCount} client requests waiting`}</span>
-                    <WorkspaceNavigationIndicator count={requestActionCount} hasIssue={requestIssueCount > 0} />
-                    <ChevronRight size={16} className="text-lumina-text-muted" aria-hidden="true" />
-                  </Link>
-                )}
-                {messageUnreadCount > 0 && (
-                  <Link href="/dashboard/messages" aria-label={getWorkspaceIndicatorLabel(messageUnreadCount, "unread message")} className="group flex min-h-[58px] items-center gap-3 py-3 transition hover:bg-lumina-surface-soft/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-lumina-black">
-                    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-lumina-blush/65"><MessageCircle size={16} strokeWidth={1.7} aria-hidden="true" /></span>
-                    <span className="min-w-0 flex-1 text-[13px] font-medium">{messageUnreadCount === 1 ? "1 unread message" : `${messageUnreadCount} unread messages`}</span>
-                    <WorkspaceNavigationIndicator count={messageUnreadCount} />
-                    <ChevronRight size={16} className="text-lumina-text-muted" aria-hidden="true" />
-                  </Link>
-                )}
-              </div>
-            </section>
-          )}
-
-          <section aria-label="Manage your business">
-            <h2 className="font-serif text-[23px] leading-tight">Manage your business</h2>
-            <div className="mt-3 grid grid-cols-2 gap-x-6 border-t border-lumina-border/70">
-              {businessShortcuts.map((item) => {
-                const Icon = item.icon;
-                return (
-                  <Link key={item.id} href={item.href} className="group flex min-h-[55px] items-center gap-2.5 border-b border-lumina-border/60 px-1 py-2 text-[13px] transition hover:bg-lumina-surface-soft/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-lumina-black">
-                    <Icon size={17} strokeWidth={1.65} className="shrink-0 text-lumina-text-muted" aria-hidden="true" />
-                    <span className="min-w-0 flex-1">{item.label}</span>
-                    <ChevronRight size={14} strokeWidth={1.7} className="shrink-0 text-lumina-text-muted/70" aria-hidden="true" />
-                  </Link>
-                );
-              })}
-            </div>
-            {settingsItem && (
-              <Link href={settingsItem.href} className="mt-2 inline-flex min-h-10 items-center gap-2 px-1 text-[12px] text-lumina-text-muted transition hover:text-lumina-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lumina-black focus-visible:ring-offset-2">
-                <settingsItem.icon size={15} strokeWidth={1.65} aria-hidden="true" /> Settings <ChevronRight size={13} aria-hidden="true" />
-              </Link>
-            )}
-          </section>
-        </div>
-
-        <aside className="min-w-0 rounded-[18px] border border-lumina-border/70 bg-lumina-surface-soft/45 px-5 py-5" aria-label="Business snapshot">
-          <h2 className="text-[11px] font-semibold uppercase tracking-[0.14em] text-lumina-text-muted">Business snapshot</h2>
-          <div className="mt-4 grid grid-cols-2 gap-4 border-b border-lumina-border/60 pb-4">
-            <p><span className="block font-serif text-[25px] leading-none">{services.length}</span><span className="mt-1.5 block text-[12px] text-lumina-text-muted">{services.length === 1 ? "service" : "services"}</span></p>
-            <p><span className="block font-serif text-[25px] leading-none">{portfolioCount}</span><span className="mt-1.5 block text-[12px] text-lumina-text-muted">portfolio / result{portfolioCount === 1 ? "" : "s"}</span></p>
-          </div>
-          <p className="mt-4 text-[11px] font-semibold uppercase tracking-[0.12em] text-lumina-text-muted">Availability</p>
-          <p className="mt-1 line-clamp-2 whitespace-pre-line text-[13px] leading-relaxed">{artist.availability || "Availability coming soon."}</p>
-          <Link href="/dashboard/profile" className="mt-3 inline-flex min-h-9 items-center text-[12px] text-lumina-text-muted underline decoration-lumina-border underline-offset-4 transition hover:text-lumina-text">Edit availability</Link>
-        </aside>
+  return <div className={styles.page}>
+    <header className={styles.identity}>
+      <button type="button" onClick={onEditAvatar} aria-label="Change profile photo" className={styles.avatarButton}>
+        <IdentityAvatar name={artist.name} imageUrl={artist.profile_image_url} className={styles.avatar} fallbackClassName={styles.monogram} />
+        <span className={styles.editPhoto}><Pencil size={12} strokeWidth={1.5} aria-hidden="true" /></span>
+      </button>
+      <div className={styles.identityText}><p className={styles.eyebrow}>My beauty business</p><h1>{artist.name}</h1><div className={styles.meta}><span>{artist.category || "Lumina professional"}</span>{profileStatus && <span className={panelMode === "active" ? styles.live : styles.status}>{profileStatus}</span>}</div>
+        {panelMode === "active" && showProfilePanel && <div className={styles.completion}><span>Clients can discover your profile across Lumina.</span><button type="button" onClick={onDismissActivePanel} aria-label="Dismiss profile completion note"><X size={14} aria-hidden="true" /></button></div>}
       </div>
-
-      <section className="mt-9 border-t border-lumina-border/70 pt-6" aria-label="Services preview">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div><p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-lumina-text-muted">At a glance</p><h2 className="mt-1 font-serif text-[23px] leading-tight">Services</h2></div>
-          <Link href="/dashboard/services" className="inline-flex min-h-10 items-center gap-1.5 rounded-full border border-lumina-border px-4 text-[12px] font-medium transition hover:bg-lumina-surface-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lumina-black focus-visible:ring-offset-2">Manage services <ChevronRight size={14} aria-hidden="true" /></Link>
-        </div>
-        {services.length === 0 ? (
-          <p className="mt-3 text-[13px] text-lumina-text-muted">No services yet. Add your first service so clients can see what you offer.</p>
-        ) : (
-          <div className="mt-3 divide-y divide-lumina-border/60 border-y border-lumina-border/70">
-            {services.slice(0, 3).map((service) => (
-              <div key={service.id} className="grid min-h-[62px] grid-cols-[minmax(0,1fr)_auto] items-center gap-3 py-3">
-                <div className="min-w-0"><p className="truncate text-[13px] font-medium">{service.service_name}</p>{service.description && <p className="mt-0.5 line-clamp-1 text-[12px] text-lumina-text-muted">{service.description}</p>}</div>
-                <div className="text-right text-[12px]"><p>{service.price != null ? `From $${service.price}` : "Price on request"}</p>{service.duration && <p className="mt-0.5 text-lumina-text-muted">{service.duration}</p>}</div>
-              </div>
-            ))}
-          </div>
-        )}
-      </section>
+      <div className={styles.profileActions}><Link href={`/artist/${artist.id}`} className={styles.primary}>View profile</Link><Link href="/dashboard/profile" className={styles.secondary}>Edit</Link><button type="button" onClick={onEditCover} className={styles.textAction}>Edit cover</button></div>
+    </header>
+    {showProfilePanel && activationStatus && <ProfessionalActivationPanel presentation="dashboard" status={activationStatus} onActivate={onActivateProfile} saving={activatingProfile} />}
+    <section className={styles.operating} aria-label="Professional workspace overview">
+      <div className={styles.operatingHead}><div><p className={styles.eyebrow}>Professional workspace</p><h2>Your business.</h2></div><div className={styles.summary}><Link href="/dashboard/requests"><strong>{requestActionCount}</strong><span>{requestActionCount === 1 ? "request to review" : "requests to review"}</span></Link><Link href="/dashboard/messages"><strong>{messageUnreadCount}</strong><span>unread {messageUnreadCount === 1 ? "message" : "messages"}</span></Link></div></div>
+      {/* The Reminder/Today task feed remains mounted only behind the existing route flag.
+          No reminder counts, pending-schema queries or synthetic schedule enter this presentation. */}
+      {hasAttention && <section className={styles.attention} aria-label="Needs attention">
+        <h2>Needs attention</h2>
+        {requestActionCount > 0 && <Link href="/dashboard/requests" aria-label={getWorkspaceIndicatorLabel(requestActionCount, "request action", requestIssueCount)} className={styles.attentionRow}><Inbox size={15} strokeWidth={1.5} aria-hidden="true" /><span><small>{requestIssueCount > 0 ? "Action required" : "Request"}</small><strong>{requestActionCount} client {requestActionCount === 1 ? "request" : "requests"} waiting</strong></span><span className={styles.rowAction}>Review</span></Link>}
+        {messageUnreadCount > 0 && <Link href="/dashboard/messages" aria-label={getWorkspaceIndicatorLabel(messageUnreadCount, "unread message")} className={styles.attentionRow}><MessageCircle size={15} strokeWidth={1.5} aria-hidden="true" /><span><small>Unread message</small><strong>{messageUnreadCount} client {messageUnreadCount === 1 ? "conversation" : "conversations"}</strong></span><span className={styles.rowAction}>Reply</span></Link>}
+      </section>}
+    </section>
+    <div className={styles.businessGrid}>
+      <section aria-label="Manage your business"><h2>Manage your business</h2><div className={styles.manageLinks}>{businessShortcuts.map(item => { const Icon = item.icon; return <Link key={item.id} href={item.href}><Icon size={16} strokeWidth={1.5} aria-hidden="true" /><span>{item.label}</span></Link>; })}{settingsItem && <Link href={settingsItem.href} className={styles.settings}><settingsItem.icon size={16} strokeWidth={1.5} aria-hidden="true" /><span>Business settings</span></Link>}</div></section>
+      <aside className={styles.snapshot} aria-label="Business snapshot"><h2>Business snapshot</h2><dl><div><dt>Services</dt><dd>{services.length}</dd></div><div><dt>Portfolio {portfolioCount === 1 ? "result" : "results"}</dt><dd>{portfolioCount}</dd></div></dl><div className={styles.availability}><p className={styles.eyebrow}>Availability</p><p>{artist.availability || "Availability coming soon."}</p><Link href="/dashboard/profile" className={styles.textAction}>Edit availability</Link></div></aside>
     </div>
-  );
+  </div>;
 }
