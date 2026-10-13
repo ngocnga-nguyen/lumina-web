@@ -86,6 +86,9 @@ function fixture(path = clientsPath) {
     } }).outputText;
     new Function("require", "exports", "window", "document", "console", compiled)((id: string) => {
       if (id === "react") return react;
+      if (id.endsWith(".module.css")) return { default: {} };
+      // Settings now delegates its recovery surface to this pure presentation component.
+      if (id === "@/components/ProfessionalSettingsOverview") return load("components/ProfessionalSettingsOverview.tsx");
       if (id === "next/navigation") return { useRouter: () => router, useParams: () => ({ clientId }) };
       if (id === "next/link") return { default: (props: any) => createElement("a", { href: props.href }, props.children) };
       if (id === "@/lib/supabase") return { supabase };

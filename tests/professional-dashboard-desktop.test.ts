@@ -43,10 +43,13 @@ test("attention uses shell-owned counts and hides the entire section at zero", (
   assert.doesNotMatch(desktopHome, /supabase|useWorkspaceActionCounts|useWorkspaceMessageUnreadCount|\.channel\(/);
 });
 
-test("activation guidance is conditional and active dismissal stays in the identity header", () => {
-  assert.match(desktopHome, /showProfilePanel && activationStatus && <ProfessionalActivationPanel/);
-  assert.match(desktopHome, /panelMode === "active" && showProfilePanel/);
-  assert.match(desktopHome, /onClick={onDismissActivePanel}/);
+test("activation guidance stays conditional with one compact active-profile banner", () => {
+  assert.match(desktopHome, /showProfilePanel && activationStatus && !activationStatus\.is_active/);
+  assert.match(desktopHome, /<ProfessionalActivationPanel presentation="dashboard"/);
+  assert.match(desktopHome, /getProfessionalProfileVisibility\(activationStatus\.is_active\)/);
+  assert.match(desktopHome, /visibility\.title/);
+  assert.match(desktopHome, /visibility\.description/);
+  assert.doesNotMatch(desktopHome, /Clients can discover your profile across Lumina|Dismiss profile completion note/);
   assert.match(desktopHome, /onActivate={onActivateProfile}/);
   assert.doesNotMatch(desktopHome, /View public profile[\s\S]*View public profile/);
 });

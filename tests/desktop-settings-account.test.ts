@@ -57,14 +57,16 @@ test("desktop profile separates immediate media saves from ordinary profile edit
   assert.match(desktop, /onClick={saveProfile}/);
   assert.doesNotMatch(desktop, /Remove photo/);
 });
-test("desktop settings keeps protected visibility and deliberate existing license editor", () => {
+test("desktop settings retains protected visibility and deliberate license editing", () => {
   const source = read("app/dashboard/settings/page.tsx");
-  const desktop = source.slice(source.indexOf('      <section className="mx-auto hidden'));
-  assert.ok(desktop.indexOf("Public profile visibility") < desktop.indexOf("Account &amp; security"));
-  assert.ok(desktop.includes('<details key={verification?.submitted_at'));
-  assert.match(desktop, /License details are separate from your public professional name/);
-  assert.match(desktop, /submitLicenseVerification()/);
-  assert.ok(desktop.includes('!isVisible && !activationStatus?.activation_ready'));
+  const overview = read("components/ProfessionalSettingsOverview.tsx");
+  assert.match(source, /onToggleVisibility=\{\(\) => void updateVisibility\(\)\}/);
+  assert.match(source, /onEditEmailDesktop=\{\(\) => setShowEmailChange\(true\)\}/);
+  assert.match(source, /onPasswordDesktop=\{\(\) => void sendPasswordReset\(\)\}/);
+  assert.ok(overview.includes('<details key={verification?.submitted_at'));
+  assert.match(source, /License details are separate from your public professional name/);
+  assert.match(source, /submitLicenseVerification\(\)/);
+  assert.match(overview, /!isVisible && !activationReady/);
 });
 test("client desktop retains focused profile, security and quieter existing shortcuts", () => {
   const source = read("app/account/page.tsx");
@@ -76,16 +78,15 @@ test("client desktop retains focused profile, security and quieter existing shor
   assert.match(desktop, /saveProfile()/);
   assert.doesNotMatch(desktop, /Notifications|Subscription|Delete account/);
 });
-test("desktop license badge stays grouped with its heading without spreading to the far edge", () => {
-  const source = read("app/dashboard/settings/page.tsx");
-  const license = source.slice(source.indexOf('id="license-verification-desktop"'), source.indexOf('<details key={verification?.submitted_at'));
-  assert.match(license, /flex flex-wrap items-center gap-x-3 gap-y-2/);
-  assert.doesNotMatch(license, /justify-between/);
-  assert.match(license, /shrink-0 whitespace-nowrap rounded-full border px-2 py-1 text-\[10px\]/);
-  assert.match(license, /border-lumina-success\/25 bg-lumina-success-soft text-lumina-success/);
-  assert.match(license, /max-w-\[400px\]/);
-  assert.match(source, /grid items-start gap-x-10 xl:grid-cols-2/);
-  assert.match(source, /Edit license information/);
+test("license status stays with its label in the compact responsive row", () => {
+  const overview = read("components/ProfessionalSettingsOverview.tsx");
+  const css = read("components/ProfessionalSettingsOverview.module.css");
+  assert.match(overview, /Professional license<\/span>\{licenseStatus\}/);
+  assert.match(overview, /verification\?\.status === "verified"/);
+  assert.match(css, /\.labelLine\{[^}]*flex-wrap:wrap/);
+  assert.match(css, /\.verified\{background:var\(--lumina-success-soft\)/);
+  assert.match(overview, /Edit license information/);
+  assert.match(overview, /About license verification/);
 });
 test("temporary preview routes are absent", () => {
   for (const path of ["app/dashboard/local-preview/profile-baseline/page.tsx", "app/dashboard/local-preview/settings-baseline/page.tsx", "app/local-preview/account-baseline/page.tsx"]) assert.equal(existsSync(new URL("../" + path, import.meta.url)), false);

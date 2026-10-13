@@ -41,7 +41,10 @@ test("professional settings keeps license, visibility, and account flows authori
   assert.match(professionalSettings, /onboardingMode \? "Submit and continue"/);
   assert.match(professionalSettings, /signOut\(\{ scope: "others" \}\)/);
   assert.match(professionalSettings, /signOut\(\{ scope: "local" \}\)/);
-  assert.match(professionalSettings, /hidden max-w-\[1040px\][\s\S]*lg:block/);
+  assert.match(professionalSettings, /ProfessionalSettingsOverview/);
+  assert.match(professionalSettings, /onEditEmailMobile=\{\(\) => setMobileSheet\("email"\)\}/);
+  assert.match(professionalSettings, /onPasswordMobile=\{\(\) => setMobileSheet\("password"\)\}/);
+  assert.match(professionalSettings, /onEditLicenseMobile=\{\(\) => setMobileSheet\("verification"\)\}/);
 });
 
 test("recovery accepts only an allowlisted professional marker and preserves client default", () => {

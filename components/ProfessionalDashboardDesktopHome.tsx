@@ -1,13 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { Inbox, MessageCircle, Pencil, X } from "lucide-react";
+import { ArrowUpRight, EyeOff, Inbox, MessageCircle, Pencil } from "lucide-react";
 import ProfessionalActivationPanel from "@/components/ProfessionalActivationPanel";
 import IdentityAvatar from "@/components/IdentityAvatar";
 import { getWorkspaceIndicatorLabel } from "@/components/WorkspaceNavigationIndicator";
 import { useProfessionalWorkspace } from "@/components/ProfessionalWorkspaceContext";
 import { type ProfessionalActivationStatus, type ProfessionalProfilePanelMode } from "@/lib/professional-activation";
 import { getProfessionalWorkspaceNavigation } from "@/lib/workspace-navigation";
+import { getProfessionalProfileVisibility } from "@/lib/professional-profile-visibility";
 import styles from "./ProfessionalDashboardHome.module.css";
 
 type Artist = {
@@ -44,11 +45,12 @@ type Props = {
 const businessShortcutOrder = ["clients", "services", "portfolio", "reviews"] as const;
 
 // Shared responsive presentation. Data and activation authority remain in the existing route/shell.
-export default function ProfessionalDashboardDesktopHome({ artist, services, portfolioCount, activationStatus, panelMode, showProfilePanel, profileStatus, activatingProfile, onActivateProfile, onDismissActivePanel, onEditAvatar, onEditCover }: Props) {
+export default function ProfessionalDashboardDesktopHome({ artist, services, portfolioCount, activationStatus, showProfilePanel, activatingProfile, onActivateProfile, onEditAvatar, onEditCover }: Props) {
   const { requestActionCount, requestIssueCount, messageUnreadCount } = useProfessionalWorkspace();
   const navigation = getProfessionalWorkspaceNavigation(artist.id);
   const businessShortcuts = businessShortcutOrder.map(id => navigation.find(item => item.id === id)).filter((item): item is NonNullable<typeof item> => Boolean(item));
   const settingsItem = navigation.find(item => item.id === "settings");
+  const visibility = activationStatus ? getProfessionalProfileVisibility(activationStatus.is_active) : null;
   const hasAttention = requestActionCount > 0 || messageUnreadCount > 0;
   return <div className={styles.page}>
     <header className={styles.identity}>
@@ -56,12 +58,15 @@ export default function ProfessionalDashboardDesktopHome({ artist, services, por
         <IdentityAvatar name={artist.name} imageUrl={artist.profile_image_url} className={styles.avatar} fallbackClassName={styles.monogram} />
         <span className={styles.editPhoto}><Pencil size={12} strokeWidth={1.5} aria-hidden="true" /></span>
       </button>
-      <div className={styles.identityText}><p className={styles.eyebrow}>My beauty business</p><h1>{artist.name}</h1><div className={styles.meta}><span>{artist.category || "Lumina professional"}</span>{profileStatus && <span className={panelMode === "active" ? styles.live : styles.status}>{profileStatus}</span>}</div>
-        {panelMode === "active" && showProfilePanel && <div className={styles.completion}><span>Clients can discover your profile across Lumina.</span><button type="button" onClick={onDismissActivePanel} aria-label="Dismiss profile completion note"><X size={14} aria-hidden="true" /></button></div>}
+      <div className={styles.identityText}><p className={styles.eyebrow}>Professional workspace</p><h1>{artist.name}</h1><div className={`${styles.meta} ${visibility ? styles.visibilityMeta : ""}`}><span>{artist.category || "Lumina professional"}</span>{visibility && <span className={visibility.isVisible ? styles.live : styles.status}>{visibility.isVisible ? <span className={styles.liveDot} aria-hidden="true" /> : <EyeOff size={13} strokeWidth={1.5} aria-hidden="true" />}{visibility.label}</span>}</div>
       </div>
-      <div className={styles.profileActions}><Link href={`/artist/${artist.id}`} className={styles.primary}>View profile</Link><Link href="/dashboard/profile" className={styles.secondary}>Edit</Link><button type="button" onClick={onEditCover} className={styles.textAction}>Edit cover</button></div>
+      <div className={styles.profileActions}><Link href={`/artist/${artist.id}`} className={styles.primary}>View profile <ArrowUpRight size={14} strokeWidth={1.7} aria-hidden="true" /></Link><Link href="/dashboard/profile" className={styles.secondary}>Edit</Link><button type="button" onClick={onEditCover} className={styles.textAction}><Pencil size={12} strokeWidth={1.7} aria-hidden="true" />Edit cover</button></div>
     </header>
-    {showProfilePanel && activationStatus && <ProfessionalActivationPanel presentation="dashboard" status={activationStatus} onActivate={onActivateProfile} saving={activatingProfile} />}
+    {visibility && <section className={`${styles.liveBanner} ${visibility.isVisible ? "" : styles.hiddenBanner}`} aria-label="Public profile visibility">
+      {visibility.isVisible ? <span className={styles.liveBannerDot} aria-hidden="true" /> : <span className={styles.visibilityIcon}><EyeOff size={16} strokeWidth={1.5} aria-hidden="true" /></span>}
+      <div className={styles.liveBannerCopy}><strong>{visibility.title}</strong><span>{visibility.description}</span></div>
+    </section>}
+    {showProfilePanel && activationStatus && !activationStatus.is_active && !activationStatus.activation_ready && <ProfessionalActivationPanel presentation="dashboard" status={activationStatus} onActivate={onActivateProfile} saving={activatingProfile} />}
     <section className={styles.operating} aria-label="Professional workspace overview">
       <div className={styles.operatingHead}><div><p className={styles.eyebrow}>Professional workspace</p><h2>Your business.</h2></div><div className={styles.summary}><Link href="/dashboard/requests"><strong>{requestActionCount}</strong><span>{requestActionCount === 1 ? "request to review" : "requests to review"}</span></Link><Link href="/dashboard/messages"><strong>{messageUnreadCount}</strong><span>unread {messageUnreadCount === 1 ? "message" : "messages"}</span></Link></div></div>
       {/* The Reminder/Today task feed remains mounted only behind the existing route flag.

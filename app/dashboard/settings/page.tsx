@@ -1,21 +1,15 @@
 "use client";
 
-import Link from "next/link";
-import WorkspaceLoadError from "@/components/WorkspaceLoadError";
 import { loadWorkspaceUser, runWorkspaceLoad } from "@/lib/workspace-load-recovery";
 
 import { useProfessionalReadiness } from "@/components/ProfessionalReadinessProvider";
-import ProfessionalActivationPanel from "@/components/ProfessionalActivationPanel";
 import { useEffect, useRef, useState } from "react";
 import { useProfessionalActionTarget } from "@/lib/use-professional-action-target";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import ProfessionalOnboardingContext from "@/components/ProfessionalOnboardingContext";
 import MobileManagementSheet from "@/components/MobileManagementSheet";
-import MobileSettingsRow from "@/components/MobileSettingsRow";
-import {
-  professionalVerificationStatusLabels,
-} from "@/lib/professional-license-verification";
+import ProfessionalSettingsOverview from "@/components/ProfessionalSettingsOverview";
 import {
   setProfessionalProfileVisibility,
 } from "@/lib/professional-activation-client";
@@ -292,142 +286,28 @@ export default function ArtistSettingsPage() {
 
   return (
     <div className="bg-lumina-surface text-lumina-text">
-      {!loading && !loadError && activationStatus && <div className="mx-auto max-w-[1040px] px-5 pt-1 lg:px-10"><ProfessionalActivationPanel status={activationStatus} onActivate={() => void updateVisibility()} saving={visibilityLoading} /></div>}
-      <section className="mx-auto max-w-2xl px-5 pb-10 pt-5 lg:hidden">
-        {onboardingMode && <ProfessionalOnboardingContext step="license" title="Submit license verification" />}
-        <p className="text-[11px] uppercase tracking-[0.16em] text-lumina-text-muted">Professional workspace</p>
-        <h1 className="mt-2 font-serif text-[31px] font-semibold leading-[1.05]">Settings</h1>
-        <p className="mt-2 text-[13px] text-lumina-text-muted">Account, verification, and privacy.</p>
-        {loading ? <p className="mt-7 rounded-[18px] bg-lumina-surface-soft p-4 text-[13px] text-lumina-text-muted">Loading settings…</p> : loadError ? <div className="mt-7"><WorkspaceLoadError message="Settings couldn’t be loaded. Please try again." onRetry={() => setLoadAttempt((current) => current + 1)} /></div> : <>
-          <section className="mt-7 rounded-[18px] bg-lumina-surface-soft/75 p-4" aria-label="Public profile visibility">
-            <div className="flex items-start justify-between gap-3"><div className="min-w-0"><p className="text-[14px] font-medium">Public profile</p><p className="mt-1 text-[12px] leading-relaxed text-lumina-text-muted">{isVisible ? "Visible to clients in browse, search, and map." : activationStatus?.activation_ready ? "Ready to become visible when you choose." : "Hidden until activation and license verification are complete."}</p></div>
-              <button type="button" onClick={() => void updateVisibility()} disabled={visibilityLoading || (!isVisible && !activationStatus?.activation_ready)} aria-label="Professional profile visibility" aria-pressed={isVisible} className={`relative h-7 w-12 shrink-0 rounded-full transition disabled:opacity-50 ${isVisible ? "bg-lumina-black" : "bg-lumina-pearl"}`}><span className={`absolute top-1 h-5 w-5 rounded-full bg-lumina-surface transition ${isVisible ? "left-6" : "left-1"}`} /></button>
-            </div>
-            {!isVisible && !activationStatus?.activation_ready && <Link href="/dashboard/onboarding" className="mt-3 inline-block text-[12px] underline decoration-lumina-border underline-offset-4">Continue profile setup</Link>}
-          </section>
-          <section className="mt-7" aria-label="Account and security"><h2 className="text-[11px] font-semibold uppercase tracking-[0.14em] text-lumina-text-muted">Account &amp; security</h2><div className="mt-2 border-t border-lumina-border/70">
-            <MobileSettingsRow title="Email" detail={email} onClick={() => setMobileSheet("email")} />
-            <MobileSettingsRow title="Password & security" detail="Get a secure reset link" onClick={() => setMobileSheet("password")} />
-            <MobileSettingsRow title="Other signed-in devices" detail="Keep this device signed in" onClick={() => void signOutOtherDevices()} disabled={signingOutOthers} />
-          </div></section>
-          <section id="license-verification-mobile" className="mt-7 scroll-mt-24" aria-label="Professional verification"><h2 className="text-[11px] font-semibold uppercase tracking-[0.14em] text-lumina-text-muted">Professional verification</h2><div className="mt-2 border-t border-lumina-border/70"><MobileSettingsRow title="License verification" detail={verification ? professionalVerificationStatusLabels[verification.status] : "Unverified"} onClick={() => setMobileSheet("verification")} /></div>
-            {verification?.status === "rejected" && verification.decision_message && <p className="mt-2 rounded-[14px] bg-lumina-attention-soft p-3 text-[12px] leading-relaxed text-lumina-text-muted">Needs correction: {verification.decision_message}</p>}
-          </section>
-          <Link href="/dashboard/profile" className="mt-7 inline-flex min-h-10 items-center text-[12px] text-lumina-text-muted underline decoration-lumina-border underline-offset-4">View and edit public profile</Link>
-          <button type="button" onClick={() => void signOut()} className="mt-5 min-h-11 w-full border-t border-lumina-border/70 pt-4 text-left text-[13px] text-lumina-text-muted">Sign out</button>
-        </>}
-      </section>
-
-      <MobileManagementSheet open={mobileSheet === "email"} title="Change email" busy={changingEmail} onClose={() => { setMobileSheet(null); setNewEmail(""); }}>
-        <label className="block text-[13px]">New email address<input type="email" value={newEmail} onChange={(event) => setNewEmail(event.target.value)} placeholder="name@example.com" className="mt-2 w-full rounded-[14px] border border-lumina-border px-4 py-3 text-[15px] outline-none focus:border-lumina-text-muted" /></label>
-        <p className="mt-2 text-[12px] text-lumina-text-muted">Your current email remains active until verification.</p>
-        <div className="mt-5 flex justify-end gap-2"><button type="button" onClick={() => { setMobileSheet(null); setNewEmail(""); }} className="min-h-11 rounded-full border border-lumina-border px-5 text-[13px]">Cancel</button><button type="button" onClick={() => void requestEmailChange()} disabled={changingEmail} className="min-h-11 rounded-full bg-lumina-black px-5 text-[13px] text-white disabled:opacity-50">{changingEmail ? "Sending…" : "Send verification"}</button></div>
-      </MobileManagementSheet>
-      <MobileManagementSheet open={mobileSheet === "password"} title="Password & security" onClose={() => setMobileSheet(null)}>
-        <p className="text-[13px] leading-relaxed text-lumina-text-muted">We’ll email a secure link to {email} to change your password.</p>
-        <button type="button" onClick={() => void sendPasswordReset()} disabled={sendingPasswordReset || !email} className="mt-5 min-h-11 w-full rounded-full bg-lumina-black px-5 text-[13px] text-white disabled:opacity-50">{sendingPasswordReset ? "Sending…" : "Send reset link"}</button>
-      </MobileManagementSheet>
-      <MobileManagementSheet open={mobileSheet === "verification"} title="License verification" busy={submittingVerification} onClose={closeVerificationEditor}>
-        <p className="text-[12px] leading-relaxed text-lumina-text-muted">Submit professional-license details for Lumina review. This does not verify identity, insurance, background, or service quality.</p>
-        {verification?.status === "rejected" && verification.decision_message && <p className="mt-3 rounded-[14px] bg-lumina-attention-soft p-3 text-[12px]">Needs correction: {verification.decision_message}</p>}
-        <div className="mt-4 space-y-3">
-          {([ ["legal_professional_name", "Legal / professional name"], ["license_number", "License number"], ["license_jurisdiction", "License jurisdiction / state"], ["license_type", "License type"], ["business_name", "Business name (optional)"] ] as const).map(([key, label]) => <label key={key} className="block text-[12px] text-lumina-text-muted">{label}<input data-professional-focus={key === "legal_professional_name" ? "license" : undefined} value={verificationForm[key]} maxLength={key === "license_number" || key === "license_jurisdiction" ? 100 : key === "license_type" ? 120 : 160} autoComplete={key === "license_number" ? "off" : undefined} onChange={(event) => setVerificationForm((current) => ({ ...current, [key]: event.target.value }))} className="mt-2 w-full rounded-[14px] border border-lumina-border bg-lumina-surface px-4 py-3 text-[14px] text-lumina-text outline-none focus:border-lumina-text-muted" /></label>)}
-        </div>
-        {verification?.submitted_at && <p className="mt-3 text-[11px] text-lumina-text-muted">Last submitted {new Date(verification.submitted_at).toLocaleString()}</p>}
-        <div className="mt-5 flex justify-end gap-2"><button type="button" onClick={closeVerificationEditor} disabled={submittingVerification} className="min-h-11 rounded-full border border-lumina-border px-5 text-[13px]">Cancel</button><button type="button" onClick={() => void submitLicenseVerification()} disabled={submittingVerification} className="min-h-11 rounded-full bg-lumina-black px-5 text-[13px] text-white disabled:opacity-50">{submittingVerification ? "Submitting…" : onboardingMode ? "Submit and continue" : verification ? "Resubmit for review" : "Submit for review"}</button></div>
-      </MobileManagementSheet>
-
-      <section className="mx-auto hidden max-w-[1040px] px-6 py-8 lg:block xl:px-10">
-        {onboardingMode && (
-          <ProfessionalOnboardingContext
-            step="license"
-            title="Submit license verification"
-          />
-        )}
-        <p className="mb-2 text-[10px] uppercase tracking-[0.16em] text-lumina-text-muted">Professional workspace</p>
-        <h1
-          className="text-[36px] font-semibold leading-tight"
-          style={{ fontFamily: "Georgia, Times New Roman, serif" }}
-        >
-          Settings
-        </h1>
-        <p className="mt-2 text-[13px] leading-[1.6] text-lumina-text-muted">
-          Account, verification, and privacy.
-        </p>
-
-        {loading ? (
-          <div className="mt-8 rounded-[22px] bg-lumina-surface-soft p-5 text-[14px] text-lumina-text-muted">
-            Loading settings…
-          </div>
-        ) : loadError ? (
-          <div className="mt-8"><WorkspaceLoadError message="Settings couldn’t be loaded. Please try again." onRetry={() => setLoadAttempt((current) => current + 1)} /></div>
-        ) : (
-          <div className="mt-7 space-y-2">            <section className="border-b border-lumina-border/70 py-6">
-              <p className="text-[12px] uppercase tracking-[0.14em] text-lumina-text-muted">
-                Public profile visibility
-              </p>
-              <div className="mt-5 flex items-center justify-between gap-5">
-                <div>
-                  <p className="text-[14px] font-medium">
-                    Professional profile visibility
-                  </p>
-                  <p className="mt-1 text-[12px] leading-[1.5] text-lumina-text-muted">
-                    {isVisible
-                      ? "Clients can find your profile in browse, search, and map."
-                      : activationStatus?.activation_ready
-                        ? "Your profile is ready. Turn visibility on when you want clients to discover it."
-                        : "Your profile is hidden until every activation requirement is complete, including license verification."}
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => void updateVisibility()}
-                  disabled={
-                    visibilityLoading ||
-                    (!isVisible && !activationStatus?.activation_ready)
-                  }
-                  aria-pressed={isVisible}
-                  className={`relative h-7 w-12 shrink-0 rounded-full transition disabled:opacity-50 ${
-                    isVisible ? "bg-lumina-black" : "bg-lumina-pearl"
-                  }`}
-                >
-                  <span
-                    className={`absolute top-1 h-5 w-5 rounded-full bg-lumina-surface transition ${
-                      isVisible ? "left-6" : "left-1"
-                    }`}
-                  />
-                </button>
-              </div>
-              {!isVisible && !activationStatus?.activation_ready && (
-                <Link
-                  href="/dashboard/onboarding"
-                  className="mt-4 inline-flex text-[12px] font-medium underline decoration-lumina-border underline-offset-4"
-                >
-                  Continue profile setup
-                </Link>
-              )}
-            </section>
-            <div className="grid items-start gap-x-10 xl:grid-cols-2">
-            <section className="border-b border-lumina-border/70 py-6">
-              <p className="text-[12px] uppercase tracking-[0.14em] text-lumina-text-muted">
-                Account &amp; security
-              </p>
-
-              <div className="mt-4">
-                <p className="text-[13px] text-lumina-text-muted">Sign-in email</p>
-                <p className="mt-1 text-[15px]">{email}</p>
-                <p className="mt-2 text-[12px] text-lumina-text-muted">
-                  Used for sign-in and account recovery.
-                </p>
-
-                {!showEmailChange ? (
-                  <button
-                    onClick={() => setShowEmailChange(true)}
-                    className="mt-3 text-[13px] font-medium underline decoration-lumina-border underline-offset-4"
-                  >
-                    Change email
-                  </button>
-                ) : (
+      <ProfessionalSettingsOverview
+        email={email}
+        loading={loading}
+        loadError={loadError}
+        isVisible={isVisible}
+        activationReady={Boolean(activationStatus?.activation_ready)}
+        visibilityLoading={visibilityLoading}
+        sendingPasswordReset={sendingPasswordReset}
+        signingOutOthers={signingOutOthers}
+        verification={verification}
+        onboardingMode={onboardingMode}
+        onboardingContext={onboardingMode && <ProfessionalOnboardingContext step="license" title="Submit license verification" />}
+        onRetry={() => setLoadAttempt((current) => current + 1)}
+        onToggleVisibility={() => void updateVisibility()}
+        onEditEmailMobile={() => setMobileSheet("email")}
+        onEditEmailDesktop={() => setShowEmailChange(true)}
+        onPasswordMobile={() => setMobileSheet("password")}
+        onPasswordDesktop={() => void sendPasswordReset()}
+        onEditLicenseMobile={() => setMobileSheet("verification")}
+        onSignOutOthers={() => void signOutOtherDevices()}
+        onSignOut={() => void signOut()}
+        desktopEmailEditor={showEmailChange && (
                   <div className="mt-4 rounded-[16px] bg-lumina-surface-soft p-4">
                     <input
                       type="email"
@@ -459,78 +339,8 @@ export default function ArtistSettingsPage() {
                       </button>
                     </div>
                   </div>
-                )}
-              </div>
-
-              <div className="mt-5 border-t border-lumina-border/50 pt-4">
-                <p className="text-[13px] font-medium">Password</p>
-                <p className="mt-1 text-[12px] text-lumina-text-muted">
-                  Receive a secure link at your verified email.
-                </p>
-                <button
-                  onClick={() => void sendPasswordReset()}
-                  disabled={sendingPasswordReset}
-                  className="mt-3 rounded-full border border-lumina-border px-4 py-2 text-[12px] text-lumina-text-muted disabled:opacity-50"
-                >
-                  {sendingPasswordReset ? "Sending…" : "Change password"}
-                </button>
-              </div>
-
-              <div className="mt-5 border-t border-lumina-border/50 pt-4">
-                <p className="text-[13px] font-medium">Other devices</p>
-                <p className="mt-1 text-[12px] leading-[1.5] text-lumina-text-muted">End every other Lumina session while keeping this device signed in.</p>
-                <button
-                  onClick={() => void signOutOtherDevices()}
-                  disabled={signingOutOthers}
-                  className="mt-3 rounded-full border border-lumina-border px-4 py-2 text-[12px] text-lumina-text-muted disabled:opacity-50"
-                >
-                  {signingOutOthers ? "Signing out…" : "Sign out of other devices"}
-                </button>
-              </div>
-            </section>
-
-            <section
-              id="license-verification-desktop"
-              className="min-w-0 scroll-mt-24 border-b border-lumina-border/70 py-6"
-            >
-              <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
-                  <p className="text-[12px] uppercase tracking-[0.14em] text-lumina-text-muted">
-                    Professional license verification
-                  </p>
-                <span
-                  className={`w-fit shrink-0 whitespace-nowrap rounded-full border px-2 py-1 text-[10px] font-medium leading-4 ${
-                    verification?.status === "verified"
-                      ? "border-lumina-success/25 bg-lumina-success-soft text-lumina-success"
-                      : verification?.status === "rejected"
-                        ? "border-lumina-attention/35 bg-lumina-attention-soft text-lumina-attention"
-                        : "border-lumina-border bg-lumina-surface-soft text-lumina-text-muted"
-                  }`}
-                >
-                  {verification
-                    ? professionalVerificationStatusLabels[verification.status]
-                    : "Unverified"}
-                </span>
-              </div>
-              <p className="mt-2 max-w-[400px] text-[12px] leading-[1.6] text-lumina-text-muted">
-                Submit your professional-license details for manual Lumina
-                review. This does not verify identity, insurance, background,
-                or service quality.
-              </p>
-
-              {verification?.status === "rejected" &&
-                verification.decision_message && (
-                  <div className="mt-5 rounded-[16px] border border-lumina-attention/30 bg-lumina-attention-soft p-4">
-                    <p className="text-[12px] font-medium text-lumina-attention">
-                      Needs correction
-                    </p>
-                    <p className="mt-2 whitespace-pre-line text-[12px] leading-[1.6] text-lumina-text-muted">
-                      {verification.decision_message}
-                    </p>
-                  </div>
-                )}
-
-              <details key={verification?.submitted_at || "not-submitted"} open={onboardingMode || undefined} className="mt-4 group">
-                <summary className="w-fit cursor-pointer text-[12px] underline decoration-lumina-border underline-offset-4">{verification ? "Edit license information" : "Add license information"}</summary>
+        )}
+        desktopLicenseEditor={<>
                 <p className="mt-3 text-[12px] text-lumina-text-muted">License details are separate from your public professional name and business profile.</p>
               <div className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <label className="sm:col-span-2">
@@ -643,36 +453,28 @@ export default function ArtistSettingsPage() {
                     ? "Resubmit for review"
                     : "Submit for review"}
               </button>
-              </details>
-            </section>
 
+        </>}
+      />
+      <MobileManagementSheet open={mobileSheet === "email"} title="Change email" busy={changingEmail} onClose={() => { setMobileSheet(null); setNewEmail(""); }}>
+        <label className="block text-[13px]">New email address<input type="email" value={newEmail} onChange={(event) => setNewEmail(event.target.value)} placeholder="name@example.com" className="mt-2 w-full rounded-[14px] border border-lumina-border px-4 py-3 text-[15px] outline-none focus:border-lumina-text-muted" /></label>
+        <p className="mt-2 text-[12px] text-lumina-text-muted">Your current email remains active until verification.</p>
+        <div className="mt-5 flex justify-end gap-2"><button type="button" onClick={() => { setMobileSheet(null); setNewEmail(""); }} className="min-h-11 rounded-full border border-lumina-border px-5 text-[13px]">Cancel</button><button type="button" onClick={() => void requestEmailChange()} disabled={changingEmail} className="min-h-11 rounded-full bg-lumina-black px-5 text-[13px] text-white disabled:opacity-50">{changingEmail ? "Sending…" : "Send verification"}</button></div>
+      </MobileManagementSheet>
+      <MobileManagementSheet open={mobileSheet === "password"} title="Password & security" onClose={() => setMobileSheet(null)}>
+        <p className="text-[13px] leading-relaxed text-lumina-text-muted">We’ll email a secure link to {email} to change your password.</p>
+        <button type="button" onClick={() => void sendPasswordReset()} disabled={sendingPasswordReset || !email} className="mt-5 min-h-11 w-full rounded-full bg-lumina-black px-5 text-[13px] text-white disabled:opacity-50">{sendingPasswordReset ? "Sending…" : "Send reset link"}</button>
+      </MobileManagementSheet>
+      <MobileManagementSheet open={mobileSheet === "verification"} title="License verification" busy={submittingVerification} onClose={closeVerificationEditor}>
+        <p className="text-[12px] leading-relaxed text-lumina-text-muted">Submit professional-license details for Lumina review. This does not verify identity, insurance, background, or service quality.</p>
+        {verification?.status === "rejected" && verification.decision_message && <p className="mt-3 rounded-[14px] bg-lumina-attention-soft p-3 text-[12px]">Needs correction: {verification.decision_message}</p>}
+        <div className="mt-4 space-y-3">
+          {([ ["legal_professional_name", "Legal / professional name"], ["license_number", "License number"], ["license_jurisdiction", "License jurisdiction / state"], ["license_type", "License type"], ["business_name", "Business name (optional)"] ] as const).map(([key, label]) => <label key={key} className="block text-[12px] text-lumina-text-muted">{label}<input data-professional-focus={key === "legal_professional_name" ? "license" : undefined} value={verificationForm[key]} maxLength={key === "license_number" || key === "license_jurisdiction" ? 100 : key === "license_type" ? 120 : 160} autoComplete={key === "license_number" ? "off" : undefined} onChange={(event) => setVerificationForm((current) => ({ ...current, [key]: event.target.value }))} className="mt-2 w-full rounded-[14px] border border-lumina-border bg-lumina-surface px-4 py-3 text-[14px] text-lumina-text outline-none focus:border-lumina-text-muted" /></label>)}
+        </div>
+        {verification?.submitted_at && <p className="mt-3 text-[11px] text-lumina-text-muted">Last submitted {new Date(verification.submitted_at).toLocaleString()}</p>}
+        <div className="mt-5 flex justify-end gap-2"><button type="button" onClick={closeVerificationEditor} disabled={submittingVerification} className="min-h-11 rounded-full border border-lumina-border px-5 text-[13px]">Cancel</button><button type="button" onClick={() => void submitLicenseVerification()} disabled={submittingVerification} className="min-h-11 rounded-full bg-lumina-black px-5 text-[13px] text-white disabled:opacity-50">{submittingVerification ? "Submitting…" : onboardingMode ? "Submit and continue" : verification ? "Resubmit for review" : "Submit for review"}</button></div>
+      </MobileManagementSheet>
 
-
-            </div>
-            <section className="border-b border-lumina-border/70 py-6">
-              <p className="text-[12px] uppercase tracking-[0.14em] text-lumina-text-muted">
-                Professional profile
-              </p>
-              <p className="mt-3 text-[13px] leading-[1.6] text-lumina-text-muted">
-                Public business details, services, photos, pricing, and booking links are managed separately.
-              </p>
-              <Link
-                href="/dashboard/profile"
-                className="mt-3 inline-block text-[12px] text-lumina-text-muted underline decoration-lumina-border underline-offset-4"
-              >
-                Edit professional profile
-              </Link>
-            </section>
-
-            <button
-              onClick={() => void signOut()}
-              className="mt-6 w-full border-t border-lumina-border/70 py-5 text-left text-[13px] text-lumina-text-muted transition hover:bg-lumina-surface-soft hover:text-lumina-text"
-            >
-              Sign out
-            </button>
-          </div>
-        )}
-      </section>
     </div>
   );
 }
