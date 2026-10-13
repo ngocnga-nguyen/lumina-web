@@ -1,12 +1,15 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
 import WorkspaceLoadError from "@/components/WorkspaceLoadError";
 import { loadWorkspaceUser, runWorkspaceLoad } from "@/lib/workspace-load-recovery";
 
 import { useParams, useRouter } from "next/navigation";
 import { ArrowLeft, ChevronDown, NotebookPen, Plus, X } from "lucide-react";
+import styles from "@/components/ClientNotesQuietChrome.module.css";
+import ClientNotesWorkspaceHeader from "@/components/ClientNotesWorkspaceHeader";
+import LocalClientNoteOrganization from "@/components/LocalClientNoteOrganization";
 import ClientNoteCard from "@/components/ClientNoteCard";
 import ClientNoteEditor, { type ClientNoteDraft } from "@/components/ClientNoteEditor";
 import {
@@ -599,41 +602,37 @@ export default function ClientNotesWorkspacePage() {
   if (unavailable) return <PageState message="This client workspace is unavailable for your professional account." clientId={clientId} />;
   if (loadFailed || (errorMessage && notes.length === 0)) return <PageState message={errorMessage} clientId={clientId} onRetry={() => setLoadAttempt((current) => current + 1)} />;
 
-  const renderNotes = (items: ClientNote[]) => (
+  const renderNotes = (items: ClientNote[], categoryControl?: (note: ClientNote) => ReactNode) => (
     <div className="grid gap-4 xl:grid-cols-2">
-      {items.map((note) => <ClientNoteCard key={note.id} note={note} attachments={attachmentsByNote[note.id] || []} requestLabel={note.request_id ? requestLabelById.get(note.request_id) : undefined} now={reminderNow} busy={busyNoteId === note.id} onEdit={() => openEditNote(note)} onDelete={() => setNoteToDelete(note)} onTogglePin={() => void togglePin(note)} onToggleReminderComplete={() => void toggleReminderComplete(note)} />)}
+      {items.map((note) => <ClientNoteCard key={note.id} categoryControl={categoryControl?.(note)} note={note} attachments={attachmentsByNote[note.id] || []} requestLabel={note.request_id ? requestLabelById.get(note.request_id) : undefined} now={reminderNow} busy={busyNoteId === note.id} onEdit={() => openEditNote(note)} onDelete={() => setNoteToDelete(note)} onTogglePin={() => void togglePin(note)} onToggleReminderComplete={() => void toggleReminderComplete(note)} />)}
     </div>
   );
 
   return (
-    <div className="bg-lumina-surface text-lumina-text">
-      <section className="mx-auto max-w-[1280px] px-5 py-10 md:px-10 md:py-14">
+    <div className={`${styles.scope} bg-lumina-surface text-lumina-text`}>
+      <section className={styles.workspace}>
         <Link href={`/dashboard/clients/${clientId}`} className="inline-flex items-center gap-2 text-[13px] font-medium text-lumina-text-muted transition hover:text-lumina-text"><ArrowLeft size={16} /> Back to client card</Link>
 
-        <header className="relative z-40 mt-7 overflow-visible rounded-[24px] border border-lumina-glass-border bg-lumina-glass p-6 shadow-[0_16px_42px_rgba(39,36,40,0.045)] backdrop-blur-[14px] md:p-8">
-          <div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
-            <div>
-              <p className="text-[10px] font-semibold uppercase tracking-[0.15em] text-lumina-text-muted">Private notes workspace</p>
-              <h1 className="mt-2 text-[36px] font-semibold leading-[1.08] text-lumina-text font-serif md:text-[46px]">{clientName}</h1>
-              <p className="mt-3 max-w-[640px] text-[13px] leading-[1.6] text-lumina-text-muted">Keep service details, follow-up context, aftercare, and ideas organized for future visits.</p>
-              <p className="mt-2 text-[11px] text-lumina-text-muted">{notes.length} {notes.length === 1 ? "private note" : "private notes"}</p>
-            </div>
+        <ClientNotesWorkspaceHeader clientName={clientName} noteCount={notes.length} newNoteControl={
             <div ref={typePickerRef} className="relative z-50 shrink-0">
               <button ref={newNoteButtonRef} type="button" aria-haspopup="menu" aria-expanded={typePickerOpen} onClick={() => setTypePickerOpen((open) => !open)} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full bg-lumina-black px-5 text-[13px] font-medium text-white transition hover:bg-lumina-text focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-lumina-text"><Plus size={15} aria-hidden="true" /> New note <ChevronDown size={14} className={`transition-transform ${typePickerOpen ? "rotate-180" : ""}`} aria-hidden="true" /></button>
               {typePickerOpen && (
-                <div role="menu" aria-label="Choose note type" className="absolute right-0 top-full z-[110] mt-2 hidden w-[320px] max-w-[calc(100vw-2.5rem)] rounded-[18px] border border-lumina-glass-border bg-lumina-glass p-2 shadow-[0_18px_45px_rgba(39,36,40,0.10)] backdrop-blur-[16px] sm:block">
+                <div data-note-type-menu role="menu" aria-label="Choose note type" className="absolute right-0 top-full z-[110] mt-2 hidden w-[320px] max-w-[calc(100vw-2.5rem)] rounded-[18px] border border-lumina-glass-border bg-lumina-glass p-2 shadow-[0_18px_45px_rgba(39,36,40,0.10)] backdrop-blur-[16px] sm:block">
                   {CLIENT_NOTE_TYPES.map((noteType) => <button key={noteType} role="menuitem" type="button" onClick={() => openNewNote(noteType)} className="flex min-h-11 w-full items-center justify-between rounded-[12px] px-3.5 text-left text-[13px] font-medium text-lumina-text transition hover:bg-lumina-surface/85 focus-visible:bg-lumina-surface focus-visible:outline-none"><span>{CLIENT_NOTE_TYPE_LABELS[noteType]}</span><Plus size={14} className="text-lumina-text-muted" aria-hidden="true" /></button>)}
                 </div>
               )}
             </div>
-          </div>
-        </header>
+        } />
 
-        <nav aria-label="Filter client notes" className="mt-5 overflow-x-auto pb-1">
+        {errorMessage && <p aria-live="polite" className="mt-4 text-[12px] text-lumina-attention">{errorMessage}</p>}
+
+        {process.env.NODE_ENV === "development" ? <LocalClientNoteOrganization key={clientId} notes={notes} renderNotes={renderNotes} /> : <>
+        <nav data-note-toolbar aria-label="Filter client notes" className="mt-5 overflow-x-auto pb-1">
           <div className="flex w-max min-w-full gap-2 rounded-[18px] border border-lumina-glass-border bg-lumina-glass p-2 backdrop-blur-[12px]">
             {filters.map((item) => {
               const selected = filter === item.value;
-              return <button key={item.value} type="button" aria-pressed={selected} onClick={() => setFilter(item.value)} className={`min-h-10 whitespace-nowrap rounded-full px-4 text-[12px] font-medium transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-lumina-text ${selected ? "bg-lumina-black text-white" : "border border-transparent text-lumina-text-muted hover:border-lumina-border hover:bg-lumina-surface/80 hover:text-lumina-text"}`}>{item.label}</button>;
+              const count = item.value === "all" ? notes.length : item.value === "pinned" ? notes.filter((note) => note.is_pinned).length : null;
+              return <button data-filter={item.value} key={item.value} type="button" aria-pressed={selected} onClick={() => setFilter(item.value)} className={`min-h-10 whitespace-nowrap rounded-full px-4 text-[12px] font-medium transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-lumina-text ${selected ? "bg-lumina-black text-white" : "border border-transparent text-lumina-text-muted hover:border-lumina-border hover:bg-lumina-surface/80 hover:text-lumina-text"}`}>{item.value === "service_note" ? "Service" : item.value === "inspiration" ? "Ideas" : item.label}{count !== null && count > 0 && <span className={styles.filterCount}>{count}</span>}</button>;
             })}
           </div>
         </nav>
@@ -645,19 +644,20 @@ export default function ClientNotesWorkspacePage() {
           </div>
         )}
 
-        {errorMessage && <p aria-live="polite" className="mt-4 text-[12px] text-lumina-attention">{errorMessage}</p>}
 
         <div className="mt-8 space-y-9">
-          {pinnedNotes.length > 0 && <section><div className="mb-4 flex items-center gap-2"><span className="h-2 w-2 rounded-full bg-lumina-blush" /><h2 className="text-[18px] font-semibold text-lumina-text">Pinned notes</h2></div>{renderNotes(pinnedNotes)}</section>}
+          {pinnedNotes.length > 0 && <section><div className="mb-4 flex items-center gap-2"><span data-pinned-heading-dot className="h-2 w-2 rounded-full bg-lumina-blush" /><h2 className="text-[18px] font-semibold text-lumina-text">Pinned notes</h2></div>{renderNotes(pinnedNotes)}</section>}
           {remainingNotes.length > 0 && <section><h2 className="mb-4 text-[18px] font-semibold text-lumina-text">{filter === "all" ? "All notes" : filters.find((item) => item.value === filter)?.label}</h2>{renderNotes(remainingNotes)}</section>}
-          {matchingNotes.length === 0 && <section className="rounded-[20px] border border-lumina-border/65 bg-lumina-surface p-6"><NotebookPen size={20} className="text-lumina-text-muted" aria-hidden="true" /><h2 className="mt-4 text-[16px] font-medium">{filteredCreation?.emptyTitle || (notes.length === 0 ? "No notes yet" : "No notes in this view")}</h2><p className="mt-1 text-[13px] leading-[1.6] text-lumina-text-muted">{filteredCreation?.emptyCopy || (notes.length === 0 ? "Choose a note type to keep client context and follow-up details organized." : "Choose another filter to view this client's notes.")}</p>{filteredNoteType && filteredCreation ? <button type="button" onClick={() => openNewNote(filteredNoteType)} className={`mt-4 inline-flex items-center rounded-full bg-lumina-black text-[12px] font-medium text-white ${getCreationActionSizing(filteredNoteType)}`}><Plus size={14} className="shrink-0" aria-hidden="true" /> <span>{filteredCreation.action}</span></button> : notes.length === 0 && <button type="button" onClick={() => openNewNote("general")} className="mt-4 inline-flex min-h-10 items-center gap-2 rounded-full bg-lumina-black px-5 text-[12px] font-medium text-white"><Plus size={14} aria-hidden="true" /> Add general note</button>}</section>}
+          {matchingNotes.length === 0 && <section data-note-empty className="rounded-[20px] border border-lumina-border/65 bg-lumina-surface p-6"><NotebookPen size={20} className="text-lumina-text-muted" aria-hidden="true" /><h2 className="mt-4 text-[16px] font-medium">{filteredCreation?.emptyTitle || (notes.length === 0 ? "No notes yet" : "No notes in this view")}</h2><p className="mt-1 text-[13px] leading-[1.6] text-lumina-text-muted">{filteredCreation?.emptyCopy || (notes.length === 0 ? "Choose a note type to keep client context and follow-up details organized." : "Choose another filter to view this client's notes.")}</p>{filteredNoteType && filteredCreation ? <button type="button" onClick={() => openNewNote(filteredNoteType)} className={`mt-4 inline-flex items-center rounded-full bg-lumina-black text-[12px] font-medium text-white ${getCreationActionSizing(filteredNoteType)}`}><Plus size={14} className="shrink-0" aria-hidden="true" /> <span>{filteredCreation.action}</span></button> : notes.length === 0 && <button type="button" onClick={() => openNewNote("general")} className="mt-4 inline-flex min-h-10 items-center gap-2 rounded-full bg-lumina-black px-5 text-[12px] font-medium text-white"><Plus size={14} aria-hidden="true" /> Add general note</button>}</section>}
         </div>
+
+        </>}
 
         {editorOpen && <ClientNoteEditor note={editingNote} initialType={newNoteType} attachments={editingNote ? attachmentsByNote[editingNote.id] || [] : []} requests={requestOptions} saving={saving} errorMessage={editorError} onSave={(draft) => void saveNote(draft)} onClose={closeEditor} />}
 
         {typePickerOpen && (
           <div className="fixed inset-0 z-[105] flex items-end bg-lumina-black/15 p-4 backdrop-blur-[2px] sm:hidden" onMouseDown={(event) => { if (event.target === event.currentTarget) setTypePickerOpen(false); }}>
-            <div ref={mobileTypePickerRef} role="menu" aria-label="Choose note type" className="max-h-[calc(100dvh-2rem)] w-full overflow-y-auto rounded-[22px] border border-lumina-glass-border bg-lumina-glass p-3 shadow-[0_18px_45px_rgba(39,36,40,0.12)] backdrop-blur-[16px]">
+            <div ref={mobileTypePickerRef} data-note-type-menu role="menu" aria-label="Choose note type" className="max-h-[calc(100dvh-2rem)] w-full overflow-y-auto rounded-[22px] border border-lumina-glass-border bg-lumina-glass p-3 shadow-[0_18px_45px_rgba(39,36,40,0.12)] backdrop-blur-[16px]">
               <div className="flex items-center justify-between px-2 pb-2"><p className="text-[13px] font-medium text-lumina-text">Choose note type</p><button type="button" onClick={() => setTypePickerOpen(false)} aria-label="Close note type picker" className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-lumina-border bg-lumina-surface text-lumina-text-muted"><X size={15} /></button></div>
               {CLIENT_NOTE_TYPES.map((noteType) => <button key={noteType} role="menuitem" type="button" onClick={() => openNewNote(noteType)} className="flex min-h-12 w-full items-center justify-between rounded-[13px] px-4 text-left text-[14px] font-medium text-lumina-text transition active:bg-lumina-surface focus-visible:bg-lumina-surface focus-visible:outline-none"><span>{CLIENT_NOTE_TYPE_LABELS[noteType]}</span><Plus size={15} className="text-lumina-text-muted" aria-hidden="true" /></button>)}
             </div>

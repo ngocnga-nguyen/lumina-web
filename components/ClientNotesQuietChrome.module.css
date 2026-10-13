@@ -1,0 +1,98 @@
+/* Temporary local Quiet Chrome direction, scoped to Client Notes only. */
+.scope {
+  --notes-pink: #8f939a;
+  --notes-chrome: #8f939a;
+  --notes-hardware: #ececee;
+}
+.scope[data-note-card],
+.scope [data-notes-header] {
+  background: var(--lumina-surface);
+  border-color: var(--lumina-border);
+  box-shadow: none;
+  backdrop-filter: none;
+}
+.scope [data-notes-header] { background: var(--lumina-bg); }
+.scope [data-type-badge] {
+  display: inline-flex; align-items: center; gap: 7px;
+  padding: 0; border: 0; border-radius: 0; background: transparent;
+  color: var(--lumina-text-muted); font-size: 10px; font-weight: 500;
+  line-height: 1.4; letter-spacing: .1em; text-transform: uppercase;
+}
+.scope [data-type-badge="inspiration"]::before {
+  content: ""; width: 5px; height: 5px; flex-shrink: 0;
+  border-radius: 50%; background: var(--notes-pink);
+}
+.scope [data-pin-control] {
+  width: 44px; height: 44px; padding: 0; border: 1px solid var(--lumina-border); border-radius: 8px;
+  background: transparent; color: var(--lumina-text-muted); cursor: pointer;
+  transition: background .16s, color .16s, border-color .16s;
+}
+.scope [data-pin-control] svg { fill: none; }
+.scope [data-pin-control][aria-pressed="true"] {
+  border-color: var(--lumina-black); background: var(--lumina-black); color: white;
+}
+.scope [data-pin-control]:focus-visible { outline: 2px solid var(--lumina-black); outline-offset: 3px; }
+.scope [data-preview-pin] { fill: none; color: var(--lumina-black); }
+@media (hover:hover) and (pointer:fine) {
+  .scope [data-pin-control]:hover:not(:disabled) { background: var(--lumina-black); border-color: var(--lumina-black); color: white; }
+}
+@media (prefers-reduced-motion:reduce) { .scope [data-pin-control] { transition: none; } }
+.scope [data-meta-icon],
+.scope [data-note-empty] > svg { color: var(--notes-chrome); }
+.scope [data-note-utilities] { border-top: 1px solid var(--lumina-border); padding-top: 14px; }
+.scope [data-note-utilities] button { border-radius: 8px; min-height: 44px; }
+.scope[data-note-card]:hover { border-color: #c9c7cc; }
+.scope [data-pinned-heading-dot] { background: var(--notes-chrome); width: 4px; height: 4px; }
+.scope [data-note-count] {
+  display: inline-flex; align-items: center; gap: 10px; padding: 0;
+  background: transparent; border: 0; border-radius: 0; color: var(--lumina-text-muted);
+}
+.countLabel { font-size: 9px; font-weight: 500; letter-spacing: .13em; text-transform: uppercase; }
+.countValue {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 30px; height: 25px; padding: 0 5px; border: 1px solid #c9cbd0;
+  border-radius: 7px; background: var(--notes-hardware); color: var(--lumina-text);
+  font-size: 11px; font-variant-numeric: tabular-nums; letter-spacing: .02em;
+}
+.scope [data-note-toolbar] { padding: 2px 2px 6px; border-radius: 13px; }
+.scope [data-note-toolbar] > div {
+  padding: 4px; gap: 2px; border: 1px solid #d5d3d8; border-radius: 12px;
+  background: rgba(255, 253, 253, .88); backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px); box-shadow: 0 2px 6px rgba(39, 36, 40, .035);
+}
+.scope [data-filter] {
+  display: inline-flex; align-items: center; gap: 7px; min-height: 44px;
+  padding: 0 14px; border: 1px solid transparent; border-radius: 8px;
+  background: transparent; color: var(--lumina-text-muted);
+  font-size: 10px; font-weight: 500; letter-spacing: .07em; text-transform: uppercase;
+}
+.scope [data-filter]:hover { background: var(--lumina-pearl); color: var(--lumina-text); }
+.scope [data-filter][aria-pressed="true"] { background: var(--lumina-black); border-color: var(--lumina-black); color: var(--lumina-surface); }
+.scope [data-filter="inspiration"]::before { content: ""; width: 4px; height: 4px; border-radius: 50%; background: var(--notes-pink); }
+.scope [data-filter="pinned"]::before { content: ""; width: 4px; height: 9px; border-radius: 1px; background: var(--notes-chrome); }
+.filterCount { font-size: 10px; letter-spacing: 0; font-variant-numeric: tabular-nums; opacity: .8; }
+.scope[data-preview] a[href*="?new"] { background: var(--lumina-black); color: white; border-color: var(--lumina-black); }
+.scope[data-preview] > div:first-child a:not([href*="?new"]) { background: var(--lumina-surface); color: var(--lumina-text); border: 1px solid var(--lumina-border); }
+.scope [data-reminder-status="upcoming"],
+.scope [data-reminder-status="due"],
+.scope [data-reminder-status="due_today"] { background: var(--lumina-pearl); border-color: var(--lumina-border); color: var(--lumina-text); }
+.scope [data-note-empty] { background: var(--lumina-surface); border-color: var(--lumina-border); }
+.scope [data-note-type-menu] { background: var(--lumina-surface); backdrop-filter: none; }
+@supports not (backdrop-filter: blur(1px)) {
+  .scope [data-note-toolbar] > div { background: var(--lumina-bg); }
+}
+@media (prefers-reduced-transparency: reduce) {
+  .scope [data-note-toolbar] > div { background: var(--lumina-bg); backdrop-filter: none; -webkit-backdrop-filter: none; }
+}
+@media (max-width: 760px) {
+  .scope [data-pin-control] { width: 44px; height: 44px; }
+  .scope [data-notes-header] button[aria-haspopup] { width: 100%; }
+  .scope [data-filter] { padding: 0 12px; }
+}
+
+/* Compact editorial workspace header; no changes to the note editor or stored data. */
+.workspace{max-width:1080px;margin:0 auto;padding:28px 40px 48px;min-width:0}
+.scope .workspaceHeader{position:relative;z-index:40;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:18px;align-items:center;margin:22px 0 20px;padding:0;border:0;border-radius:0;background:transparent}
+.headerIdentity{min-width:0}.headerEyebrow{margin:0 0 7px;font-size:9px;font-weight:500;letter-spacing:.12em;text-transform:uppercase;color:var(--lumina-text-muted)}
+.headerTitle{display:flex;align-items:baseline;flex-wrap:wrap;gap:8px 14px}.headerTitle h1{margin:0;font:500 34px/1.15 Georgia,"Times New Roman",serif;letter-spacing:-.6px;overflow-wrap:anywhere}.headerTitle>span{font-size:11px;color:var(--lumina-text-muted);white-space:nowrap}.headerContext{margin:8px 0 0;font-size:12px;line-height:1.5;color:var(--lumina-text-muted)}.headerActions{min-width:0}
+@media(max-width:700px){.workspace{padding:22px 20px 40px}.scope .workspaceHeader{gap:12px;margin:19px 0 18px}.headerTitle{gap:6px 10px}.headerTitle h1{font-size:28px}.headerContext{font-size:11px;max-width:200px}.headerActions button[aria-haspopup]{padding-inline:12px;font-size:12px}.headerTitle>span{font-size:10px}}

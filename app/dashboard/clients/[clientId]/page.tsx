@@ -853,10 +853,8 @@ export default function ClientCardPage() {
         appointment={nextAppointment && appointmentDate ? {
           id: nextAppointment.id,
           title: formatRequestServiceSummary(nextAppointment) || "Confirmed appointment",
-          date: formatDate(getAppointmentDate(nextAppointment)),
+          date: appointmentDate.toLocaleDateString("en-US", { month: "short", day: "numeric" }),
           time: formatTime(getAppointmentTime(nextAppointment)),
-          month: appointmentDate.toLocaleDateString("en-US", { month: "short" }).toUpperCase(),
-          day: String(appointmentDate.getDate()).padStart(2, "0"),
           href: `/dashboard/requests?request=${nextAppointment.id}`,
         } : null}
         lastService={lastService ? {

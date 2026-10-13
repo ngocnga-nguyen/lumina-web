@@ -7,7 +7,7 @@ import IdentityAvatar from "@/components/IdentityAvatar";
 import styles from "./ClientRecordOverview.module.css";
 import type { ClientCardSectionId } from "@/lib/client-card-workspace";
 
-type Appointment = { id: string; title: string; date: string; time: string | null; month: string; day: string; href: string };
+type Appointment = { id: string; title: string; date: string; time: string | null; href: string };
 type Result = { image: string; title: string; date: string };
 type Props = {
   name: string; avatarUrl: string | null; status: string; visits: number;
@@ -71,7 +71,7 @@ export default function ClientRecordOverview(props: Props) {
       {view === "overview" ? <>
         <div className={styles.glance}>
           <section><p className={styles.eyebrow}>Next appointment</p>
-            {props.appointment ? <div className={styles.appointment}><div className={styles.date}><span>{props.appointment.month}</span><strong>{props.appointment.day}</strong></div><div><h2>{props.appointment.date}{props.appointment.time ? `, ${props.appointment.time}` : ""}</h2><p>{props.appointment.title}</p><span className={styles.success}>Confirmed</span></div><Link className={styles.textAction} href={props.appointment.href}>View appointment</Link></div> : <p className={styles.empty}>None scheduled.</p>}
+            {props.appointment ? <div className={styles.appointment}><h2>{props.appointment.date}{props.appointment.time ? ` · ${props.appointment.time}` : ""}</h2><p>{props.appointment.title}</p><span className={styles.success}>Confirmed</span><Link className={styles.textAction} href={props.appointment.href}>View appointment</Link></div> : <p className={styles.empty}>None scheduled.</p>}
           </section>
           <section className={styles.last}><p className={styles.eyebrow}>Last service</p>{props.lastService ? <><h2>{props.lastService.title}</h2><p>{props.lastService.date}</p><span className={styles.success}>Completed</span></> : <p className={styles.empty}>No completed visits yet.</p>}</section>
         </div>

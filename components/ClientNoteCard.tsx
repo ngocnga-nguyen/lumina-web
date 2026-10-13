@@ -2,6 +2,8 @@
 
 /* eslint-disable @next/next/no-img-element -- Private signed URLs are short-lived and cannot use a stable Next image source. */
 
+import type { ReactNode } from "react";
+import styles from "./ClientNotesQuietChrome.module.css";
 import { Bell, CalendarDays, Check, Link2, Pencil, Pin, RotateCcw, Trash2 } from "lucide-react";
 import {
   CLIENT_NOTE_REMINDER_STATUS_LABELS,
@@ -16,6 +18,7 @@ type ClientNoteCardProps = {
   note: ClientNote;
   attachments: ClientNoteAttachment[];
   requestLabel?: string;
+  categoryControl?: ReactNode;
   now: Date;
   busy: boolean;
   onEdit: () => void;
@@ -46,24 +49,23 @@ function formatReminderDue(note: ClientNote) {
   return `${dateLabel} at ${date.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}${note.reminder_timezone ? ` · ${note.reminder_timezone}` : ""}`;
 }
 
-export default function ClientNoteCard({ note, attachments, requestLabel, now, busy, onEdit, onDelete, onTogglePin, onToggleReminderComplete }: ClientNoteCardProps) {
+export default function ClientNoteCard({ note, attachments, requestLabel, categoryControl, now, busy, onEdit, onDelete, onTogglePin, onToggleReminderComplete }: ClientNoteCardProps) {
   const wasEdited = note.updated_at !== note.created_at;
   const reminderStatus = getClientNoteReminderStatus(note, now);
   const reminderDue = formatReminderDue(note);
   const displayTitle = note.title.trim() || CLIENT_NOTE_TYPE_LABELS[note.note_type];
 
   return (
-    <article className={`rounded-[20px] border p-5 md:p-6 ${note.is_pinned ? "border-lumina-glass-border bg-lumina-glass shadow-[0_12px_30px_rgba(39,36,40,0.035)] backdrop-blur-[12px]" : "border-lumina-border/65 bg-lumina-surface"}`}>
+    <article data-note-card className={`${styles.scope} rounded-[20px] border p-5 md:p-6 ${note.is_pinned ? "border-lumina-glass-border bg-lumina-glass shadow-[0_12px_30px_rgba(39,36,40,0.035)] backdrop-blur-[12px]" : "border-lumina-border/65 bg-lumina-surface"}`}>
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="rounded-full border border-lumina-border/70 bg-lumina-surface/80 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.1em] text-lumina-text-muted">{CLIENT_NOTE_TYPE_LABELS[note.note_type]}</span>
-            {note.is_pinned && <span className="inline-flex items-center gap-1.5 rounded-full bg-lumina-blush/70 px-2.5 py-1 text-[10px] font-medium text-lumina-text"><Pin size={11} className="fill-current" aria-hidden="true" /> Pinned</span>}
-            {reminderStatus && <span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[10px] font-medium ${reminderStyles[reminderStatus]}`}><Bell size={11} aria-hidden="true" />{CLIENT_NOTE_REMINDER_STATUS_LABELS[reminderStatus]}</span>}
+            {categoryControl ?? <span data-type-badge={note.note_type} className="rounded-full border border-lumina-border/70 bg-lumina-surface/80 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.1em] text-lumina-text-muted">{CLIENT_NOTE_TYPE_LABELS[note.note_type]}</span>}
+            {reminderStatus && <span data-reminder-status={reminderStatus} className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[10px] font-medium ${reminderStyles[reminderStatus]}`}><Bell size={11} aria-hidden="true" />{CLIENT_NOTE_REMINDER_STATUS_LABELS[reminderStatus]}</span>}
           </div>
           <h3 className="mt-3 break-words text-[19px] font-semibold leading-[1.3] text-lumina-text">{displayTitle}</h3>
         </div>
-        <button type="button" onClick={onTogglePin} disabled={busy} aria-label={note.is_pinned ? `Unpin ${displayTitle}` : `Pin ${displayTitle}`} className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-lumina-border bg-lumina-surface/80 text-lumina-text-muted transition hover:border-lumina-text-muted hover:text-lumina-text disabled:opacity-50"><Pin size={15} className={note.is_pinned ? "fill-lumina-blush text-lumina-text" : ""} /></button>
+        <button type="button" data-pin-control aria-pressed={note.is_pinned} onClick={onTogglePin} disabled={busy} aria-label={note.is_pinned ? `Unpin ${displayTitle}` : `Pin ${displayTitle}`} className="inline-flex shrink-0 items-center justify-center disabled:opacity-50"><Pin size={14} strokeWidth={1.5} aria-hidden="true" /></button>
       </div>
 
       {note.body.trim() && <p className="mt-4 whitespace-pre-wrap break-words text-[14px] leading-[1.72] text-lumina-text">{note.body}</p>}
@@ -79,12 +81,12 @@ export default function ClientNoteCard({ note, attachments, requestLabel, now, b
         </div>
       )}
 
-      {reminderStatus && reminderDue && <p className="mt-4 inline-flex items-center gap-2 text-[11px] text-lumina-text-muted"><CalendarDays size={13} aria-hidden="true" /> Due {reminderDue}</p>}
+      {reminderStatus && reminderDue && <p className="mt-4 inline-flex items-center gap-2 text-[11px] text-lumina-text-muted"><CalendarDays data-meta-icon size={13} aria-hidden="true" /> Due {reminderDue}</p>}
 
-      {requestLabel && <p className="mt-4 inline-flex items-start gap-2 text-[11px] leading-[1.5] text-lumina-text-muted"><Link2 size={13} className="mt-0.5 shrink-0" aria-hidden="true" />{requestLabel}</p>}
+      {requestLabel && <p className="mt-4 inline-flex items-start gap-2 text-[11px] leading-[1.5] text-lumina-text-muted"><Link2 data-meta-icon size={13} className="mt-0.5 shrink-0" aria-hidden="true" />{requestLabel}</p>}
 
-      <div className="mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-lumina-border/60 pt-4">
-        <p className="inline-flex items-center gap-2 text-[10px] text-lumina-text-muted"><CalendarDays size={13} aria-hidden="true" />{wasEdited ? "Edited" : "Created"} {formatClientNoteTimestamp(note.updated_at)}</p>
+      <div data-note-utilities className="mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-lumina-border/60 pt-4">
+        <p className="inline-flex items-center gap-2 text-[10px] text-lumina-text-muted"><CalendarDays data-meta-icon size={13} aria-hidden="true" />{wasEdited ? "Edited" : "Created"} {formatClientNoteTimestamp(note.updated_at)}</p>
         <div className="flex items-center gap-2">
           {reminderStatus && <button type="button" onClick={onToggleReminderComplete} disabled={busy} className="inline-flex min-h-10 items-center gap-1.5 rounded-full border border-lumina-border bg-lumina-surface px-3 text-[11px] font-medium text-lumina-text transition hover:bg-lumina-surface-soft disabled:opacity-50">{reminderStatus === "completed" ? <RotateCcw size={13} aria-hidden="true" /> : <Check size={13} aria-hidden="true" />}{reminderStatus === "completed" ? "Reopen" : "Mark complete"}</button>}
           <button type="button" onClick={onEdit} disabled={busy} className="inline-flex min-h-10 items-center gap-1.5 rounded-full border border-lumina-border bg-lumina-surface px-3 text-[11px] font-medium text-lumina-text transition hover:bg-lumina-surface-soft disabled:opacity-50"><Pencil size={13} aria-hidden="true" /> Edit</button>
