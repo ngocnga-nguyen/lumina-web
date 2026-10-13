@@ -20,6 +20,7 @@ type SavedCompareMobileProps = {
   artists: SavedCompareArtist[];
   onBack: () => void;
   onRemove: (artistId: string) => void;
+  getProfileHref?: (artistId: string) => string;
 };
 
 function availabilityPreview(value?: string | null) {
@@ -31,6 +32,7 @@ export default function SavedCompareMobile({
   artists,
   onBack,
   onRemove,
+  getProfileHref = (id) => `/artist/${id}`,
 }: SavedCompareMobileProps) {
   const threeArtists = artists.length === 3;
 
@@ -171,7 +173,7 @@ export default function SavedCompareMobile({
             </dl>
 
             <Link
-              href={`/artist/${artist.id}`}
+              href={getProfileHref(artist.id)}
               className="mt-3 inline-flex min-h-10 items-center justify-center rounded-full border border-lumina-border/80 bg-white/82 px-3 text-center text-[11px] font-medium text-lumina-text transition hover:border-lumina-black hover:bg-lumina-black hover:text-white"
             >
               View profile

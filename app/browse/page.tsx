@@ -1,4 +1,5 @@
 "use client";
+import "@/app/discovery.css";
 
 import Link from "next/link";
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -9,7 +10,7 @@ import PublicPageHeader from "@/components/PublicPageHeader";
 import SaveArtistButton from "@/components/SaveArtistButton";
 import ArtistCard from "@/components/ArtistCard";
 import SearchBar from "@/components/SearchBar";
-import { MapPin } from "lucide-react";
+import { ArrowDownWideNarrow, MapPin, SlidersHorizontal } from "lucide-react";
 import {
   getBrowseDistanceMiles,
   useBrowseGeolocation,
@@ -260,34 +261,25 @@ if (sort) {
 
   return (
     <main data-lumina-public-page className="min-h-screen overflow-x-clip bg-lumina-surface text-lumina-text">
-      <PublicPageHeader backHref="/" />
+      <PublicPageHeader marketplace backHref="/" />
 
       <section className="mx-auto max-w-[1600px] px-4 pb-14 pt-6 md:px-10 md:pb-20 md:pt-12 lg:px-12 xl:px-16">
         <div className="mx-auto w-full max-w-[1100px]">
           <div className="w-full max-w-[900px] lg:mx-auto lg:text-center">
             <div className="mb-4 inline-flex items-center rounded-full border border-lumina-border bg-lumina-surface p-1 text-[13px] shadow-[0_4px_14px_rgba(39,36,40,0.04)] md:mb-6 md:text-sm">
-              <span className="rounded-full bg-lumina-black px-4 py-1.5 text-white">
-                List
-              </span>
-
-              <Link
-                href={buildViewLink("/browse/map")}
-                className="rounded-full px-4 py-1.5 text-lumina-text-muted transition hover:text-lumina-black"
-              >
-                Map
-              </Link>
+              <Link href={buildViewLink("/browse")} aria-current="page" className="rounded-full bg-lumina-black px-4 py-2 text-white">List</Link>
+              <Link href={buildViewLink("/browse/map")} className="rounded-full px-4 py-2 text-lumina-text-muted">Map</Link>
             </div>
 
             <p className="mb-2 text-[11px] uppercase tracking-[0.24em] text-lumina-attention md:mb-3">
-              Explore Lumina
+              Professionals
             </p>
 
             <h1
               className="w-full whitespace-nowrap text-[clamp(24px,6.4vw,27px)] font-normal leading-none tracking-[-0.03em] md:max-w-[900px] md:whitespace-normal md:text-[58px] md:leading-[1.02] md:tracking-normal lg:mx-auto"
               style={{ fontFamily: "Georgia, Times New Roman, serif" }}
             >
-              <span className="md:hidden">Browse beauty professional</span>
-              <span className="hidden md:inline">Browse beauty professionals</span>
+              Find your professional.
             </h1>
 
             <p className="mt-2 text-sm leading-6 text-lumina-text-muted md:mt-3 md:text-[18px] md:leading-7">
@@ -352,7 +344,7 @@ if (sort) {
                     }}
                     className="min-h-10 rounded-full border border-lumina-border bg-lumina-surface px-3 py-2 text-lumina-text transition hover:border-lumina-glass-border hover:bg-lumina-surface-soft md:px-4"
                   >
-                    ☷ Filter {activeFilterCount > 0 && `(${activeFilterCount})`}
+                    <SlidersHorizontal aria-hidden="true" className="mr-1.5 inline-block h-3.5 w-3.5" strokeWidth={1.7} /> Filter {activeFilterCount > 0 && `(${activeFilterCount})`}
                   </button>
 
                 {openFilter && (
@@ -436,7 +428,7 @@ if (sort) {
                     }}
                     className="min-h-10 rounded-full border border-lumina-border bg-lumina-surface px-3 py-2 text-lumina-text transition hover:border-lumina-glass-border hover:bg-lumina-surface-soft md:px-4"
                   >
-                    ☰ Sort
+                    <ArrowDownWideNarrow aria-hidden="true" className="mr-1.5 inline-block h-3.5 w-3.5" strokeWidth={1.7} /> Sort
                   </button>
 
                 {openSort && (

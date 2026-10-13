@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
+import MarketplacePublicNavigation from "@/components/MarketplacePublicNavigation";
 import AccountMenu from "@/components/AccountMenu";
 
 type PublicPageHeaderProps = {
@@ -7,6 +8,7 @@ type PublicPageHeaderProps = {
   backLabel?: string;
   accountControl?: ReactNode;
   surface?: "soft" | "white";
+  marketplace?: boolean;
 };
 
 export default function PublicPageHeader({
@@ -14,8 +16,10 @@ export default function PublicPageHeader({
   backLabel = "Home",
   accountControl,
   surface = "soft",
+  marketplace = false,
 }: PublicPageHeaderProps) {
   return (
+    <>
     <header
       className={`border-b border-lumina-border ${
         surface === "white" ? "bg-lumina-surface" : "bg-lumina-bg-soft"
@@ -45,5 +49,7 @@ export default function PublicPageHeader({
         </div>
       </div>
     </header>
+    {marketplace && <MarketplacePublicNavigation />}
+    </>
   );
 }

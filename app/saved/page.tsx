@@ -1,6 +1,10 @@
 "use client";
+import "@/app/discovery.css";
 
 import Link from "next/link";
+import SavedDemoArtists from "@/components/SavedDemoArtists";
+import DiscoverLooks from "@/components/DiscoverLooks";
+import { LocalLookLibraryProvider, useLocalLookLibrary } from "@/lib/local-look-library";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Check, Search, X } from "lucide-react";
 import { supabase } from "@/lib/supabase";
@@ -76,8 +80,14 @@ function getDistanceMiles(
   return earthRadiusMiles * (2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)));
 }
 
-export default function SavedPage() {
+function SavedContent() {
   const router = useRouter();
+  const [savedView, setSavedView] = useState<"looks" | "artists">("looks");
+  const lookLibrary = useLocalLookLibrary();
+  useEffect(() => {
+    const syncInitialCompare = () => { if (window.location.hash === "#compare") setSavedView("artists"); };
+    syncInitialCompare();
+  }, []);
   const [savedArtists, setSavedArtists] = useState<Artist[]>([]);
   const [savedArtistRecords, setSavedArtistRecords] = useState<SavedArtistRecord[]>([]);
   const [collections, setCollections] = useState<SavedCollection[]>([]);
@@ -97,6 +107,14 @@ export default function SavedPage() {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
   const [loadAttempt, setLoadAttempt] = useState(0);
+  const closeLookCompare = () => {
+    setMobileCompareOpen(false);
+    setMobileSelectionMode(false);
+    window.history.replaceState(null, "", window.location.pathname + window.location.search);
+    window.dispatchEvent(new Event("hashchange"));
+  };
+  const savedLookArtists = new Set(lookLibrary.catalog.filter(l => lookLibrary.state.saved.includes(l.id)).map(l => l.artistId));
+  const selectedLookArtistIds = selectedCompareIds.filter(id => savedLookArtists.has(id));
   const clientOnboarding = useClientOnboarding();
   const [userLocation, setUserLocation] = useState<{
   latitude: number;
@@ -512,7 +530,7 @@ export default function SavedPage() {
   };
 
   const toggleCompare = (id: string) => {
-    const nextSelection = toggleSavedCompareSelection(selectedCompareIds, id);
+    const nextSelection = toggleSavedCompareSelection(savedView === "looks" ? selectedLookArtistIds : selectedCompareIds, id);
     if (nextSelection.limitReached) {
       alert("You can compare up to 3 artists at once.");
       return;
@@ -577,6 +595,26 @@ export default function SavedPage() {
         id="compare"
         className="mx-auto w-full max-w-[1600px] px-4 py-5 sm:px-5 md:px-7 md:py-7 lg:px-10 lg:py-14"
       >
+        <div className="saved-view-tabs" aria-label="Saved views">
+          <button aria-pressed={savedView === "looks"} onClick={() => {setSavedView("looks");closeLookCompare();setSelectedCompareIds([]);}}>Saved Looks ({lookLibrary.state.saved.length})</button>
+          <button aria-pressed={savedView === "artists"} onClick={() => {setSavedView("artists");closeLookCompare();setSelectedCompareIds([]);}}>Saved Artists ({savedArtists.length + lookLibrary.state.demoArtists.length})</button>
+          <Link href="/discover">Discover looks</Link>
+        </div>
+        {savedView === "looks" ? <>
+          <h1 className="mt-6 mb-2 text-[32px]" style={{fontFamily:"Georgia, serif"}}>Saved Looks</h1>
+          <p className="mb-6 text-sm text-lumina-text-muted">Your personal beauty moodboard. Compare the professionals behind your saved work.</p>
+          {mobileCompareOpen && selectedLookArtistIds.length >= 2 ? <SavedCompareMobile
+            artists={lookLibrary.artists.filter(a => selectedLookArtistIds.includes(a.id))}
+            getProfileHref={id => {
+              const look = lookLibrary.catalog.find(l => l.artistId === id);
+              return look?.demo ? `/discover?demo=1&look=${encodeURIComponent(look.id)}` : `/artist/${id}`;
+            }}
+            onBack={closeLookCompare}
+            onRemove={id => {setSelectedCompareIds(ids => ids.filter(x => x !== id)); if(selectedLookArtistIds.length <= 2) closeLookCompare();}}
+          /> : <DiscoverLooks saved selectedIds={selectedLookArtistIds} onSelect={toggleCompare} onCompare={() => {setMobileCompareOpen(true);window.history.replaceState(null,"","#compare");window.dispatchEvent(new Event("hashchange"));}} />}
+
+        </> : <>
+        <SavedDemoArtists />
         <div className="lg:hidden">
           {mobileCompareOpen && mobileCompareArtists.length >= 2 ? (
             <SavedCompareMobile
@@ -715,13 +753,13 @@ export default function SavedPage() {
                     No saved professionals yet
                   </h2>
                   <p className="mt-2 text-[13px] leading-[1.5] text-lumina-text-muted">
-                    Save professionals from Browse to build your shortlist.
+                    Save professionals from Professionals to build your shortlist.
                   </p>
                   <Link
                     href="/browse"
                     className="mt-5 inline-flex min-h-11 items-center rounded-full border border-lumina-black px-5 text-[13px] font-medium transition hover:bg-lumina-black hover:text-white"
                   >
-                    Browse professionals
+                    Find professionals
                   </Link>
                 </div>
               ) : visibleArtists.length === 0 ? (
@@ -896,14 +934,14 @@ export default function SavedPage() {
             </h2>
 
             <p className="mt-2 text-[14px] leading-[1.55] text-lumina-text-muted md:text-[15px]">
-              Tap the heart on professionals you want to revisit.
+              Tap the bookmark on professionals you want to revisit.
             </p>
 
             <Link
               href="/browse"
               className="mt-6 inline-block rounded-full border border-lumina-black px-6 py-3 text-[14px] transition hover:bg-lumina-black hover:text-white"
             >
-              Browse professionals
+              Find professionals
             </Link>
           </div>
         ) : visibleArtists.length === 0 ? (
@@ -1053,6 +1091,7 @@ export default function SavedPage() {
                   <div key={artist.id}>
                     <ArtistCard
                       artist={artist}
+                      initialSaved={true}
                       distance={
                         userLocation &&
                         artist.latitude !== null &&
@@ -1100,8 +1139,13 @@ export default function SavedPage() {
           </>
         )}
         </div>
+        </>}
       </section>
       </div>
     </ClientWorkspaceShell>
   );
+}
+
+export default function SavedPage() {
+  return <LocalLookLibraryProvider><SavedContent /></LocalLookLibraryProvider>;
 }

@@ -196,7 +196,7 @@ export default function AuthenticatedWorkspaceRail() {
     role === "professional" ? "Professional workspace" : "Client workspace";
   const isSelected = (href: string) => {
     if (href.includes("?")) return false;
-    return pathname === href;
+    return pathname === href || (href === "/browse" && pathname.startsWith("/browse/"));
   };
 
   const getIndicator = (itemId: string) => {
@@ -339,6 +339,7 @@ export default function AuthenticatedWorkspaceRail() {
         type="button"
         onClick={() => setMobileNavigationOpen(true)}
         className="fixed bottom-5 left-4 z-30 flex h-12 w-12 items-center justify-center rounded-full border border-lumina-glass-border bg-lumina-glass text-lumina-text shadow-[0_8px_24px_rgba(39,36,40,0.08)] backdrop-blur-[14px] xl:hidden"
+
         aria-label={`Open ${workspaceLabel.toLowerCase()} navigation`}
         aria-expanded={mobileNavigationOpen}
         aria-controls="authenticated-workspace-mobile-navigation"

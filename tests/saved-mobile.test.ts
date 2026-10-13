@@ -48,7 +48,9 @@ test("mobile saved rows are dense, selectable, and keep direct profile navigatio
   assert.match(row, /SaveArtistButton/);
   assert.match(row, /compactGlass/);
   assert.match(row, /From \$\{artist\.price_start\}/);
-  assert.match(saveButton, /h-10 w-10/);
+  assert.match(saveButton, /min-h-11/);
+  assert.match(saveButton, /w-11/);
+  assert.match(saveButton, /Bookmark/);
   assert.match(saveButton, /h-7 w-7/);
   assert.match(saveButton, /size=\{13\}/);
   assert.match(publicArtistImage, /profileSource \|\| portfolioSource/);

@@ -23,6 +23,7 @@ type ArtistCardProps = {
   viewerIsArtist?: boolean;
   isOwnProfile?: boolean;
   compactMobile?: boolean;
+  initialSaved?: boolean;
 };
 
 function getCompactLocation(location: string) {
@@ -50,6 +51,7 @@ export default function ArtistCard({
   viewerIsArtist = false,
   isOwnProfile = false,
   compactMobile = false,
+  initialSaved,
 }: ArtistCardProps) {
   return (
     <Link
@@ -73,6 +75,7 @@ export default function ArtistCard({
             <SaveArtistButton
               artistId={artist.id}
               artistName={artist.name}
+              initialSaved={initialSaved}
               onChange={(saved) => {
                 if (!saved) {
                   onRemoved?.();
@@ -103,7 +106,7 @@ export default function ArtistCard({
               : "text-[12px] leading-5 sm:text-[13px]"
           }`}
         >
-          <span className="text-lumina-black">★</span> New profile
+          New profile
         </p>
 
         <h3

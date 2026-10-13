@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Heart } from "lucide-react";
+import { Bookmark } from "lucide-react";
+import { getMarketplaceAccount, marketplaceSignIn } from "@/lib/marketplace-account";
 import { supabase } from "@/lib/supabase";
 
 type SaveArtistButtonProps = {
@@ -11,6 +12,8 @@ type SaveArtistButtonProps = {
   onChange?: (saved: boolean) => void;
   viewerIsArtist?: boolean;
   compactGlass?: boolean;
+  showLabel?: boolean;
+  initialSaved?: boolean;
 };
 
 export default function SaveArtistButton({
@@ -20,55 +23,58 @@ export default function SaveArtistButton({
   onChange,
   viewerIsArtist = false,
   compactGlass = false,
+  showLabel = false,
+  initialSaved,
 }: SaveArtistButtonProps) {
-  const [isSaved, setIsSaved] = useState(false);
-  const [loading, setLoading] = useState(() => !viewerIsArtist);
+  const [isSaved, setIsSaved] = useState(initialSaved ?? false);
+  const [loading, setLoading] = useState(() => !viewerIsArtist && initialSaved === undefined);
   const [toast, setToast] = useState("");
 
   useEffect(() => {
-    if (viewerIsArtist) {
-      return;
-    }
+    if (viewerIsArtist) return;
+    // Saved has already loaded this record for the authenticated client.
+    if (initialSaved !== undefined) return;
+    let cancelled = false;
 
     const checkSaved = async () => {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-
-      if (!user) {
-        setLoading(false);
-        return;
-      }
-
+      // Resolve the current account once. Do not race a second auth request per card.
+      const account = await getMarketplaceAccount();
+      if (cancelled) return;
+      if (account.role !== "client") { setLoading(false); return; }
       const { data, error } = await supabase
         .from("saved_artists")
         .select("artist_id")
-        .eq("user_id", user.id)
+        .eq("user_id", account.id)
         .eq("artist_id", artistId)
         .maybeSingle();
-
-      if (error) {
-        console.log(error);
-      }
-
+      if (cancelled) return;
+      if (error) throw error;
       setIsSaved(!!data);
       setLoading(false);
     };
 
-    checkSaved();
-  }, [artistId, viewerIsArtist]);
+    void checkSaved().catch(() => {
+      if (!cancelled) {
+        // Keep the action disabled when its persisted state is unknown.
+        setToast("Could not confirm saved artists. Reload to try again.");
+      }
+    });
+    return () => { cancelled = true; };
+  }, [artistId, viewerIsArtist, initialSaved]);
 
   const toggleSave = async () => {
     if (loading) return;
 
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) {
-      window.location.href = "/login";
-      return;
+    let account;
+    try { account = await getMarketplaceAccount(); }
+    catch { setToast("Could not confirm your account. Please try again."); return; }
+    if (account.role === "guest") { marketplaceSignIn(); return; }
+    if (account.role !== "client") {
+      setToast("Use a client account to save artists. Switch accounts through the account menu."); return;
     }
+    // Fictional discovery IDs must never reach the real saved_artists table.
+    if (artistId.startsWith("demo-")) { setToast("Demo artist saves are local to Discover."); return; }
+    const user = { id: account.id };
 
     if (isSaved) {
       setIsSaved(false);
@@ -123,10 +129,10 @@ export default function SaveArtistButton({
         aria-label={
           isSaved
             ? `Remove ${artistName} from saved artists`
-            : `Save ${artistName}`
+            : `Save artist: ${artistName}`
         }
         aria-pressed={isSaved}
-        className={`flex h-10 w-10 items-center justify-center rounded-full transition hover:scale-105 disabled:opacity-50 ${
+        className={`flex min-h-11 ${showLabel ? "gap-2 px-4" : "w-11"} items-center justify-center rounded-full transition hover:scale-105 disabled:opacity-50 ${
           compactGlass
             ? "border border-transparent bg-transparent shadow-none"
             : `border shadow-sm backdrop-blur ${
@@ -144,23 +150,24 @@ export default function SaveArtistButton({
                 : "border-white/30 bg-[rgba(255,255,255,0.46)]"
             }`}
           >
-            <Heart
+            <Bookmark
               size={13}
               strokeWidth={1.7}
               className={
                 isSaved
-                  ? "fill-lumina-attention text-lumina-attention"
+                  ? "fill-lumina-black text-lumina-black"
                   : "text-lumina-text"
               }
             />
           </span>
         ) : (
-          <Heart
+          <Bookmark
             size={19}
             strokeWidth={1.8}
-            className={isSaved ? "fill-lumina-attention text-lumina-attention" : "text-lumina-text"}
+            className={isSaved ? "fill-lumina-black text-lumina-black" : "text-lumina-text"}
           />
         )}
+        {showLabel && <span>{isSaved ? "Artist saved" : "Save artist"}</span>}
       </button>
 
       {toast && (

@@ -1,8 +1,7 @@
 import type { LucideIcon } from "lucide-react";
 import {
-  Bookmark,
-  GitCompareArrows,
   Heart,
+  Compass,
   Images,
   Inbox,
   LayoutDashboard,
@@ -54,27 +53,12 @@ export function getProfessionalWorkspaceNavigation(
 }
 
 export const clientWorkspaceNavigation: WorkspaceNavigationItem[] = [
-  { id: "overview", label: "Overview", href: "/client", icon: LayoutDashboard },
-  {
-    id: "requests",
-    label: "My Requests",
-    href: "/my-requests",
-    icon: Bookmark,
-  },
-  { id: "messages", label: "Messages", href: "/client/messages", icon: MessageCircle },
+  { id: "discover", label: "Discover", href: "/discover", icon: Compass },
+  { id: "professionals", label: "Professionals", href: "/browse", icon: Users },
   { id: "saved", label: "Saved", href: "/saved", icon: Heart },
-  {
-    id: "compare",
-    label: "Compare",
-    href: "/saved#compare",
-    icon: GitCompareArrows,
-    supportingText: "In Saved",
-  },
-  {
-    id: "reviews",
-    label: "Reviews",
-    href: "/client/reviews",
-    icon: Star,
-  },
+  { id: "requests", label: "My Requests", href: "/my-requests", icon: Inbox },
+  { id: "overview", label: "Overview", href: "/client", icon: LayoutDashboard },
+  { id: "messages", label: "Messages", href: "/client/messages", icon: MessageCircle },
+  { id: "reviews", label: "Reviews", href: "/client/reviews", icon: Star },
   { id: "settings", label: "Profile / Settings", href: "/account", icon: Settings },
 ];

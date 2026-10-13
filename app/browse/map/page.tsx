@@ -1,4 +1,5 @@
 "use client";
+import "@/app/discovery.css";
 
 import { Suspense } from "react";
 import Link from "next/link";
@@ -11,7 +12,7 @@ import PublicPageHeader from "@/components/PublicPageHeader";
 import { useSearchParams } from "next/navigation";
 import SaveArtistButton from "@/components/SaveArtistButton";
 import SearchBar from "@/components/SearchBar";
-import { MapPin } from "lucide-react";
+import { ArrowDownWideNarrow, MapPin, SlidersHorizontal } from "lucide-react";
 import {
   getBrowseDistanceMiles,
   useBrowseGeolocation,
@@ -111,6 +112,7 @@ const buildViewLink = (path: string) => {
         .eq("is_active", true)
         .order("name", { ascending: true });
 
+      if (cancelled) return;
       if (error) {
         console.log(error);
         return;
@@ -290,7 +292,8 @@ const activeFilterCount = selectedCategories.length;
       const markerEl = document.createElement("button");
 
       markerEl.type = "button";
-      markerEl.innerHTML = "📍";
+      markerEl.setAttribute("aria-label", `View ${artist.name} on map`);
+      markerEl.innerHTML = '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M20 10c0 6-8 12-8 12S4 16 4 10a8 8 0 1 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>';
 
       markerEl.style.fontSize = "28px";
       markerEl.style.cursor = "pointer";
@@ -391,7 +394,7 @@ markerEl.addEventListener("mouseleave", () => {
 
   return (
     <main data-lumina-public-page className="min-h-screen bg-lumina-surface text-lumina-text">
-      <PublicPageHeader backHref="/" />
+      <PublicPageHeader marketplace backHref="/" />
 
       <section className="px-4 pb-14 pt-6 md:px-10 md:pb-20 md:pt-10">
         <div className="flex flex-col gap-5 md:gap-6 lg:flex-row lg:items-start lg:justify-between">
@@ -420,7 +423,7 @@ markerEl.addEventListener("mouseleave", () => {
             </h1>
 
             <p className="mt-2 text-[14px] leading-6 text-lumina-text-muted md:mt-3 md:text-[18px] md:leading-7">
-              Discover {filteredArtists.length} beauty
+              Explore {filteredArtists.length} beauty
               professionals
             </p>
 
@@ -462,7 +465,7 @@ markerEl.addEventListener("mouseleave", () => {
         }}
         className="min-h-10 rounded-full border border-lumina-border bg-lumina-surface px-3.5 py-2 transition hover:border-lumina-glass-border hover:bg-lumina-surface-soft md:min-h-0 md:rounded-none md:border-0 md:bg-transparent md:px-0 md:py-0"
       >
-        ☷ Filter {activeFilterCount > 0 && `(${activeFilterCount})`}
+        <SlidersHorizontal aria-hidden="true" className="mr-1.5 inline-block h-3.5 w-3.5" strokeWidth={1.7} /> Filter {activeFilterCount > 0 && `(${activeFilterCount})`}
       </button>
 
       {openFilter && (
@@ -512,7 +515,7 @@ markerEl.addEventListener("mouseleave", () => {
         }}
         className="min-h-10 rounded-full border border-lumina-border bg-lumina-surface px-3.5 py-2 transition hover:border-lumina-glass-border hover:bg-lumina-surface-soft md:min-h-0 md:rounded-none md:border-0 md:bg-transparent md:px-0 md:py-0"
       >
-        ☰ Sort
+        <ArrowDownWideNarrow aria-hidden="true" className="mr-1.5 inline-block h-3.5 w-3.5" strokeWidth={1.7} /> Sort
       </button>
 
       {openSort && (

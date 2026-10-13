@@ -350,6 +350,10 @@ export default function AccountMenu({
                 View profile
               </Link>
 
+              <Link href="/discover" className="block rounded-[14px] px-4 py-3 text-sm text-lumina-text hover:bg-lumina-blush/70">
+                Explore marketplace / Discover
+              </Link>
+
               <Link
                 href="/dashboard/settings"
                 className="block rounded-[14px] px-4 py-3 text-sm text-lumina-text hover:bg-lumina-blush/70 focus-visible:bg-lumina-blush/70"

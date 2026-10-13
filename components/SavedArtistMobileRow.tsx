@@ -125,6 +125,7 @@ export default function SavedArtistMobileRow({
           <SaveArtistButton
             artistId={artist.id}
             artistName={artist.name}
+            initialSaved={true}
             compactGlass
             onChange={(saved) => {
               if (!saved) onRemoved();

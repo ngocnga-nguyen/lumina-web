@@ -265,8 +265,8 @@ export default function HomePage() {
           </Link>
 
           <nav className="col-start-2 row-start-1 hidden items-center gap-7 justify-self-center text-[14px] md:flex">
-            <Link href="/browse" className="transition hover:text-lumina-attention">Browse</Link>
-            <Link href="/browse/map" className="transition hover:text-lumina-attention">Map</Link>
+            <Link href="/discover" className="transition hover:text-lumina-attention">Discover</Link>
+            <Link href="/browse" className="transition hover:text-lumina-attention">Professionals</Link>
             <Link href="/how-it-works" className="transition hover:text-lumina-attention">How it works</Link>
           </nav>
 
