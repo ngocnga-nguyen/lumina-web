@@ -29,13 +29,12 @@ test("mobile Clients uses current profile avatars with initials fallback and ser
 test("mobile Client Card preserves workspace ordering and professional-only modules", () => {
   assert.match(cardPage, /workspacePreferences\.order\.filter/);
   assert.match(cardPage, /workspacePreferences\.hidden\.includes/);
-  assert.match(cardPage, /MOBILE_SECTION_LABELS/);
+  assert.match(cardPage, /ClientRecordOverview/);
   assert.match(cardPage, /Private notes/);
   assert.match(cardPage, /Service preferences/);
   assert.match(cardPage, /Results \/ Photos/);
   assert.match(cardPage, /Consultation/);
-  assert.match(cardPage, /lg:hidden/);
-  assert.match(cardPage, /hidden lg:block/);
+  assert.match(cardPage, /visibleSections=\{visibleMobileSections\}/);
 });
 
 test("mobile Client Card links into shared Requests and Messages workspaces", () => {

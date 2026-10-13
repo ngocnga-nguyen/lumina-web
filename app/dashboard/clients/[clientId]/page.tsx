@@ -13,12 +13,10 @@ import {
   Clock3,
   History,
   Images,
-  MessageCircle,
   NotebookPen,
   Pencil,
   Plus,
   Save,
-  Settings2,
   SlidersHorizontal,
 } from "lucide-react";
 import ClientCardSection from "@/components/ClientCardSection";
@@ -26,7 +24,7 @@ import ClientCardWorkspaceCustomizer from "@/components/ClientCardWorkspaceCusto
 import ClientNotesPreview from "@/components/ClientNotesPreview";
 import ClientTagEditor from "@/components/ClientTagEditor";
 import ConsultationSnapshot from "@/components/ConsultationSnapshot";
-import IdentityAvatar from "@/components/IdentityAvatar";
+import ClientRecordOverview from "@/components/ClientRecordOverview";
 import { normalizeManualClientEmail, normalizeManualClientName } from "@/lib/artist-client-records";
 import {
   resolveClientIdentity,
@@ -125,13 +123,6 @@ const EMPTY_MANUAL_SERVICE: ManualServiceDraft = {
   price: "",
 };
 
-const MOBILE_SECTION_LABELS: Record<ClientCardSectionId, string> = {
-  service_history: "Service history",
-  consultation: "Consultation",
-  notes: "Private notes",
-  preferences: "Preferences",
-  results: "Results / Photos",
-};
 
 function parseDate(value: string | null) {
   if (!value) return null;
@@ -231,8 +222,6 @@ export default function ClientCardPage() {
   const [tagSaveMessage, setTagSaveMessage] = useState("");
   const [workspaceMessage, setWorkspaceMessage] = useState("");
   const [customizingWorkspace, setCustomizingWorkspace] = useState(false);
-  const [mobileSection, setMobileSection] = useState<"overview" | ClientCardSectionId>("overview");
-  const [editingMobileTags, setEditingMobileTags] = useState(false);
   const [editingManualService, setEditingManualService] = useState(false);
   const [manualServiceDraft, setManualServiceDraft] = useState<ManualServiceDraft>(EMPTY_MANUAL_SERVICE);
   const [savingManualService, setSavingManualService] = useState(false);
@@ -441,10 +430,6 @@ export default function ClientCardPage() {
   const visibleMobileSections = availableSections.filter(
     (section) => !workspacePreferences.hidden.includes(section)
   );
-  const selectedMobileSection =
-    mobileSection === "overview" || visibleMobileSections.includes(mobileSection)
-      ? mobileSection
-      : "overview";
 
   const persistCardPatch = async (patch: Record<string, unknown>) => {
     if (!artistId || !card?.id || unavailable) {
@@ -841,6 +826,8 @@ export default function ClientCardPage() {
   }
   if (errorMessage) return <PageMessage message={errorMessage} showBack onRetry={() => setLoadAttempt((current) => current + 1)} />;
 
+  if (!card) return <PageMessage message="Loading client record..." />;
+
   const relevantRequest = nextAppointment || requests[0] || null;
   const requestWorkspaceHref = relevantRequest
     ? `/dashboard/requests?request=${relevantRequest.id}`
@@ -848,206 +835,66 @@ export default function ClientCardPage() {
   const messageHref = relevantRequest
     ? `/dashboard/messages?request=${relevantRequest.id}`
     : "/dashboard/messages";
-  const relationshipSummary = card?.source === "manual"
-    ? latestManualService
-      ? `${latestManualService.service_name} · ${completedVisitCount} completed ${completedVisitCount === 1 ? "visit" : "visits"}`
-      : "Off-platform client relationship"
-    : nextAppointment
-    ? formatRequestServiceSummary(nextAppointment) || "Upcoming appointment"
-    : latestCompleted
-      ? `${formatRequestServiceSummary(latestCompleted) || "Completed service"} · ${completedVisitCount} completed ${completedVisitCount === 1 ? "visit" : "visits"}`
-      : formatRequestServiceSummary(requests[0]) || "New Lumina client";
+  const appointmentDate = nextAppointment ? parseDate(getAppointmentDate(nextAppointment)) : null;
+  const overviewNote = clientNotes.find(note => note.note_type !== "reminder" && note.is_pinned)
+    || clientNotes.find(note => note.note_type !== "reminder");
+  const previewResult = results[0];
+  const lastService = latestManualService || latestCompleted;
 
   return (
     <div className="bg-lumina-surface text-lumina-text">
-      <section className="mx-auto max-w-[1280px] px-5 py-6 md:px-10 md:py-9 lg:py-14">
-        <div className="lg:hidden">
-          <BackToClients />
-
-          <header className="mt-5">
-            <div className="flex min-w-0 items-center gap-3.5">
-              <IdentityAvatar
-                name={clientName}
-                imageUrl={clientIdentity.avatarUrl}
-                className="flex h-14 w-14 shrink-0 rounded-full bg-lumina-pearl/80 text-[17px] font-semibold tracking-[0.04em] ring-1 ring-inset ring-lumina-border/55"
-              />
-              <div className="min-w-0 flex-1">
-                <p className="text-[10px] font-semibold uppercase tracking-[0.15em] text-lumina-text-muted">
-                  {card?.source === "manual" ? "Added manually" : "Lumina client"}
-                </p>
-                <h1 className="mt-1 truncate font-serif text-[28px] font-semibold leading-[1.05] text-lumina-text">
-                  {clientName}
-                </h1>
-                <p className="mt-1.5 line-clamp-2 text-[12px] leading-[1.4] text-lumina-text-muted">
-                  {relationshipSummary}
-                </p>
-              </div>
-            </div>
-
-            {card?.source !== "manual" && relevantRequest && (
-              <div className="mt-4 flex items-center gap-2.5">
-                <Link href={messageHref} className="inline-flex min-h-10 items-center justify-center gap-2 rounded-full bg-lumina-black px-4 text-[12px] font-medium text-white transition hover:bg-lumina-text focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-lumina-text">
-                  <MessageCircle size={14} aria-hidden="true" /> Message client
-                </Link>
-                <Link href={requestWorkspaceHref} className="inline-flex min-h-10 items-center justify-center rounded-full border border-lumina-border bg-lumina-surface px-4 text-[12px] font-medium text-lumina-text transition hover:bg-lumina-surface-soft focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-lumina-text">
-                  View requests
-                </Link>
-              </div>
-            )}
-
-            <div className="mt-3.5 border-y border-lumina-border/55 py-2.5">
-              {nextAppointment ? (
-                <div className="flex items-start gap-3">
-                  <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-lumina-blush/45 text-lumina-text">
-                    <CalendarDays size={15} aria-hidden="true" />
-                  </span>
-                  <div className="min-w-0">
-                    <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-lumina-text-muted">Next appointment</p>
-                    <p className="mt-1 truncate text-[13px] font-medium">{formatRequestServiceSummary(nextAppointment) || "Confirmed appointment"}</p>
-                    <p className="mt-0.5 text-[11px] text-lumina-text-muted">{formatDate(getAppointmentDate(nextAppointment))}{formatTime(getAppointmentTime(nextAppointment)) ? ` · ${formatTime(getAppointmentTime(nextAppointment))}` : ""}</p>
-                  </div>
-                </div>
-              ) : latestCompleted || latestManualService ? (
-                <div className="flex items-start gap-3">
-                  <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-lumina-pearl/75 text-lumina-text"><History size={15} aria-hidden="true" /></span>
-                  <div className="min-w-0">
-                    <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-lumina-text-muted">Most recent service</p>
-                    <p className="mt-1 truncate text-[13px] font-medium">{latestManualService?.service_name || (latestCompleted ? formatRequestServiceSummary(latestCompleted) : "") || "Completed service"}</p>
-                    <p className="mt-0.5 text-[11px] text-lumina-text-muted">{formatDate(latestManualService?.service_date || (latestCompleted ? getCompletedVisitDate(latestCompleted) : null))}</p>
-                  </div>
-                </div>
-              ) : (
-                <p className="text-[12px] text-lumina-text-muted">No completed services yet.</p>
-              )}
-            </div>
-          </header>
-
-          <div className="-mx-5 mt-5 overflow-x-auto px-5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" aria-label="Client Card sections">
-            <div role="tablist" className="flex w-max min-w-full items-center gap-1 border-b border-lumina-border/50">
-              <MobileSectionTab active={selectedMobileSection === "overview"} emphasized label="Overview" onClick={() => setMobileSection("overview")} />
-              {visibleMobileSections.map((section) => (
-                <MobileSectionTab key={section} active={selectedMobileSection === section} emphasized={section === "service_history"} label={MOBILE_SECTION_LABELS[section]} onClick={() => setMobileSection(section)} />
-              ))}
-            </div>
-          </div>
-
-          <div className="mt-4">
-            {selectedMobileSection === "overview" ? (
-              <div className="space-y-5">
-                <section aria-labelledby="mobile-relationship-overview">
-                  <div className="flex items-center justify-between gap-3">
-                    <h2 id="mobile-relationship-overview" className="text-[16px] font-semibold">Relationship overview</h2>
-                    <span className="text-[10px] text-lumina-text-muted/80">{completedVisitCount} completed {completedVisitCount === 1 ? "visit" : "visits"}</span>
-                  </div>
-                  <dl className="mt-3 divide-y divide-lumina-border/50 border-y border-lumina-border/50">
-                    <MobileOverviewRow label="Next appointment" value={nextAppointment ? formatDate(getAppointmentDate(nextAppointment)) : "None scheduled"} detail={nextAppointment ? formatRequestServiceSummary(nextAppointment) : null} />
-                    <MobileOverviewRow label="Recent service" value={latestManualService ? formatDate(latestManualService.service_date) : latestCompleted ? formatDate(getCompletedVisitDate(latestCompleted)) : "No completed visits"} detail={latestManualService?.service_name || (latestCompleted ? formatRequestServiceSummary(latestCompleted) : null)} />
-                  </dl>
-                </section>
-
-                {card?.source === "manual" && (
-                  <section aria-labelledby="mobile-private-contact" className="border-t border-lumina-border/50 pt-4">
-                    <div className="flex items-center justify-between gap-3"><h2 id="mobile-private-contact" className="text-[13px] font-medium text-lumina-text-muted">Private contact</h2><button type="button" onClick={() => setEditingManualIdentity((current) => !current)} className="min-h-8 px-2 text-[10px] text-lumina-text-muted underline decoration-lumina-border underline-offset-4">{editingManualIdentity ? "Cancel" : "Edit"}</button></div>
-                    {editingManualIdentity ? <ManualIdentityEditor draft={manualIdentityDraft} message={manualIdentityMessage} onChange={setManualIdentityDraft} onSave={() => void saveManualIdentity()} /> : <div className="mt-2 space-y-1 text-[12px] text-lumina-text"><p>{card.manual_phone || "No phone saved"}</p><p className="break-all">{card.manual_email || "No email saved"}</p></div>}
-                    <p className="mt-1.5 text-[10px] text-lumina-text-muted">Visible only in your professional workspace.</p>
-                  </section>
-                )}
-
-                <section aria-labelledby="mobile-client-tags">
-                  <div className="flex items-center justify-between gap-3">
-                    <h2 id="mobile-client-tags" className="text-[13px] font-medium text-lumina-text-muted">Client tags</h2>
-                    <button type="button" onClick={() => setEditingMobileTags((current) => !current)} className="min-h-8 rounded-full px-2 text-[10px] font-medium text-lumina-text-muted underline decoration-lumina-border underline-offset-4">
-                      {editingMobileTags ? "Done" : "Manage"}
-                    </button>
-                  </div>
-                  {editingMobileTags ? (
-                    <ClientTagEditor instanceId="mobile-client-tags-editor" tags={tags} saving={savingTags} onChange={updateTags} />
-                  ) : tags.length > 0 ? (
-                    <div className="mt-2 flex flex-wrap gap-1.5">{tags.map((tag) => <span key={tag.toLocaleLowerCase()} className="rounded-full bg-lumina-pearl/45 px-2.5 py-1 text-[10px] text-lumina-text-muted">{tag}</span>)}</div>
-                  ) : (
-                    <p className="mt-1.5 text-[12px] text-lumina-text-muted">No private client tags yet.</p>
-                  )}
-                  <p aria-live="polite" className={`mt-1.5 min-h-3 text-[10px] ${tagSaveMessage.includes("couldn't") ? "text-lumina-attention" : "text-lumina-text-muted"}`}>{tagSaveMessage}</p>
-                </section>
-
-                {!workspacePreferences.hidden.includes("preferences") && (
-                  <MobilePreviewBlock title="Preference preview" empty="No service preferences saved yet." value={savedPreferences} actionLabel="Open preferences" onOpen={() => setMobileSection("preferences")} />
-                )}
-                {!workspacePreferences.hidden.includes("notes") && (
-                  <MobilePreviewBlock title="Recent private note" empty="No private notes yet." value={clientNotes[0]?.title?.trim() || clientNotes[0]?.body?.trim() || ""} actionLabel="Open private notes" onOpen={() => setMobileSection("notes")} />
-                )}
-              </div>
-            ) : (
-              renderSection(selectedMobileSection, "mobile")
-            )}
-          </div>
-
-          <button type="button" onClick={() => setCustomizingWorkspace(true)} className="mt-5 inline-flex min-h-9 items-center gap-2 text-[11px] font-medium text-lumina-text-muted transition hover:text-lumina-text">
-            <Settings2 size={14} aria-hidden="true" /> Customize workspace
-          </button>
-          {card?.source === "manual" && <button type="button" onClick={() => void changeCardArchiveState()} className="ml-4 min-h-9 text-[11px] text-lumina-text-muted underline decoration-lumina-border underline-offset-4">{card.archived_at ? "Restore client" : "Archive client"}</button>}
-        </div>
-
-        <div className="hidden lg:block">
-        <BackToClients />
-        <header className="mt-6 flex flex-col gap-5 border-b border-lumina-border/70 pb-6 xl:flex-row xl:items-center xl:justify-between">
-          <div className="flex min-w-0 items-center gap-4">
-            <IdentityAvatar
-              name={clientName}
-              imageUrl={clientIdentity.avatarUrl}
-              className="flex h-[68px] w-[68px] shrink-0 rounded-full bg-lumina-pearl text-[21px] font-medium"
-            />
-            <div className="min-w-0">
-              <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-lumina-text-muted">{card?.source === "manual" ? "Added manually" : "Lumina client"}</p>
-              <h1 className="mt-1 break-words font-serif text-[32px] font-semibold leading-[1.1] xl:text-[36px]">{clientName}</h1>
-            </div>
-          </div>
-          {card?.source !== "manual" && relevantRequest && (
-            <div className="flex shrink-0 flex-wrap items-center gap-2.5">
-              <Link href={messageHref} className="inline-flex min-h-10 items-center gap-2 rounded-full bg-lumina-black px-4 text-[12px] font-medium text-white transition hover:bg-lumina-text focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-lumina-text">
-                <MessageCircle size={14} aria-hidden="true" /> Message client
-              </Link>
-              <Link href={requestWorkspaceHref} className="inline-flex min-h-10 items-center rounded-full border border-lumina-border px-4 text-[12px] font-medium transition hover:bg-lumina-surface-soft focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-lumina-text">
-                View requests
-              </Link>
-            </div>
-          )}
-        </header>
-
-        <section className="mt-5 flex flex-wrap items-start justify-between gap-x-8 gap-y-3 border-b border-lumina-border/70 pb-5" aria-label="Client relationship summary">
-          <div className="flex min-w-0 items-start gap-3">
-            <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-lumina-blush/35">
-              {nextAppointment ? <CalendarDays size={17} aria-hidden="true" /> : <History size={17} aria-hidden="true" />}
-            </span>
-            <div className="min-w-0">
-              <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-lumina-text-muted">{nextAppointment ? "Next appointment" : latestCompleted || latestManualService ? "Most recent service" : "Relationship history"}</p>
-              <p className="mt-1 text-[15px] font-medium leading-snug">{nextAppointment ? formatRequestServiceSummary(nextAppointment) || "Appointment" : latestManualService?.service_name || (latestCompleted ? formatRequestServiceSummary(latestCompleted) : null) || "No completed services yet"}</p>
-              {(nextAppointment || latestCompleted || latestManualService) && <p className="mt-1 text-[12px] text-lumina-text-muted">{nextAppointment ? formatDate(getAppointmentDate(nextAppointment)) : formatDate(latestManualService?.service_date || (latestCompleted ? getCompletedVisitDate(latestCompleted) : null))}{nextAppointment && formatTime(getAppointmentTime(nextAppointment)) ? ` · ${formatTime(getAppointmentTime(nextAppointment))}` : ""}</p>}
-            </div>
-          </div>
-          {completedVisitCount > 0 && <p className="text-[12px] text-lumina-text-muted"><span className="font-medium text-lumina-text">{completedVisitCount}</span> completed {completedVisitCount === 1 ? "visit" : "visits"}</p>}
-        </section>
-
-        <ClientTagEditor instanceId="desktop-client-tags" tags={tags} saving={savingTags} onChange={updateTags} compact />
-        <p aria-live="polite" className={`mt-2 min-h-4 text-[11px] ${tagSaveMessage.includes("couldn't") ? "text-lumina-attention" : "text-lumina-text-muted"}`}>{tagSaveMessage}</p>
-        {card?.source === "manual" && <div className="flex items-start justify-between gap-4 border-b border-lumina-border/55 py-4"><div><p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-lumina-text-muted">Private contact</p>{editingManualIdentity ? <ManualIdentityEditor draft={manualIdentityDraft} message={manualIdentityMessage} onChange={setManualIdentityDraft} onSave={() => void saveManualIdentity()} /> : <p className="mt-2 text-[13px] text-lumina-text">{[card.manual_phone, card.manual_email].filter(Boolean).join(" · ") || "No private contact details saved."}</p>}</div><div className="flex items-center gap-3"><button type="button" onClick={() => setEditingManualIdentity((current) => !current)} className="min-h-9 text-[11px] text-lumina-text-muted underline decoration-lumina-border underline-offset-4">{editingManualIdentity ? "Cancel" : "Edit contact"}</button><button type="button" onClick={() => void changeCardArchiveState()} className="min-h-9 text-[11px] text-lumina-text-muted underline decoration-lumina-border underline-offset-4">{card.archived_at ? "Restore client" : "Archive client"}</button></div></div>}
-
-        <div className="mt-7 flex flex-wrap items-end justify-between gap-3">
-          <div>
-            <h2 className="font-serif text-[24px] font-semibold text-lumina-text">Client workspace</h2>
-            <p className="mt-1 text-[12px] text-lumina-text-muted">History, visual results, and private service context in one place.</p>
-          </div>
-          <button type="button" onClick={() => setCustomizingWorkspace(true)} className="inline-flex min-h-10 items-center gap-2 rounded-full border border-lumina-border bg-lumina-surface px-4 text-[12px] font-medium text-lumina-text transition hover:bg-lumina-surface-soft focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-lumina-text"><Settings2 size={15} aria-hidden="true" /> Customize workspace</button>
-        </div>
-        <div className="mt-4 grid gap-6 min-[1360px]:grid-cols-[minmax(0,1.55fr)_minmax(300px,0.75fr)] min-[1360px]:items-start min-[1360px]:gap-7">
-          <div className="min-w-0" aria-label="Primary client workspace modules">
-            {primarySections.map((section) => renderSection(section))}
-          </div>
-          <aside className="min-w-0" aria-label="Supporting client workspace modules">
-            {supportingSections.map((section) => renderSection(section))}
-          </aside>
-        </div>
-        </div>
+      <ClientRecordOverview
+        name={clientName}
+        avatarUrl={clientIdentity.avatarUrl}
+        status={tags.find(tag => tag.toLowerCase() === "regular") || tags[0] || (card.source === "manual" ? "Manual client" : "Lumina client")}
+        visits={completedVisitCount}
+        messageHref={card.source !== "manual" && relevantRequest ? messageHref : null}
+        requestsHref={card.source !== "manual" && relevantRequest ? requestWorkspaceHref : null}
+        appointment={nextAppointment && appointmentDate ? {
+          id: nextAppointment.id,
+          title: formatRequestServiceSummary(nextAppointment) || "Confirmed appointment",
+          date: formatDate(getAppointmentDate(nextAppointment)),
+          time: formatTime(getAppointmentTime(nextAppointment)),
+          month: appointmentDate.toLocaleDateString("en-US", { month: "short" }).toUpperCase(),
+          day: String(appointmentDate.getDate()).padStart(2, "0"),
+          href: `/dashboard/requests?request=${nextAppointment.id}`,
+        } : null}
+        lastService={lastService ? {
+          title: latestManualService?.service_name || (latestCompleted ? formatRequestServiceSummary(latestCompleted) : "") || "Completed service",
+          date: formatDate(latestManualService?.service_date || (latestCompleted ? getCompletedVisitDate(latestCompleted) : null)),
+        } : null}
+        appointments={<section aria-label="Appointments" className="space-y-4 pb-5">
+          <h2 className="font-serif text-[24px]">Appointments</h2>
+          {requests.filter(request => request.booking_status === "booked").length ? requests.filter(request => request.booking_status === "booked").map(request => (
+            <Link key={request.id} href={`/dashboard/requests?request=${request.id}`} className="flex min-h-16 flex-wrap items-center justify-between gap-3 border-b border-lumina-border py-3 text-[13px]">
+              <span>{formatRequestServiceSummary(request) || "Appointment"}<span className="mt-1 block text-[11px] text-lumina-text-muted">{formatDate(getAppointmentDate(request))}{formatTime(getAppointmentTime(request)) ? ` · ${formatTime(getAppointmentTime(request))}` : ""}</span></span>
+              <span className="text-[11px] underline underline-offset-4">View appointment</span>
+            </Link>
+          )) : <p className="text-[13px] text-lumina-text-muted">No appointments scheduled.</p>}
+        </section>}
+        nextTime={overviewNote?.body.trim() || overviewNote?.title.trim() || card.private_notes?.trim() || ""}
+        notesHref={`/dashboard/clients/${card.id}/notes`}
+        preferences={savedPreferences}
+        onEditPreferences={editPreferences}
+        result={previewResult ? { image: previewResult.image_url, title: previewResult.service_name || "Result", date: formatDate(previewResult.result_date || previewResult.created_at) } : null}
+        visibleSections={visibleMobileSections}
+        renderSection={section => renderSection(section)}
+        onCustomize={() => setCustomizingWorkspace(true)}
+        privateDetails={<section className="space-y-5 pb-6" aria-label="Private client details">
+          <h2 className="font-serif text-[24px]">Client details</h2>
+          <ClientTagEditor instanceId="client-record-tags" tags={tags} saving={savingTags} onChange={updateTags} compact />
+          <p aria-live="polite" className="text-[11px] text-lumina-text-muted">{tagSaveMessage}</p>
+          {card.source === "manual" && <div>
+            <div className="flex flex-wrap items-center justify-between gap-3"><h3 className="text-[13px] font-medium">Private contact</h3><button type="button" onClick={() => setEditingManualIdentity(current => !current)} className="min-h-11 text-[11px] underline underline-offset-4">{editingManualIdentity ? "Cancel" : "Edit contact"}</button></div>
+            {editingManualIdentity ? <ManualIdentityEditor draft={manualIdentityDraft} message={manualIdentityMessage} onChange={setManualIdentityDraft} onSave={() => void saveManualIdentity()} /> : <p className="break-words text-[13px] text-lumina-text-muted">{[card.manual_phone, card.manual_email].filter(Boolean).join(" · ") || "No private contact details saved."}</p>}
+            <button type="button" onClick={() => void changeCardArchiveState()} className="mt-3 min-h-11 text-[11px] underline underline-offset-4">{card.archived_at ? "Restore client" : "Archive client"}</button>
+          </div>}
+        </section>}
+        workspace={<div className="grid min-w-0 gap-6 xl:grid-cols-[minmax(0,1.55fr)_minmax(0,0.75fr)]">
+          <div className="min-w-0" aria-label="Primary client workspace modules">{primarySections.map((section) => renderSection(section))}</div>
+          <aside className="min-w-0" aria-label="Supporting client workspace modules">{supportingSections.map((section) => renderSection(section))}</aside>
+        </div>}
+      />
         {customizingWorkspace && (
           <ClientCardWorkspaceCustomizer
             preferences={workspacePreferences}
@@ -1062,56 +909,12 @@ export default function ClientCardPage() {
             onClose={() => setCustomizingWorkspace(false)}
           />
         )}
-      </section>
     </div>
   );
 }
 
 function BackToClients() {
   return <Link href="/dashboard/clients" className="inline-flex items-center gap-2 text-[13px] font-medium text-lumina-text-muted transition hover:text-lumina-text"><ArrowLeft size={16} /> Back to clients</Link>;
-}
-
-function MobileSectionTab({ active, emphasized = false, label, onClick }: { active: boolean; emphasized?: boolean; label: string; onClick: () => void }) {
-  return (
-    <button
-      type="button"
-      role="tab"
-      aria-selected={active}
-      onClick={onClick}
-      className={`relative min-h-10 shrink-0 px-3 text-[12px] transition focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-lumina-text ${active ? "font-semibold text-lumina-text" : emphasized ? "font-medium text-lumina-text/75" : "font-normal text-lumina-text-muted/80"}`}
-    >
-      {label}
-      {active && <span className="absolute inset-x-2 bottom-0 h-0.5 rounded-full bg-lumina-black" />}
-    </button>
-  );
-}
-
-function MobileOverviewRow({ label, value, detail }: { label: string; value: string; detail: string | null }) {
-  return (
-    <div className="grid grid-cols-[112px_minmax(0,1fr)] gap-3 py-3">
-      <dt className="text-[10px] font-semibold uppercase tracking-[0.1em] text-lumina-text-muted">{label}</dt>
-      <dd className="min-w-0 text-right">
-        <p className="text-[13px] font-semibold text-lumina-text">{value}</p>
-        {detail && <p className="mt-0.5 truncate text-[11px] text-lumina-text-muted">{detail}</p>}
-      </dd>
-    </div>
-  );
-}
-
-function MobilePreviewBlock({ title, value, empty, actionLabel, onOpen }: { title: string; value: string; empty: string; actionLabel: string; onOpen: () => void }) {
-  return (
-    <section className="border-t border-lumina-border/50 pt-4">
-      <div className="flex items-start justify-between gap-4">
-        <div className="min-w-0">
-          <h2 className="text-[13px] font-medium text-lumina-text-muted">{title}</h2>
-          <p className="mt-1 line-clamp-2 text-[12px] leading-[1.5] text-lumina-text-muted">{value || empty}</p>
-        </div>
-        <button type="button" onClick={onOpen} className="shrink-0 text-[11px] font-medium text-lumina-text-muted underline decoration-lumina-border underline-offset-4 transition hover:text-lumina-text">
-          {actionLabel}
-        </button>
-      </div>
-    </section>
-  );
 }
 
 function PageMessage({ message, showBack = false, onRetry }: { message: string; showBack?: boolean; onRetry?: () => void }) {

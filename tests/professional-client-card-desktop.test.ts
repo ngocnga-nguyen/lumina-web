@@ -11,23 +11,18 @@ const cardSection = readFileSync(
   "utf8"
 );
 
-test("desktop Client Card prioritizes identity and one relationship summary", () => {
-  const desktop = cardPage.split('<div className="hidden lg:block">')[1];
-  assert.ok(desktop);
-  assert.match(desktop, /Lumina client/);
-  assert.match(desktop, /Added manually/);
-  assert.match(desktop, /Next appointment/);
-  assert.match(desktop, /Most recent service/);
-  assert.doesNotMatch(desktop, /<OverviewStat/);
+test("responsive Client Overview receives existing identity and relationship data", () => {
+  assert.match(cardPage, /<ClientRecordOverview/);
+  assert.match(cardPage, /name=\{clientName\}/);
+  assert.match(cardPage, /visits=\{completedVisitCount\}/);
+  assert.match(cardPage, /lastService=\{lastService/);
+  assert.doesNotMatch(cardPage, /<OverviewStat/);
 });
 
-test("desktop messaging and request actions remain limited to linked clients", () => {
-  const desktop = cardPage.split('<div className="hidden lg:block">')[1];
-  assert.ok(desktop);
-  assert.match(desktop, /card\?\.source !== "manual" && relevantRequest/);
-  assert.match(desktop, /href=\{messageHref\}/);
-  assert.match(desktop, /href=\{requestWorkspaceHref\}/);
-  assert.match(desktop, /Private contact/);
+test("messaging and request actions remain limited to linked clients", () => {
+  assert.match(cardPage, /messageHref=\{card.source !== "manual" && relevantRequest/);
+  assert.match(cardPage, /requestsHref=\{card.source !== "manual" && relevantRequest/);
+  assert.match(cardPage, /Private contact/);
 });
 
 test("desktop modules retain persisted order, visibility, and collapse with lighter surfaces", () => {
