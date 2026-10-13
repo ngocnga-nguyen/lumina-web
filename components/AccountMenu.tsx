@@ -7,6 +7,7 @@ import { getAccountMenuPosition } from "@/lib/account-menu-position";
 import { Menu, ShieldCheck } from "lucide-react";
 import type { User } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
+import { loadClientWorkspaceUser } from "@/lib/client-workspace-user";
 import { useLuminaAdminAccess } from "@/lib/use-lumina-admin-access";
 
 type AccountMenuProps = {
@@ -147,12 +148,7 @@ export default function AccountMenu({
 
     const loadAccount = async () => {
       try {
-        const {
-          data: { user: currentUser },
-          error: authError,
-        } = await supabase.auth.getUser();
-
-        if (authError) throw authError;
+        const currentUser = await loadClientWorkspaceUser();
         if (cancelled) return;
         setUser(currentUser);
 

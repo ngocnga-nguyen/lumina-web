@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { createRealtimeChannelTopic } from "@/lib/realtime-channel";
 import { formatRequestCalendarDate } from "@/lib/request-calendar-date";
@@ -11,6 +11,10 @@ import { MessageCircle, CalendarDays, Search, Star } from "lucide-react";
 import ChatModal from "@/components/ChatModal";
 import ClientRequestMobileSummary from "@/components/ClientRequestMobileSummary";
 import ClientWorkspaceShell from "@/components/ClientWorkspaceShell";
+import WorkspaceLoadError from "@/components/WorkspaceLoadError";
+import { loadClientWorkspaceUser } from "@/lib/client-workspace-user";
+import { withReadDeadline } from "@/lib/in-flight-load";
+import { runWorkspaceLoad } from "@/lib/workspace-load-recovery";
 import {
   hasUnreadClientActionNotification,
   useClientWorkspace,
@@ -158,6 +162,9 @@ function MyRequestsContent() {
   const [selectedImage, setSelectedImage] = useState<File | null>(null);
   const [selectedAction, setSelectedAction] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
+  const loadSequence = useRef(0);
+  const pendingLoad = useRef<{ archived: boolean; promise: Promise<void>; controller: AbortController } | null>(null);
   const [completionSavingId, setCompletionSavingId] = useState<string | null>(null);
   const [replyingToId, setReplyingToId] = useState<string | null>(null);
   const [openHistoryId, setOpenHistoryId] = useState<string | null>(null);
@@ -178,12 +185,19 @@ function MyRequestsContent() {
   >({});
 const clientOnboarding = useClientOnboarding();
 
+  const cancelRequestLoad = useCallback(() => {
+    loadSequence.current++;
+    pendingLoad.current?.controller.abort();
+    pendingLoad.current = null;
+  }, []);
+
   useEffect(() => {
     routeActiveRef.current = true;
     return () => {
       routeActiveRef.current = false;
+      cancelRequestLoad();
     };
-  }, []);
+  }, [cancelRequestLoad]);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -217,24 +231,30 @@ const clientOnboarding = useClientOnboarding();
   }, [acknowledgeNotifications, requestView, requests, searchParams]);
 
 
-  const loadRequests = async () => {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!routeActiveRef.current) return;
-    if (!user) {
-      setLoading(false);
-      return;
-    }
+  const loadRequests = useCallback(() => {
+    if (pendingLoad.current?.archived === showingArchived) return pendingLoad.current.promise;
+    pendingLoad.current?.controller.abort();
+    const sequence = ++loadSequence.current;
+    const controller = new AbortController();
+    const isCurrent = () => routeActiveRef.current && sequence === loadSequence.current;
+    const canCommit = () => isCurrent() && !controller.signal.aborted;
+    setLoading(true);
+    setLoadError(false);
+    const promise = runWorkspaceLoad(() => withReadDeadline(async (signal) => {
+      const user = await loadClientWorkspaceUser();
+      if (!canCommit()) return;
+      if (!user) {
+        router.replace("/login?redirect=%2Fmy-requests");
+        return;
+      }
     const { data: submittedReviews, error: submittedReviewsError } =
       await supabase
         .from("reviews")
         .select("request_id")
         .eq("client_id", user.id)
-        .not("request_id", "is", null);
+        .not("request_id", "is", null).abortSignal(signal);
 
-    if (!routeActiveRef.current) return;
+    if (!canCommit()) return;
     if (!submittedReviewsError) {
       setReviewedRequestIds(
         new Set(
@@ -250,21 +270,17 @@ const clientOnboarding = useClientOnboarding();
       .select("*")
      .eq("client_id", user.id)
      .eq("client_hidden", showingArchived)
-      .order("created_at", { ascending: false });
+      .order("created_at", { ascending: false }).abortSignal(signal);
 
-    if (!routeActiveRef.current) return;
-    if (error) {
-      console.log(error);
-      setLoading(false);
-      return;
-    }
+    if (!canCommit()) return;
+    if (error) throw error;
     const artistIds = [...new Set((data || []).map((request) => request.artist_id))];
 const { data: artistProfiles } = await supabase
   .from("artists")
   .select("id, social_link, business_name")
-  .in("id", artistIds);
+  .in("id", artistIds).abortSignal(signal);
 
-if (!routeActiveRef.current) return;
+if (!canCommit()) return;
 const bookingMap: Record<string, string | null> = {};
 const businessNameMap: Record<string, string | null> = {};
 
@@ -278,8 +294,6 @@ const requestsWithSocialLinks = (data || []).map((request) => ({
   social_link: bookingMap[request.artist_id] || null,
   business_name: businessNameMap[request.artist_id] || null,
 }));
-console.log("bookingMap", bookingMap);
-console.log("requestsWithSocialLinks", requestsWithSocialLinks);
 
     setRequests(requestsWithSocialLinks);
     const consultationEntries = await Promise.all(
@@ -288,15 +302,15 @@ console.log("requestsWithSocialLinks", requestsWithSocialLinks);
         await createConsultationSignedUrls(request.consultation_snapshot),
       ] as const)
     );
-    if (!routeActiveRef.current) return;
+    if (!canCommit()) return;
     setConsultationImageUrls(Object.fromEntries(consultationEntries));
     const { data: updateData } = await supabase
 
   .from("request_updates")
   .select("*")
-  .order("created_at", { ascending: true });
+  .order("created_at", { ascending: true }).abortSignal(signal);
 
-  if (!routeActiveRef.current) return;
+  if (!canCommit()) return;
   const updateMap: Record<string, RequestUpdate[]> = {};
 
 (updateData || []).forEach((update) => {
@@ -318,23 +332,41 @@ const noteMap: Record<string, string> = {};
 
 setResponseNotes(noteMap);
 
-setLoading(false);
-  };
+    }, controller), {
+      isCurrent,
+      onError: () => setLoadError(true),
+      onSettled: () => {
+        pendingLoad.current = null;
+        setLoading(false);
+      },
+    });
+    pendingLoad.current = { archived: showingArchived, promise, controller };
+    return promise;
+  }, [router, showingArchived]);
 
 useEffect(() => {
-  let cancelled = false;
-  const refreshTimer = window.setTimeout(() => {
-    void loadRequests().catch((error) => {
-      if (cancelled) return;
-      console.log("Client requests load failed:", error);
-      setLoading(false);
-    });
-  }, 0);
+  const refreshTimer = window.setTimeout(() => { void loadRequests(); }, 0);
   return () => {
-    cancelled = true;
     window.clearTimeout(refreshTimer);
+    cancelRequestLoad();
   };
-}, [showingArchived]);
+}, [cancelRequestLoad, loadRequests]);
+
+// Recover a failed read after connectivity/focus returns; coalesce simultaneous events.
+useEffect(() => {
+  if (!loadError) return;
+  const recover = () => {
+    if (document.visibilityState === "visible") void loadRequests();
+  };
+  window.addEventListener("online", recover);
+  window.addEventListener("focus", recover);
+  document.addEventListener("visibilitychange", recover);
+  return () => {
+    window.removeEventListener("online", recover);
+    window.removeEventListener("focus", recover);
+    document.removeEventListener("visibilitychange", recover);
+  };
+}, [loadError, loadRequests]);
 
 useEffect(() => {
   openChatRequestIdRef.current = openHistoryId;
@@ -383,9 +415,7 @@ useEffect(() => {
   let cancelled = false;
 
   const setupRealtime = async () => {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+    const user = await loadClientWorkspaceUser();
 
     if (!user || cancelled) return;
 
@@ -476,12 +506,25 @@ useEffect(() => {
     channel.subscribe();
   };
 
-  void setupRealtime().catch((error) => {
-    if (!cancelled) console.log("Client request realtime setup failed:", error);
-  });
+  let connecting = false;
+  const connect = async () => {
+    if (cancelled || channel || connecting) return;
+    connecting = true;
+    try { await setupRealtime(); }
+    catch { /* The request read has a visible recovery state; retry realtime on return. */ }
+    finally { connecting = false; }
+  };
+  const reconnect = () => { if (document.visibilityState === "visible") void connect(); };
+  void connect();
+  window.addEventListener("online", reconnect);
+  window.addEventListener("focus", reconnect);
+  document.addEventListener("visibilitychange", reconnect);
 
   return () => {
     cancelled = true;
+    window.removeEventListener("online", reconnect);
+    window.removeEventListener("focus", reconnect);
+    document.removeEventListener("visibilitychange", reconnect);
     if (channel) {
       supabase.removeChannel(channel);
     }
@@ -1008,6 +1051,8 @@ const hasProposalConfirmationAction = currentActionKeys.some(
             <div className="rounded-[18px] bg-lumina-surface-soft p-4 text-[12px] text-lumina-text-muted lg:rounded-[24px] lg:p-6 lg:text-base">
               Loading requests...
             </div>
+          ) : loadError ? (
+            <WorkspaceLoadError message="Requests couldn’t be loaded. Check your connection and try again." onRetry={() => { void loadRequests(); }} />
           ) : visibleRequests.length === 0 ? (
             <div className="rounded-[18px] border border-lumina-border bg-lumina-surface p-4 lg:rounded-[24px] lg:p-6">
               <h2 className="text-[16px] font-medium text-lumina-text">

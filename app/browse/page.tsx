@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/lib/supabase";
+import { loadClientWorkspaceUser } from "@/lib/client-workspace-user";
 import { useSearchParams } from "next/navigation";
 import PublicPageHeader from "@/components/PublicPageHeader";
 import SaveArtistButton from "@/components/SaveArtistButton";
@@ -96,6 +97,7 @@ const [accountMenuOpen, setAccountMenuOpen] = useState(false);
 };
 
   useEffect(() => {
+    let cancelled = false;
     const fetchInitialData = async () => {
       const { data: artistsData, error: artistsError } = await supabase
         .from("artists")
@@ -103,15 +105,15 @@ const [accountMenuOpen, setAccountMenuOpen] = useState(false);
         .eq("is_active", true)
         .order("created_at", { ascending: false });
 
+      if (cancelled) return;
       if (artistsError) {
         console.log(artistsError);
       } else {
         setArtists(artistsData || []);
       }
 
-      const {
-  data: { user: currentUser },
-} = await supabase.auth.getUser();
+      const currentUser = await loadClientWorkspaceUser();
+if (cancelled) return;
 
 setUser(currentUser);
 
@@ -122,11 +124,11 @@ setUser(currentUser);
   .eq("id", currentUser.id)
   .maybeSingle();
 
-setIsArtist(!!artistProfile);
+if (!cancelled) setIsArtist(!!artistProfile);
 
     };
 
-    fetchInitialData();
+    void fetchInitialData().catch(error => console.log("Professionals account load failed:", error));
     const q = searchParams.get("q");
 if (q) {
   setSearchQuery(q);
@@ -156,6 +158,7 @@ if (sort) {
       nearbyRequestedRef.current = true;
       requestLocation(() => setSortBy("nearest"));
     }
+    return () => { cancelled = true; };
   }, [requestLocation, searchParams]);
 
   const useMyLocation = () => {

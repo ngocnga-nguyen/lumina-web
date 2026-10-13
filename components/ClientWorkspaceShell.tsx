@@ -17,6 +17,7 @@ import WorkspaceNavigationIndicator, {
   getWorkspaceIndicatorLabel,
 } from "@/components/WorkspaceNavigationIndicator";
 import { supabase } from "@/lib/supabase";
+import { loadClientWorkspaceUser } from "@/lib/client-workspace-user";
 import { useWorkspaceActionCounts } from "@/lib/use-workspace-action-counts";
 import { useClientNotifications } from "@/lib/use-client-notifications";
 import { useWorkspaceMessageUnreadCount } from "@/lib/use-workspace-message-unread-count";
@@ -71,13 +72,9 @@ export default function ClientWorkspaceShell({
     const loadClient = async () => {
       try {
         setAccountLoadError(false);
-        const {
-          data: { user },
-          error: authError,
-        } = await supabase.auth.getUser();
+        const user = await loadClientWorkspaceUser();
 
         if (cancelled) return;
-        if (authError) throw authError;
         if (!user) {
           router.replace(
             `/login?redirect=${encodeURIComponent(pathnameRef.current)}`

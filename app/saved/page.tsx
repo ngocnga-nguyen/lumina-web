@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Check, Search, X } from "lucide-react";
 import { supabase } from "@/lib/supabase";
+import { loadClientWorkspaceUser } from "@/lib/client-workspace-user";
 import ClientWorkspaceShell from "@/components/ClientWorkspaceShell";
 import ArtistCard from "@/components/ArtistCard";
 import ClientGuidanceTip from "@/components/ClientGuidanceTip";
@@ -107,13 +108,9 @@ export default function SavedPage() {
     const loadSavedArtists = async () => {
       setLoading(true);
       setLoadError(false);
-      const {
-        data: { user },
-        error: authError,
-      } = await supabase.auth.getUser();
+      const user = await loadClientWorkspaceUser();
 
       if (cancelled) return;
-      if (authError) throw authError;
       if (!user) {
         setSavedArtists([]);
         setLoading(false);

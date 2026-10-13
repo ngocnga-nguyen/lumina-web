@@ -6,6 +6,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 import { supabase } from "@/lib/supabase";
+import { loadClientWorkspaceUser } from "@/lib/client-workspace-user";
 import PublicPageHeader from "@/components/PublicPageHeader";
 import { useSearchParams } from "next/navigation";
 import SaveArtistButton from "@/components/SaveArtistButton";
@@ -102,6 +103,7 @@ const buildViewLink = (path: string) => {
 
 
   useEffect(() => {
+    let cancelled = false;
     const fetchArtists = async () => {
       const { data, error } = await supabase
         .from("artists")
@@ -116,9 +118,8 @@ const buildViewLink = (path: string) => {
 
       setArtists(data || []);
 
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
+      const user = await loadClientWorkspaceUser();
+      if (cancelled) return;
 
       setViewerUserId(user?.id || null);
 
@@ -129,12 +130,12 @@ const buildViewLink = (path: string) => {
           .eq("id", user.id)
           .maybeSingle();
 
-        setViewerIsArtist(Boolean(artistAccount));
+        if (!cancelled) setViewerIsArtist(Boolean(artistAccount));
       }
 
     };
 
-    fetchArtists();
+    void fetchArtists().catch(error => console.log("Map account load failed:", error));
     const q = searchParams.get("q");
 if (q) {
   setSearchQuery(q);
@@ -149,6 +150,7 @@ const categories = searchParams.get("categories");
 if (categories) {
   setSelectedCategories(categories.split(","));
 }
+    return () => { cancelled = true; };
   }, [searchParams]);
 
   useEffect(() => {

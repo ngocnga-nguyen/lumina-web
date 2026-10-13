@@ -10,6 +10,7 @@ import {
   type ClientOnboardingTip,
 } from "@/lib/client-onboarding";
 import { supabase } from "@/lib/supabase";
+import { loadClientWorkspaceUser } from "@/lib/client-workspace-user";
 
 const initialState = parseClientOnboardingState(null);
 
@@ -27,9 +28,7 @@ export function useClientOnboarding() {
     let cancelled = false;
 
     const load = async () => {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
+      const user = await loadClientWorkspaceUser();
 
       if (cancelled) return;
       if (!user) {

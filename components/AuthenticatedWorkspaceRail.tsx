@@ -8,6 +8,7 @@ import WorkspaceNavigationIndicator, {
   getWorkspaceIndicatorLabel,
 } from "@/components/WorkspaceNavigationIndicator";
 import { supabase } from "@/lib/supabase";
+import { loadClientWorkspaceUser } from "@/lib/client-workspace-user";
 import { useWorkspaceActionCounts } from "@/lib/use-workspace-action-counts";
 import { useWorkspaceMessageUnreadCount } from "@/lib/use-workspace-message-unread-count";
 import {
@@ -86,13 +87,9 @@ export default function AuthenticatedWorkspaceRail() {
 
     const loadAccount = async () => {
       try {
-        const {
-          data: { user },
-          error,
-        } = await supabase.auth.getUser();
+        const user = await loadClientWorkspaceUser();
 
         if (cancelled) return;
-        if (error) throw error;
         if (!user) {
           setRole(null);
           setAccountId(null);
@@ -107,10 +104,13 @@ export default function AuthenticatedWorkspaceRail() {
     };
 
     void loadAccount();
+    let refreshTimer: number | undefined;
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
+    } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === "INITIAL_SESSION") return;
+      window.clearTimeout(refreshTimer);
       if (!session?.user) {
         setRole(null);
         setAccountId(null);
@@ -118,13 +118,17 @@ export default function AuthenticatedWorkspaceRail() {
         return;
       }
 
-      void resolveRole(session.user.id).catch((error) => {
-        if (!cancelled) console.log("Workspace role refresh failed:", error);
-      });
+      // Supabase queries must start after the auth callback releases its lock.
+      refreshTimer = window.setTimeout(() => {
+        void resolveRole(session.user.id).catch((error) => {
+          if (!cancelled) console.log("Workspace role refresh failed:", error);
+        });
+      }, 0);
     });
 
     return () => {
       cancelled = true;
+      window.clearTimeout(refreshTimer);
       subscription.unsubscribe();
     };
   }, [excludedRoute]);
