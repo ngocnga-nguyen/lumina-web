@@ -21,6 +21,10 @@ export default function DiscoverLooks({ saved = false, artistIds, selectedIds = 
   const { catalog, artists, state, toggle, assign, createFolder, status, ready, loading, error, retry, requireClient, saveDraft } = useLocalLookLibrary();
   const [folder, setFolder] = useState("All");
   const [draft, setDraft] = useState<{ id: string; notes: string } | null>(null);
+  const [requesting, setRequesting] = useState(false);
+  const [savingDraft, setSavingDraft] = useState(false);
+  const [draftFocus, setDraftFocus] = useState(0);
+  const draftNotes = useRef<HTMLTextAreaElement>(null);
   const [demoProfile, setDemoProfile] = useState(false);
   const [detail, setDetail] = useState<string | null>(null);
   const [shortcut, setShortcut] = useState<Shortcut | null>(null);
@@ -54,6 +58,14 @@ export default function DiscoverLooks({ saved = false, artistIds, selectedIds = 
       dialog.current.close();
     }
   }, [detail]);
+
+  useEffect(() => {
+    if (!draftFocus) return;
+    const notes = draftNotes.current;
+    notes?.focus({ preventScroll: true });
+    notes?.scrollIntoView({ block: "center", behavior: "auto" });
+  }, [draftFocus]);
+
 
   useEffect(() => {
     if (!shortcut) return;
@@ -114,9 +126,14 @@ export default function DiscoverLooks({ saved = false, artistIds, selectedIds = 
   const shortcutLook = catalog.find(l => l.id === shortcut?.id);
   const shortcutArtist = artists.find(a => a.id === shortcutLook?.artistId);
   const requestLook = async (id: string) => {
-    if (!(await requireClient())) return;
-    setShortcut(null); setDetail(id); setDemoProfile(false);
-    setDraft({ id, notes: state.drafts[id] || "" });
+    if (requesting) return;
+    setRequesting(true);
+    try {
+      if (!(await requireClient())) return;
+      setShortcut(null); setDetail(id); setDemoProfile(false);
+      setDraft({ id, notes: draft?.id === id ? draft.notes : state.drafts[id] || "" });
+      setDraftFocus(version => version + 1);
+    } finally { setRequesting(false); }
   };
   const priceLabel = (price: number | null) => price == null ? "Price on request" : `$${price}`;
 
@@ -192,7 +209,7 @@ export default function DiscoverLooks({ saved = false, artistIds, selectedIds = 
       </button>
       <DiscoverySaveArtistButton artistId={shortcutArtist.id} name={shortcutArtist.name} demo={shortcutLook.demo} onChange={() => setShortcut(null)} />
       {shortcutLook.demo ? <button onClick={() => { setShortcut(null); setDetail(shortcutLook.id); setDemoProfile(true); setDraft(null); }}><UserRound size={18} strokeWidth={1.7} />View artist</button> : <Link href={`/artist/${shortcutArtist.id}`}><UserRound size={18} strokeWidth={1.7} />View artist</Link>}
-      <button disabled={!ready} onClick={() => void requestLook(shortcutLook.id)}><ArrowUpRight size={18} strokeWidth={1.7} />Request this look</button>
+      <button disabled={!ready || requesting} aria-busy={requesting} onClick={() => void requestLook(shortcutLook.id)}><ArrowUpRight size={18} strokeWidth={1.7} />{requesting ? "Opening local draft…" : "Request this look"}</button>
     </div>}
 
     <dialog ref={dialog} className="look-dialog" aria-label="Look details" onCancel={() => setDetail(null)} onClose={() => { setDetail(null); opener.current?.focus({ preventScroll: true }); }}>
@@ -205,19 +222,28 @@ export default function DiscoverLooks({ saved = false, artistIds, selectedIds = 
           <button disabled={!ready} aria-pressed={state.saved.includes(look.id)} onClick={() => toggle(look.id)}><Heart size={18} strokeWidth={1.7} fill={state.saved.includes(look.id) ? "currentColor" : "none"} />{state.saved.includes(look.id) ? "Look saved" : "Save look"}</button>
           <DiscoverySaveArtistButton artistId={artist.id} name={artist.name} demo={look.demo} />
           {look.demo ? <button onClick={() => { setDemoProfile(true); setDraft(null); }}><UserRound size={18} strokeWidth={1.7} />View artist</button> : <Link href={`/artist/${artist.id}`}><UserRound size={18} strokeWidth={1.7} />View artist</Link>}
-          <button className="look-primary" disabled={!ready} onClick={() => void requestLook(look.id)}><ArrowUpRight size={18} strokeWidth={1.7} />Request this look</button>
+          <button className="look-primary" disabled={!ready || requesting} aria-busy={requesting} onClick={() => void requestLook(look.id)}><ArrowUpRight size={18} strokeWidth={1.7} />{requesting ? "Opening local draft…" : "Request this look"}</button>
         </div>
         <label className="look-detail-folder">Collection<select value={state.membership[look.id] || ""} onChange={e => assign(look.id, e.target.value)}>
           <option value="">No collection</option>{state.folders.map(f => <option key={f}>{f}</option>)}
         </select></label>
         {demoProfile && <section aria-label="Demo artist profile" className="look-note"><h3>{artist.name}</h3><p>Fictional local demo professional · {discoveryCategory(artist.category)} · {discoveryLocation(artist.location)}</p><p>{look.title} · {priceLabel(look.price)}. This demo has no public storefront or booking record.</p></section>}
-        {draft?.id === look.id && <form className="look-draft" aria-label="Local look request draft" onSubmit={e => { e.preventDefault(); void saveDraft(look.id, draft.notes); }}>
-          <h3>Local request draft</h3><p>Reference: {look.title} by {artist.name}. Nothing will be sent to this professional.</p>
-          <label>Notes<textarea maxLength={2000} value={draft.notes} onChange={e => setDraft({ ...draft, notes: e.target.value })} /></label>
-          <button className="look-primary" type="submit">Save local draft</button>
+        {draft?.id === look.id && <form className="look-draft" aria-label="Local look request draft" onSubmit={async e => {
+          e.preventDefault();
+          if (savingDraft) return;
+          setSavingDraft(true);
+          try { await saveDraft(look.id, draft.notes); }
+          finally { setSavingDraft(false); }
+        }}>
+          <h3>Local request draft</h3>
+          <p>Selected look: <strong>{look.title}</strong> by {artist.name}.</p>
+          <label>Notes<textarea ref={draftNotes} maxLength={2000} value={draft.notes} onChange={e => setDraft({ ...draft, notes: e.target.value })} /></label>
+          <button className="look-primary look-draft-save" type="submit" disabled={savingDraft} aria-busy={savingDraft}>{savingDraft ? "Saving local draft…" : "Save local draft"}</button>
+          <p className="look-note">Saved only in this browser. Nothing is sent to the professional.</p>
+          <p role="status" className="look-status">{status}</p>
         </form>}
         <p className="look-note">Private look saves, collections and drafts stay in this browser. Artist bookmarks for real professionals use your existing Saved Artists. Request this look only creates a local draft.</p>
-        <p role="status" className="look-status">{status}</p>
+        {draft?.id !== look.id && <p role="status" className="look-status">{status}</p>}
       </div></div>}
     </dialog>
   </div>;
