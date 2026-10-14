@@ -43,7 +43,7 @@ export function LocalLookLibraryProvider({ children }: { children: React.ReactNo
       let fresh = emptyLookLibrary();
       if (next.role === "client") {
         try { fresh = parseLookLibrary(localStorage.getItem(lookStorageKey(next.id))); }
-        catch { setStatus("Browser storage unavailable. Saves last for this visit."); }
+        catch { setStatus(process.env.NODE_ENV === "development" ? "Browser storage unavailable. Saves last for this visit." : "Saved Looks are unavailable right now. Please try again."); }
       }
       stateRef.current = fresh;
       setState(fresh);
@@ -139,27 +139,27 @@ export function LocalLookLibraryProvider({ children }: { children: React.ReactNo
     stateRef.current = next; setState(next); setStatus(message);
     // Write only after an explicitly authenticated client action, never on mount/as guest.
     try { localStorage.setItem(lookStorageKey(current.id), JSON.stringify(next)); }
-    catch { setStatus(`${message} Browser storage unavailable; this visit only.`); }
+    catch { setStatus(process.env.NODE_ENV === "development" ? `${message} Browser storage unavailable; this visit only.` : "Your changes couldn’t be saved. Please try again."); }
   };
   const toggle = async (id: string) => {
     if (!data.catalog.some(l => l.id === id)) return;
-    await update(s => ({ ...s, saved: s.saved.includes(id) ? s.saved.filter(x => x !== id) : [...s.saved, id] }), "Saved Looks updated privately in this browser.");
+    await update(s => ({ ...s, saved: s.saved.includes(id) ? s.saved.filter(x => x !== id) : [...s.saved, id] }), process.env.NODE_ENV === "development" ? "Saved Looks updated privately in this browser." : "Saved Looks updated.");
   };
   const assign = async (id: string, folder: string) => {
     if (!data.catalog.some(l => l.id === id)) return;
-    await update(s => ({ ...s, saved: s.saved.includes(id) ? s.saved : [...s.saved, id], membership: { ...s.membership, [id]: folder } }), "Look saved to your local collection.");
+    await update(s => ({ ...s, saved: s.saved.includes(id) ? s.saved : [...s.saved, id], membership: { ...s.membership, [id]: folder } }), process.env.NODE_ENV === "development" ? "Look saved to your local collection." : "Look added to collection.");
   };
   const createFolder = async (name: string) => {
     name = name.trim().slice(0, 40);
     if (!name || name === "All") return;
-    await update(s => ({ ...s, folders: s.folders.includes(name) ? s.folders : [...s.folders, name] }), "Local collection created.");
+    await update(s => ({ ...s, folders: s.folders.includes(name) ? s.folders : [...s.folders, name] }), process.env.NODE_ENV === "development" ? "Local collection created." : "Collection created.");
   };
   const toggleDemoArtist = async (id: string) => {
     if (!data.catalog.some(l => l.artistId === id && l.demo)) return;
     await update(s => ({ ...s, demoArtists: s.demoArtists.includes(id) ? s.demoArtists.filter(x => x !== id) : [...s.demoArtists, id] }), "Demo artist saves updated locally. No artist record was written.");
   };
   const saveDraft = async (id: string, notes: string) => {
-    if (!data.catalog.some(l => l.id === id)) return;
+    if (process.env.NODE_ENV !== "development" || !data.catalog.some(l => l.id === id && l.demo)) return;
     await update(s => ({ ...s, drafts: { ...s.drafts, [id]: notes.slice(0, 2000) } }), "Local request draft saved. Nothing has been sent.");
   };
   return <Context.Provider value={{ ...data, state, account, ready, loading, error, status,

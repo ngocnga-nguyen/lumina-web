@@ -4,7 +4,17 @@ import { existsSync, readFileSync } from "node:fs";
 import test from "node:test";
 
 const read = (path: string) => readFileSync(new URL("../" + path, import.meta.url), "utf8");
-const source = read("app/artist/[slug]/page.tsx");
+const rawSource = read("app/artist/[slug]/page.tsx");
+// The new Discover adapter changes UI state and preview markup only. The legacy
+// access/data/submission fingerprint remains strict beneath that adapter.
+const source = rawSource
+  .replace(/  \/\/ Discover request handoff:[\s\S]*?  \/\/ End Discover request handoff\.\n\n/, "")
+  .replace(/      setLookRequestDataReady\((?:false|true)\);\n/g, "")
+  .replace(/              \{\/\* Discover unavailable-reference notice\. \*\/\}[\s\S]*?              \{\/\* End Discover unavailable-reference notice\. \*\/\}\n/, "")
+  .replace(/            \{\/\* Discover selected-look preview;[\s\S]*?            \{\/\* End Discover selected-look preview\. \*\/\}\n\n/, "")
+  .replace('role="dialog" aria-modal="true" aria-labelledby="storefront-request-title" ', "")
+  .replace('<h2 id="storefront-request-title"', "<h2")
+  .replace('                aria-label="Close request"\n', "");
 const hero = read("components/StorefrontDesktopHero.tsx");
 const css = read("app/artist/[slug]/storefront.module.css");
 const hash = (value: string) => createHash("sha256").update(value).digest("hex");

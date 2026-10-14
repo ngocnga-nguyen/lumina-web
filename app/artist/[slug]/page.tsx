@@ -1,11 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { Camera, ChevronDown, ImageIcon, Layers3, Pencil, ShieldCheck, Star } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import SaveArtistButton from "@/components/SaveArtistButton";
+import RequestLookReference from "@/components/RequestLookReference";
+import { appendDiscoveryReference, discoveryReferenceText, resolveDiscoveryRequestReference, type DiscoveryRequestReference } from "@/lib/discovery-request-reference";
 import ReviewReportDialog from "@/components/ReviewReportDialog";
 import ClientGuidanceTip from "@/components/ClientGuidanceTip";
 import PublicPageHeader from "@/components/PublicPageHeader";
@@ -276,6 +278,31 @@ const accountImage =
     preferred_time: "",
     notes: "",
   });
+  // Discover request handoff: UI state only; existing submit behavior stays unchanged.
+  const [lookRequestDataReady, setLookRequestDataReady] = useState(false);
+  const [lookRequestReference, setLookRequestReference] = useState<(DiscoveryRequestReference & { referenceText: string }) | null>(null);
+  const appliedLookRequest = useRef<string | null>(null);
+  const requestLookId = searchParams.get("requestLook");
+  const requestedLook = useMemo(() => lookRequestDataReady && artist?.id === artistId
+    ? resolveDiscoveryRequestReference(requestLookId, portfolioImages, services) : null,
+    [lookRequestDataReady, artist?.id, artistId, requestLookId, portfolioImages, services]);
+  useEffect(() => {
+    if (!requestedLook || !clientOnboarding.ready || !clientOnboarding.isClient) return;
+    const key = `${artistId}:${requestedLook.id}`;
+    if (appliedLookRequest.current === key) return;
+    const frame = requestAnimationFrame(() => {
+      if (appliedLookRequest.current === key) return;
+      appliedLookRequest.current = key;
+      const referenceText = discoveryReferenceText(requestedLook.id, window.location.origin);
+      setLookRequestReference({ ...requestedLook, referenceText });
+      if (requestedLook.serviceId) setSelectedServiceIds(current => current.length ? current : [requestedLook.serviceId!]);
+      setRequestForm(current => ({ ...current, notes: appendDiscoveryReference(current.notes, referenceText) }));
+      setOpenRequest(true);
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [requestedLook, artistId, clientOnboarding.ready, clientOnboarding.isClient]);
+  // End Discover request handoff.
+
   const selectedServices = services.filter((service) =>
     selectedServiceIds.includes(service.id)
   );
@@ -433,6 +460,7 @@ useEffect(() => {
   useEffect(() => {
     const fetchArtistData = async () => {
       setProfileAccessResolved(false);
+      setLookRequestDataReady(false);
       const {
         data: { user: viewer },
       } = await supabase.auth.getUser();
@@ -491,6 +519,7 @@ useEffect(() => {
         .order("created_at", { ascending: false });
 
       setServices(serviceData || []);
+      setLookRequestDataReady(true);
 
       const { data: reviewData } = await supabase
         .from("reviews")
@@ -1437,6 +1466,9 @@ setAverageRating(updatedAverage);
 
           {activeTab === "service" && (
             <div id="profile-services" className="mt-6 scroll-mt-6 md:mt-10">
+              {/* Discover unavailable-reference notice. */}
+              {requestLookId && lookRequestDataReady && !requestedLook && <p role="status" className="mb-4 text-[13px] text-lumina-text-muted">This look is no longer available. Choose a service to start a request.</p>}
+              {/* End Discover unavailable-reference notice. */}
               {services.length > 0 &&
                 clientOnboarding.ready &&
                 clientOnboarding.isClient &&
@@ -2044,10 +2076,10 @@ setAverageRating(updatedAverage);
   </div>
 )}
       {openRequest && (
-        <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-lumina-black/30 px-4 py-4 sm:items-center sm:py-6">
+        <div role="dialog" aria-modal="true" aria-labelledby="storefront-request-title" className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-lumina-black/30 px-4 py-4 sm:items-center sm:py-6">
           <div className="max-h-[calc(100dvh-2rem)] w-full max-w-[460px] overflow-y-auto rounded-[22px] border border-lumina-glass-border bg-lumina-surface/95 p-6 text-lumina-text shadow-xl backdrop-blur-[14px] sm:max-h-[calc(100dvh-3rem)]">
             <div className="flex items-center justify-between">
-              <h2
+              <h2 id="storefront-request-title"
                 className="text-[26px] font-semibold"
                 style={{ fontFamily: "Georgia, Times New Roman, serif" }}
               >
@@ -2056,6 +2088,7 @@ setAverageRating(updatedAverage);
 
               <button
                 onClick={() => setOpenRequest(false)}
+                aria-label="Close request"
                 className="text-[20px] text-lumina-text-muted hover:text-lumina-black"
               >
                 ×
@@ -2067,6 +2100,10 @@ setAverageRating(updatedAverage);
               Sending this request starts a conversation and does not confirm an
               appointment.
             </p>
+
+            {/* Discover selected-look preview; link is editable in the existing Notes field. */}
+            {lookRequestReference && <RequestLookReference reference={lookRequestReference} professional={artist.name} category={artist.category} />}
+            {/* End Discover selected-look preview. */}
 
             <div className="mt-5 space-y-4">
               <div className="flex items-center justify-between gap-4 rounded-[18px] border border-lumina-border bg-lumina-surface-soft px-4 py-3">
