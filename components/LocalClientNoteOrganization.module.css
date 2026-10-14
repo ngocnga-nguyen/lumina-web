@@ -5,8 +5,9 @@
 .rail button:hover{color:var(--lumina-black);background:var(--lumina-pearl)}
 .rail button[aria-pressed=true]{color:var(--lumina-black)}
 .all[aria-pressed=true]:after,.categoryRail button[aria-pressed=true]:after{content:"";position:absolute;bottom:3px;left:12px;width:22px;height:2px;background:var(--lumina-black)}
+.rail .all:hover{background:transparent}
 .all span{font-size:10px;font-variant-numeric:tabular-nums;color:var(--lumina-text-muted)}
-.rail .pin{width:44px;padding:0;border:1px solid var(--lumina-border);border-radius:8px;background:transparent;color:var(--lumina-text-muted);transition:background .16s,color .16s,border-color .16s}.rail .pin svg{fill:none}
+.rail .pin{width:44px;padding:0;border:1px solid transparent;border-radius:8px;background:transparent;color:var(--lumina-text-muted);transition:background .16s,color .16s,border-color .16s}.rail .pin svg{fill:none}
 .rail .pin[aria-pressed=true]{background:var(--lumina-black);border-color:var(--lumina-black);color:white}
 .categoryRail{display:flex;flex:1;min-width:0;gap:8px;overflow-x:auto;overscroll-behavior-x:contain;-webkit-overflow-scrolling:touch;scrollbar-width:thin;scrollbar-color:#d3d1d7 transparent;padding:3px 1px;scroll-padding-inline:8px}
 .rail .add{width:44px;padding:0;border:1px solid var(--lumina-border);border-radius:8px;color:var(--lumina-text)}
@@ -30,3 +31,8 @@
 
 @media(hover:hover) and (pointer:fine){.rail .pin:hover{background:var(--lumina-black);border-color:var(--lumina-black);color:white}}
 @media(prefers-reduced-motion:reduce){.rail .pin{transition:none}}
+
+/* Production has no custom-category persistence or Add control yet. */
+.categoryHint{margin:10px 0 0;font-size:12px;line-height:1.6;color:var(--lumina-text-muted)}
+
+.rail :is(button,[tabindex]):focus-visible{outline:2px solid var(--lumina-text);outline-offset:3px}

@@ -12,6 +12,7 @@
   backdrop-filter: none;
 }
 .scope [data-notes-header] { background: var(--lumina-bg); }
+.scope[data-note-card] { border-radius: 16px; border-color: color-mix(in srgb, var(--lumina-border) 80%, transparent); }
 .scope [data-type-badge] {
   display: inline-flex; align-items: center; gap: 7px;
   padding: 0; border: 0; border-radius: 0; background: transparent;
@@ -23,7 +24,7 @@
   border-radius: 50%; background: var(--notes-pink);
 }
 .scope [data-pin-control] {
-  width: 44px; height: 44px; padding: 0; border: 1px solid var(--lumina-border); border-radius: 8px;
+  width: 44px; height: 44px; padding: 0; border: 1px solid transparent; border-radius: 8px;
   background: transparent; color: var(--lumina-text-muted); cursor: pointer;
   transition: background .16s, color .16s, border-color .16s;
 }
@@ -41,7 +42,25 @@
 .scope [data-note-empty] > svg { color: var(--notes-chrome); }
 .scope [data-note-utilities] { border-top: 1px solid var(--lumina-border); padding-top: 14px; }
 .scope [data-note-utilities] button { border-radius: 8px; min-height: 44px; }
-.scope[data-note-card]:hover { border-color: #c9c7cc; }
+.scope [data-note-action] {
+  border-color: transparent; background: transparent; box-shadow: none;
+  transition: background .16s, color .16s, border-color .16s;
+}
+.scope [data-note-action="delete"] { color: var(--lumina-text-muted); }
+.scope [data-note-action]:focus-visible { outline: 2px solid var(--lumina-text); outline-offset: 2px; }
+.scope [data-note-action="edit"]:is(:focus-visible,:active) {
+  border-color: var(--lumina-border); background: var(--lumina-pearl);
+}
+.scope [data-note-action="delete"]:is(:focus-visible,:active) {
+  background: var(--lumina-pearl); color: var(--lumina-text);
+}
+@media (hover:hover) and (pointer:fine) {
+  .scope [data-note-action="edit"]:hover { border-color: var(--lumina-border); background: var(--lumina-pearl); }
+  .scope [data-note-action="delete"]:hover { background: var(--lumina-pearl); color: var(--lumina-text); }
+}
+@media (prefers-reduced-motion:reduce) { .scope [data-note-action] { transition: none; } }
+
+.scope[data-note-card]:hover { border-color: var(--lumina-border); }
 .scope [data-pinned-heading-dot] { background: var(--notes-chrome); width: 4px; height: 4px; }
 .scope [data-note-count] {
   display: inline-flex; align-items: center; gap: 10px; padding: 0;
@@ -94,5 +113,5 @@
 .workspace{max-width:1080px;margin:0 auto;padding:28px 40px 48px;min-width:0}
 .scope .workspaceHeader{position:relative;z-index:40;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:18px;align-items:center;margin:22px 0 20px;padding:0;border:0;border-radius:0;background:transparent}
 .headerIdentity{min-width:0}.headerEyebrow{margin:0 0 7px;font-size:9px;font-weight:500;letter-spacing:.12em;text-transform:uppercase;color:var(--lumina-text-muted)}
-.headerTitle{display:flex;align-items:baseline;flex-wrap:wrap;gap:8px 14px}.headerTitle h1{margin:0;font:500 34px/1.15 Georgia,"Times New Roman",serif;letter-spacing:-.6px;overflow-wrap:anywhere}.headerTitle>span{font-size:11px;color:var(--lumina-text-muted);white-space:nowrap}.headerContext{margin:8px 0 0;font-size:12px;line-height:1.5;color:var(--lumina-text-muted)}.headerActions{min-width:0}
+.headerTitle{display:flex;align-items:baseline;flex-wrap:wrap;gap:8px 14px}.headerTitle h1{margin:0;font:500 34px/1.15 Georgia,"Times New Roman",serif;letter-spacing:-.6px;overflow-wrap:anywhere}.headerTitle>span{font-size:11px;color:var(--lumina-text-muted);white-space:nowrap}.headerContext{margin:8px 0 0;font-size:12px;line-height:1.5;color:var(--lumina-text-muted)}.headerActions{min-width:0}.headerActions button[aria-haspopup]{border-radius:10px}
 @media(max-width:700px){.workspace{padding:22px 20px 40px}.scope .workspaceHeader{gap:12px;margin:19px 0 18px}.headerTitle{gap:6px 10px}.headerTitle h1{font-size:28px}.headerContext{font-size:11px;max-width:200px}.headerActions button[aria-haspopup]{padding-inline:12px;font-size:12px}.headerTitle>span{font-size:10px}}

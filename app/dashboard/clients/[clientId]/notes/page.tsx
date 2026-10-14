@@ -6,10 +6,11 @@ import WorkspaceLoadError from "@/components/WorkspaceLoadError";
 import { loadWorkspaceUser, runWorkspaceLoad } from "@/lib/workspace-load-recovery";
 
 import { useParams, useRouter } from "next/navigation";
-import { ArrowLeft, ChevronDown, NotebookPen, Plus, X } from "lucide-react";
+import { ArrowLeft, ChevronDown, NotebookPen, Pin, Plus, X } from "lucide-react";
 import styles from "@/components/ClientNotesQuietChrome.module.css";
 import ClientNotesWorkspaceHeader from "@/components/ClientNotesWorkspaceHeader";
-import LocalClientNoteOrganization from "@/components/LocalClientNoteOrganization";
+import ClientNotesCategoryRail from "@/components/ClientNotesCategoryRail";
+import organizationStyles from "@/components/LocalClientNoteOrganization.module.css";
 import ClientNoteCard from "@/components/ClientNoteCard";
 import ClientNoteEditor, { type ClientNoteDraft } from "@/components/ClientNoteEditor";
 import {
@@ -626,16 +627,8 @@ export default function ClientNotesWorkspacePage() {
 
         {errorMessage && <p aria-live="polite" className="mt-4 text-[12px] text-lumina-attention">{errorMessage}</p>}
 
-        {process.env.NODE_ENV === "development" ? <LocalClientNoteOrganization key={clientId} notes={notes} renderNotes={renderNotes} /> : <>
-        <nav data-note-toolbar aria-label="Filter client notes" className="mt-5 overflow-x-auto pb-1">
-          <div className="flex w-max min-w-full gap-2 rounded-[18px] border border-lumina-glass-border bg-lumina-glass p-2 backdrop-blur-[12px]">
-            {filters.map((item) => {
-              const selected = filter === item.value;
-              const count = item.value === "all" ? notes.length : item.value === "pinned" ? notes.filter((note) => note.is_pinned).length : null;
-              return <button data-filter={item.value} key={item.value} type="button" aria-pressed={selected} onClick={() => setFilter(item.value)} className={`min-h-10 whitespace-nowrap rounded-full px-4 text-[12px] font-medium transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-lumina-text ${selected ? "bg-lumina-black text-white" : "border border-transparent text-lumina-text-muted hover:border-lumina-border hover:bg-lumina-surface/80 hover:text-lumina-text"}`}>{item.value === "service_note" ? "Service" : item.value === "inspiration" ? "Ideas" : item.label}{count !== null && count > 0 && <span className={styles.filterCount}>{count}</span>}</button>;
-            })}
-          </div>
-        </nav>
+        <ClientNotesCategoryRail view={filter} noteCount={notes.length} pinnedCount={notes.filter(note => note.is_pinned).length} onViewChange={setFilter} />
+        <p className={organizationStyles.categoryHint}>Organize notes into categories that fit your workflow.</p>
 
         {filteredNoteType && filteredCreation && matchingNotes.length > 0 && (
           <div className="mt-5 flex flex-wrap items-center justify-between gap-3 border-b border-lumina-border/60 pb-5">
@@ -645,13 +638,11 @@ export default function ClientNotesWorkspacePage() {
         )}
 
 
-        <div className="mt-8 space-y-9">
-          {pinnedNotes.length > 0 && <section><div className="mb-4 flex items-center gap-2"><span data-pinned-heading-dot className="h-2 w-2 rounded-full bg-lumina-blush" /><h2 className="text-[18px] font-semibold text-lumina-text">Pinned notes</h2></div>{renderNotes(pinnedNotes)}</section>}
+        <div className={organizationStyles.notes}>
+          {pinnedNotes.length > 0 && <section><h2><Pin size={13} strokeWidth={1.5} aria-hidden="true" />Pinned notes</h2>{renderNotes(pinnedNotes)}</section>}
           {remainingNotes.length > 0 && <section><h2 className="mb-4 text-[18px] font-semibold text-lumina-text">{filter === "all" ? "All notes" : filters.find((item) => item.value === filter)?.label}</h2>{renderNotes(remainingNotes)}</section>}
-          {matchingNotes.length === 0 && <section data-note-empty className="rounded-[20px] border border-lumina-border/65 bg-lumina-surface p-6"><NotebookPen size={20} className="text-lumina-text-muted" aria-hidden="true" /><h2 className="mt-4 text-[16px] font-medium">{filteredCreation?.emptyTitle || (notes.length === 0 ? "No notes yet" : "No notes in this view")}</h2><p className="mt-1 text-[13px] leading-[1.6] text-lumina-text-muted">{filteredCreation?.emptyCopy || (notes.length === 0 ? "Choose a note type to keep client context and follow-up details organized." : "Choose another filter to view this client's notes.")}</p>{filteredNoteType && filteredCreation ? <button type="button" onClick={() => openNewNote(filteredNoteType)} className={`mt-4 inline-flex items-center rounded-full bg-lumina-black text-[12px] font-medium text-white ${getCreationActionSizing(filteredNoteType)}`}><Plus size={14} className="shrink-0" aria-hidden="true" /> <span>{filteredCreation.action}</span></button> : notes.length === 0 && <button type="button" onClick={() => openNewNote("general")} className="mt-4 inline-flex min-h-10 items-center gap-2 rounded-full bg-lumina-black px-5 text-[12px] font-medium text-white"><Plus size={14} aria-hidden="true" /> Add general note</button>}</section>}
+          {matchingNotes.length === 0 && <section data-note-empty className={organizationStyles.empty}><NotebookPen size={20} className="text-lumina-text-muted" aria-hidden="true" /><h2 className="mt-4 text-[16px] font-medium">{filteredCreation?.emptyTitle || (filter === "pinned" ? "No pinned notes yet" : notes.length === 0 ? "No notes yet" : "No notes in this view")}</h2><p className="mt-1 text-[13px] leading-[1.6] text-lumina-text-muted">{filteredCreation?.emptyCopy || (filter === "pinned" ? "Pin an existing note to keep it close at hand." : notes.length === 0 ? "Choose New note to keep private context for future visits." : "Choose another view to see this client's notes.")}</p>{filteredNoteType && filteredCreation ? <button type="button" onClick={() => openNewNote(filteredNoteType)} className={`mt-4 inline-flex items-center rounded-full bg-lumina-black text-[12px] font-medium text-white ${getCreationActionSizing(filteredNoteType)}`}><Plus size={14} className="shrink-0" aria-hidden="true" /> <span>{filteredCreation.action}</span></button> : notes.length === 0 && <button type="button" onClick={() => openNewNote("general")} className="mt-4 inline-flex min-h-10 items-center gap-2 rounded-full bg-lumina-black px-5 text-[12px] font-medium text-white"><Plus size={14} aria-hidden="true" /> Add general note</button>}</section>}
         </div>
-
-        </>}
 
         {editorOpen && <ClientNoteEditor note={editingNote} initialType={newNoteType} attachments={editingNote ? attachmentsByNote[editingNote.id] || [] : []} requests={requestOptions} saving={saving} errorMessage={editorError} onSave={(draft) => void saveNote(draft)} onClose={closeEditor} />}
 

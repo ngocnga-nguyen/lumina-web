@@ -1,10 +1,11 @@
 // DEVELOPMENT VISUAL PROTOTYPE ONLY. Categories and assignments live in React memory.
-// These are example organization labels, never database note_type values or saved fields.
+// These are private organization examples, never database note_type values or saved fields.
+// Aftercare belongs to a future client-facing feature, not private Notes category examples.
 export type LocalNoteCategory = { id: string; name: string };
 export const LOCAL_NOTE_CATEGORY_EXAMPLES: LocalNoteCategory[] = [
   { id: "local-retention", name: "Retention" },
   { id: "local-ideas", name: "Ideas" },
-  { id: "local-aftercare", name: "Aftercare" },
+  { id: "local-preferences", name: "Client preferences" },
   { id: "local-color", name: "Color formulas" },
 ];
 export type LocalNoteView = "all" | "pinned" | string;

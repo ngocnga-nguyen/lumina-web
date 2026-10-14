@@ -23,11 +23,12 @@ test("local organization filters independently of note type without mutating not
  assert.deepEqual(filterLocalCategoryNotes(notes,"unknown",assignments),[]);
  assert.equal(JSON.stringify(notes),before);
 });
-test("category UI is development-only with no persistence or network writes",()=>{
+test("custom category experiment is development-only; the real route uses the safe shared rail",()=>{
  const ui=readFileSync(new URL("../components/LocalClientNoteOrganization.tsx",import.meta.url),"utf8");
  const page=readFileSync(new URL("../app/dashboard/clients/[clientId]/notes/page.tsx",import.meta.url),"utf8");
  assert.match(ui,/process\.env\.NODE_ENV !== "development"/);
- assert.match(page,/process\.env\.NODE_ENV === "development" \? <LocalClientNoteOrganization/);
+ assert.doesNotMatch(page,/import LocalClientNoteOrganization from|<LocalClientNoteOrganization/);
+ assert.match(page,/<ClientNotesCategoryRail/);
  assert.doesNotMatch(ui,/supabase|localStorage|sessionStorage|fetch\(/);
  assert.match(ui,/Local category preview · resets when you leave/);
 });

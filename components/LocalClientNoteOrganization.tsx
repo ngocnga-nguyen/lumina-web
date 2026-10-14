@@ -5,6 +5,7 @@ import { ChevronDown, Pin, Plus } from "lucide-react";
 import { sortClientNotes, type ClientNote } from "@/lib/client-notes";
 import { LOCAL_NOTE_CATEGORY_EXAMPLES, filterLocalCategoryNotes, validateLocalCategoryName, type LocalNoteCategory } from "@/lib/local-note-organization";
 import styles from "./LocalClientNoteOrganization.module.css";
+import ClientNotesCategoryRail from "./ClientNotesCategoryRail";
 
 // Development-only organization experiment. No storage, network, persistence, or plan logic.
 // Note purpose/type, editor, attachment handling and existing pin mutations stay with the route.
@@ -54,14 +55,12 @@ export default function LocalClientNoteOrganization({ notes, renderNotes, initia
     </select><ChevronDown size={11} aria-hidden="true" />
   </label>;
   return <div className={styles.organization}>
-    <nav className={styles.rail} aria-label="Note categories">
-      <button type="button" className={styles.all} aria-pressed={view === "all"} onClick={() => setView("all")}>All <span>{notes.length}</span></button>
-      <button type="button" className={styles.pin} aria-pressed={view === "pinned"} aria-label={`Pinned notes, ${notes.filter(note => note.is_pinned).length}`} title="Pinned notes" onClick={() => setView("pinned")}><Pin size={15} strokeWidth={1.5} aria-hidden="true" /></button>
+    <ClientNotesCategoryRail view={view} noteCount={notes.length} pinnedCount={notes.filter(note => note.is_pinned).length} onViewChange={setView}>
       <div ref={railRef} data-more-left={edges.before} data-more-right={edges.after} className={styles.categoryRail} tabIndex={0} role="group" aria-label="Custom categories; scroll horizontally for more">
         {categories.map(category => <button key={category.id} type="button" aria-pressed={view === category.id} onClick={() => setView(category.id)}>{category.name}</button>)}
       </div>
       <button ref={addRef} type="button" className={styles.add} aria-label="Add category" title="Add category" aria-expanded={adding} aria-controls="local-category-form" onClick={() => { setAdding(value => !value); setError(""); }}><Plus size={18} aria-hidden="true" /></button>
-    </nav>
+    </ClientNotesCategoryRail>
     <p className={styles.localHint}>Local category preview · resets when you leave.</p>
     {adding && <form id="local-category-form" className={styles.addForm} onSubmit={event => {
       event.preventDefault();

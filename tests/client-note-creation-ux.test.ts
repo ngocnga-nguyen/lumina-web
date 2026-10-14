@@ -47,7 +47,12 @@ test("the required schema relaxation preserves columns and a minimum-content gua
 });
 
 test("desktop picker escapes overflow and mobile uses a dedicated bottom sheet", () => {
-  assert.match(notesPage, /relative z-40 mt-7 overflow-visible/);
+  const header = readFileSync(new URL("../components/ClientNotesWorkspaceHeader.tsx", import.meta.url), "utf8");
+  const chrome = readFileSync(new URL("../components/ClientNotesQuietChrome.module.css", import.meta.url), "utf8");
+  const headerRule = chrome.match(/\.scope \.workspaceHeader\{([^}]+)\}/)?.[1] || "";
+  assert.match(header, /data-notes-header[\s\S]*newNoteControl/);
+  assert.match(headerRule, /position:relative;z-index:40/);
+  assert.doesNotMatch(headerRule, /overflow(?:-x|-y)?\s*:\s*(?:hidden|clip)/);
   assert.match(notesPage, /top-full[\s\S]*w-\[320px\][\s\S]*sm:block/);
   assert.match(notesPage, /fixed inset-0 z-\[105\][\s\S]*sm:hidden/);
   assert.match(notesPage, /aria-expanded=\{typePickerOpen\}/);
