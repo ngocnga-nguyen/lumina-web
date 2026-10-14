@@ -219,9 +219,9 @@ export default function ClientWorkspaceShell({
                 }
               : item.id === "reviews"
               ? {
-                  count: clientNotifications.reviewUnreadCount,
+                  count: actionCounts.reviews,
                   issueCount: 0,
-                  label: "new review notification",
+                  label: "review-ready appointment",
                 }
               : item.id === "messages"
               ? {

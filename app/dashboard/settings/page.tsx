@@ -2,6 +2,7 @@
 
 import { loadWorkspaceUser, runWorkspaceLoad } from "@/lib/workspace-load-recovery";
 
+import { queueVisibilityConfirmation } from "@/lib/profile-visibility-confirmation";
 import { useProfessionalReadiness } from "@/components/ProfessionalReadinessProvider";
 import { useEffect, useRef, useState } from "react";
 import { useProfessionalActionTarget } from "@/lib/use-professional-action-target";
@@ -201,6 +202,7 @@ export default function ArtistSettingsPage() {
     }
 
     await refreshReadiness();
+    queueVisibilityConfirmation(user.id, nextVisibility);
   };
 
   const signOut = async () => {

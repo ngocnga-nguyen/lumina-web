@@ -21,6 +21,7 @@ vm.runInNewContext(code, { exports, require(id) {
   if (id === "next/link") return { default: Link };
   if (id.endsWith(".module.css")) return { default: new Proxy({}, { get: (_, key) => key }) };
   if (id === "@/lib/professional-profile-visibility") return visibility;
+  if (id === "@/components/ProfessionalVisibilityConfirmation") return { default: () => null };
   if (id === "@/components/ProfessionalActivationPanel") return { default: Setup };
   if (id === "@/components/IdentityAvatar") return { default: () => null };
   if (id === "@/components/WorkspaceNavigationIndicator") return { getWorkspaceIndicatorLabel: () => "" };
@@ -45,8 +46,7 @@ function render(isActive, ready = true) {
 test("ON uses visibility directly even when setup labels differ", () => {
   const html = render(true, false);
   assert.match(html, />Live<\/span>/);
-  assert.match(html, /Visible to clients/);
-  assert.match(html, /Your profile can be discovered across Lumina\./);
+  assert.doesNotMatch(html, /Visible to clients/); // Browser preference resolves after hydration.
   assert.match(html, /class="liveDot"/);
   assert.doesNotMatch(html, /lucide-eye-off|>·<|Hidden from clients|Setup needed/);
 });
@@ -54,17 +54,15 @@ test("ON uses visibility directly even when setup labels differ", () => {
 test("OFF overrides stale Live labels without disabling the workspace", () => {
   const html = render(false);
   assert.match(html, />Hidden<\/span>/);
-  assert.match(html, /Hidden from clients/);
-  assert.match(html, /Your profile is not visible in Discover, search, or map\./);
-  assert.match(html, /hiddenBanner/);
-  assert.equal((html.match(/lucide-eye-off/g) || []).length, 2);
+  assert.doesNotMatch(html, /Hidden from clients/);
+  assert.equal((html.match(/lucide-eye-off/g) || []).length, 1);
   assert.doesNotMatch(html, />Live<\/span>|class="liveDot"|Existing setup guidance|disabled/);
   for (const title of ["Your business.", "Manage your business", "Business snapshot"]) assert.ok(html.includes(title));
 });
 
 test("incomplete hidden profiles keep existing setup guidance", () => {
   const html = render(false, false);
-  assert.match(html, /Hidden from clients/);
+  assert.match(html, />Hidden<\/span>/);
   assert.match(html, /Existing setup guidance/);
 });
 

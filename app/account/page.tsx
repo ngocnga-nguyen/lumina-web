@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { useRouter } from "next/navigation";
@@ -8,7 +7,7 @@ import { Camera, CircleUser } from "lucide-react";
 import ClientWorkspaceShell from "@/components/ClientWorkspaceShell";
 import IdentityAvatar from "@/components/IdentityAvatar";
 import MobileManagementSheet from "@/components/MobileManagementSheet";
-import MobileSettingsRow from "@/components/MobileSettingsRow";
+import ClientSettingsOverview from "@/components/ClientSettingsOverview";
 import {
   getProfileImageValidationError,
 } from "@/lib/profile-image-storage";
@@ -222,72 +221,19 @@ export default function AccountPage() {
 
   return (
     <ClientWorkspaceShell>
-      <div className="min-h-screen bg-lumina-surface text-lumina-text">
-      <section className="mx-auto max-w-xl px-5 pb-10 pt-5 lg:hidden">
-        <p className="text-[11px] uppercase tracking-[0.16em] text-lumina-text-muted">Your account</p>
-        <h1 className="mt-2 font-serif text-[31px] font-semibold leading-[1.05]">Profile &amp; settings</h1>
-        <p className="mt-2 text-[13px] text-lumina-text-muted">Your profile and account in one place.</p>
-
-        <section className="mt-7 flex min-w-0 items-center gap-4 rounded-[20px] bg-lumina-surface-soft/80 p-4">
-          <IdentityAvatar name={savedName || email || "Client"} imageUrl={savedProfileImageUrl} className="h-16 w-16 shrink-0 rounded-full bg-lumina-blush/65" fallbackClassName="font-serif text-[24px] text-lumina-text" />
-          <div className="min-w-0 flex-1">
-            <p className="truncate font-serif text-[21px] leading-tight">{savedName || "Your profile"}</p>
-            <p className="mt-1 truncate text-[12px] text-lumina-text-muted">{email || "Loading…"}</p>
-            <button type="button" onClick={() => { setEditing(true); setMobileSheet("profile"); }} className="mt-2 inline-flex min-h-9 items-center text-[12px] font-medium underline decoration-lumina-border underline-offset-4">Edit profile</button>
-          </div>
-        </section>
-
-        <section className="mt-7" aria-label="Account and security">
-          <h2 className="text-[11px] font-semibold uppercase tracking-[0.14em] text-lumina-text-muted">Account &amp; security</h2>
-          <div className="mt-2 border-t border-lumina-border/70">
-            <MobileSettingsRow title="Email" detail={email || "Sign-in address"} onClick={() => setMobileSheet("email")} />
-            <MobileSettingsRow title="Password & security" detail="Get a secure reset link" onClick={() => setMobileSheet("password")} />
-            <MobileSettingsRow title="Other signed-in devices" detail="Keep this device signed in" onClick={() => void signOutOtherDevices()} disabled={signingOutOthers} />
-          </div>
-        </section>
-        <button type="button" onClick={() => void signOut()} className="mt-8 min-h-11 w-full border-t border-lumina-border/70 pt-4 text-left text-[13px] text-lumina-text-muted">Sign out</button>
-      </section>
-
-      <MobileManagementSheet open={mobileSheet === "profile"} eyebrow="Client account" title="Edit profile" busy={saving || uploading} onClose={cancelEditing}>
-        <div className="space-y-5 pb-2">
-          <div className="flex items-center gap-4">
-            <div className="relative h-[72px] w-[72px] shrink-0">
-              <IdentityAvatar name={name || email || "Client"} imageUrl={profileImageUrl} className="h-full w-full rounded-full bg-lumina-blush/65" fallbackClassName="font-serif text-[26px]" />
-              <label className="absolute inset-0 flex cursor-pointer items-end justify-end" aria-label="Change profile photo">
-                <span className="flex h-7 w-7 items-center justify-center rounded-full bg-lumina-black text-white"><Camera size={14} /></span>
-                <input type="file" accept="image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp" className="sr-only" disabled={uploading} onChange={(event) => { const file = event.target.files?.[0]; if (file) void uploadProfileImage(file); event.target.value = ""; }} />
-              </label>
-            </div>
-            <div className="min-w-0 text-[12px] text-lumina-text-muted">
-              <p>{uploading ? "Uploading…" : "Tap the camera to change your photo."}</p>
-              {profileImageUrl && <button type="button" onClick={() => setProfileImageUrl("")} disabled={uploading} className="mt-2 underline underline-offset-4">Remove photo</button>}
-            </div>
-          </div>
-          <label className="block text-[13px] font-medium">Name
-            <input type="text" value={name} onChange={(event) => setName(event.target.value)} className="mt-2 w-full rounded-[14px] border border-lumina-border bg-lumina-surface px-4 py-3 text-[15px] outline-none focus:border-lumina-text-muted" />
-          </label>
-          <div className="flex justify-end gap-2 pt-2">
-            <button type="button" onClick={cancelEditing} disabled={saving || uploading} className="min-h-11 rounded-full border border-lumina-border px-5 text-[13px]">Cancel</button>
-            <button type="button" onClick={() => void saveProfile()} disabled={saving || uploading} className="min-h-11 rounded-full bg-lumina-black px-6 text-[13px] text-white disabled:opacity-50">{saving ? "Saving…" : "Save profile"}</button>
-          </div>
-        </div>
-      </MobileManagementSheet>
-      <MobileManagementSheet open={mobileSheet === "email"} eyebrow="Client account" title="Change email" busy={changingEmail} onClose={() => { setMobileSheet(null); setNewEmail(""); }}>
-        <label className="block text-[13px]">New email address
-          <input type="email" value={newEmail} onChange={(event) => setNewEmail(event.target.value)} placeholder="name@example.com" className="mt-2 w-full rounded-[14px] border border-lumina-border px-4 py-3 text-[15px] outline-none focus:border-lumina-text-muted" />
-        </label>
-        <p className="mt-2 text-[12px] leading-relaxed text-lumina-text-muted">Your current email remains active until you verify the new address.</p>
-        <div className="mt-5 flex justify-end gap-2"><button type="button" onClick={() => { setMobileSheet(null); setNewEmail(""); }} className="min-h-11 rounded-full border border-lumina-border px-5 text-[13px]">Cancel</button><button type="button" onClick={() => void requestEmailChange()} disabled={changingEmail} className="min-h-11 rounded-full bg-lumina-black px-5 text-[13px] text-white disabled:opacity-50">{changingEmail ? "Sending…" : "Send verification"}</button></div>
-      </MobileManagementSheet>
-      <MobileManagementSheet open={mobileSheet === "password"} eyebrow="Client account" title="Password & security" onClose={() => setMobileSheet(null)}>
-        <p className="text-[13px] leading-relaxed text-lumina-text-muted">We’ll email a secure link to {email || "your sign-in address"} to change your password.</p>
-        <button type="button" onClick={() => void sendPasswordReset()} disabled={sendingPasswordReset || !email} className="mt-5 min-h-11 w-full rounded-full bg-lumina-black px-5 text-[13px] text-white disabled:opacity-50">{sendingPasswordReset ? "Sending…" : "Send reset link"}</button>
-      </MobileManagementSheet>
-
-      <section className="mx-auto hidden max-w-[1040px] px-6 py-8 lg:block xl:px-10">
-        <header><p className="text-[10px] uppercase tracking-[0.16em] text-lumina-text-muted">Your account</p><h1 className="mt-2 font-serif text-[36px] font-semibold leading-tight">Profile &amp; settings</h1><p className="mt-2 text-[13px] text-lumina-text-muted">Your identity and account, in one place.</p></header>
-        <section className="mt-7 border-y border-lumina-border/70 py-6" aria-label="Desktop client profile">
-          {!editing ? <div className="flex items-center gap-5"><IdentityAvatar name={savedName || email || "Client"} imageUrl={savedProfileImageUrl} className="block h-20 w-20 shrink-0 rounded-full bg-lumina-blush/60" fallbackClassName="font-serif text-[28px]" /><div className="min-w-0 flex-1"><p className="truncate font-serif text-[25px]">{name || "Your profile"}</p><p className="mt-1 truncate text-[13px] text-lumina-text-muted">{email || "Loading..."}</p></div><button onClick={() => setEditing(true)} className="min-h-10 shrink-0 rounded-full border border-lumina-border px-4 text-[12px]">Edit profile</button></div> : <div className="max-w-[640px]">
+      <ClientSettingsOverview
+        name={savedName} email={email} imageUrl={savedProfileImageUrl}
+        editing={editing} showEmailChange={showEmailChange}
+        sendingPasswordReset={sendingPasswordReset} signingOutOthers={signingOutOthers}
+        onEditProfileDesktop={() => setEditing(true)}
+        onEditProfileMobile={() => { setEditing(true); setMobileSheet("profile"); }}
+        onEditEmailDesktop={() => setShowEmailChange(true)}
+        onEditEmailMobile={() => setMobileSheet("email")}
+        onPasswordDesktop={() => void sendPasswordReset()}
+        onPasswordMobile={() => setMobileSheet("password")}
+        onSignOutOthers={() => void signOutOtherDevices()}
+        onSignOut={() => void signOut()}
+        profileEditor={<div className="max-w-[640px]">
           <div className="mb-5 flex items-start justify-between gap-4">
             <div className="flex items-center gap-4">
               <div className="relative flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-full bg-lumina-blush/60">
@@ -381,29 +327,7 @@ export default function AccountPage() {
             </div>
           )}
           </div>}
-        </section>
-        <section className="py-6" aria-label="Desktop account and security"><h2 className="text-[15px] font-medium">Account &amp; security</h2><div className="mt-5 max-w-[760px]">
-          <p className="text-[12px] uppercase tracking-[0.14em] text-lumina-text-muted">
-            Email
-          </p>
-
-          <p className="mt-2 text-[15px]">
-            {email || "Loading..."}
-          </p>
-
-          <p className="mt-2 text-[12px] text-lumina-text-muted">
-            Your email is used for sign-in and account recovery.
-          </p>
-
-          {!showEmailChange ? (
-            <button
-              onClick={() => setShowEmailChange(true)}
-              className="mt-3 text-[13px] font-medium text-lumina-text-muted underline decoration-lumina-border underline-offset-4 transition hover:text-lumina-black"
-            >
-              Change email
-            </button>
-          ) : (
-            <div className="mt-4 rounded-[16px] border border-lumina-border bg-lumina-surface-soft p-4">
+        emailEditor={<div className="mt-4 rounded-[16px] border border-lumina-border bg-lumina-surface-soft p-4">
               <label className="text-[12px] text-lumina-text-muted">
                 New email address
                 <input
@@ -436,40 +360,45 @@ export default function AccountPage() {
                   {changingEmail ? "Sending…" : "Send verification"}
                 </button>
               </div>
+            </div>}
+      />
+      <MobileManagementSheet open={mobileSheet === "profile"} eyebrow="Client account" title="Edit profile" busy={saving || uploading} onClose={() => { cancelEditing(); setMobileSheet(null); }}>
+        <div className="space-y-5 pb-2">
+          <div className="flex items-center gap-4">
+            <div className="relative h-[72px] w-[72px] shrink-0">
+              <IdentityAvatar name={name || email || "Client"} imageUrl={profileImageUrl} className="h-full w-full rounded-full bg-lumina-blush/65" fallbackClassName="font-serif text-[26px]" />
+              <label className="absolute inset-0 flex cursor-pointer items-end justify-end" aria-label="Change profile photo">
+                <span className="flex h-7 w-7 items-center justify-center rounded-full bg-lumina-black text-white"><Camera size={14} /></span>
+                <input type="file" accept="image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp" className="sr-only" disabled={uploading} onChange={(event) => { const file = event.target.files?.[0]; if (file) void uploadProfileImage(file); event.target.value = ""; }} />
+              </label>
             </div>
-          )}
-
-          <div className="mt-6 border-t border-lumina-border pt-5">
-            <p className="text-[12px] uppercase tracking-[0.14em] text-lumina-text-muted">
-              Password
-            </p>
-            <p className="mt-2 text-[12px] leading-[1.5] text-lumina-text-muted">
-              We’ll email a secure link to change your password.
-            </p>
-            <button
-              onClick={() => void sendPasswordReset()}
-              disabled={sendingPasswordReset || !email}
-              className="mt-3 rounded-full border border-lumina-border px-4 py-2 text-[12px] text-lumina-text-muted transition hover:border-lumina-text-muted/40 hover:text-lumina-black disabled:opacity-50"
-            >
-              {sendingPasswordReset ? "Sending…" : "Change password"}
-            </button>
+            <div className="min-w-0 text-[12px] text-lumina-text-muted">
+              <p>{uploading ? "Uploading…" : "Tap the camera to change your photo."}</p>
+              {profileImageUrl && <button type="button" onClick={() => setProfileImageUrl("")} disabled={uploading} className="mt-2 underline underline-offset-4">Remove photo</button>}
+            </div>
           </div>
+          <label className="block text-[13px] font-medium">Name
+            <input type="text" value={name} onChange={(event) => setName(event.target.value)} className="mt-2 w-full rounded-[14px] border border-lumina-border bg-lumina-surface px-4 py-3 text-[15px] outline-none focus:border-lumina-text-muted" />
+          </label>
+          <div className="flex justify-end gap-2 pt-2">
+            <button type="button" onClick={() => { cancelEditing(); setMobileSheet(null); }} disabled={saving || uploading} className="min-h-11 rounded-full border border-lumina-border px-5 text-[13px]">Cancel</button>
+            <button type="button" onClick={() => void saveProfile()} disabled={saving || uploading} className="min-h-11 rounded-full bg-lumina-black px-6 text-[13px] text-white disabled:opacity-50">{saving ? "Saving…" : "Save profile"}</button>
+          </div>
+        </div>
+      </MobileManagementSheet>
+      <MobileManagementSheet open={mobileSheet === "email"} eyebrow="Client account" title="Change email" busy={changingEmail} onClose={() => { setMobileSheet(null); setNewEmail(""); }}>
+        <label className="block text-[13px]">New email address
+          <input type="email" value={newEmail} onChange={(event) => setNewEmail(event.target.value)} placeholder="name@example.com" className="mt-2 w-full rounded-[14px] border border-lumina-border px-4 py-3 text-[15px] outline-none focus:border-lumina-text-muted" />
+        </label>
+        <p className="mt-2 text-[12px] leading-relaxed text-lumina-text-muted">Your current email remains active until you verify the new address.</p>
+        <div className="mt-5 flex justify-end gap-2"><button type="button" onClick={() => { setMobileSheet(null); setNewEmail(""); }} className="min-h-11 rounded-full border border-lumina-border px-5 text-[13px]">Cancel</button><button type="button" onClick={() => void requestEmailChange()} disabled={changingEmail} className="min-h-11 rounded-full bg-lumina-black px-5 text-[13px] text-white disabled:opacity-50">{changingEmail ? "Sending…" : "Send verification"}</button></div>
+      </MobileManagementSheet>
+      <MobileManagementSheet open={mobileSheet === "password"} eyebrow="Client account" title="Password & security" onClose={() => setMobileSheet(null)}>
+        <p className="text-[13px] leading-relaxed text-lumina-text-muted">We’ll email a secure link to {email || "your sign-in address"} to change your password.</p>
+        <button type="button" onClick={() => void sendPasswordReset()} disabled={sendingPasswordReset || !email} className="mt-5 min-h-11 w-full rounded-full bg-lumina-black px-5 text-[13px] text-white disabled:opacity-50">{sendingPasswordReset ? "Sending…" : "Send reset link"}</button>
+      </MobileManagementSheet>
 
-          <button
-            onClick={() => void signOutOtherDevices()}
-            disabled={signingOutOthers}
-            className="mt-5 w-full border-t border-lumina-border/60 py-4 text-left text-sm text-lumina-text-muted transition hover:bg-lumina-blush/60 hover:text-lumina-black disabled:opacity-50"
-          >
-            <span className="block">Sign out of other devices</span>
-            <span className="mt-1 block text-[11px] text-lumina-text-muted">Keep this device signed in</span>
-          </button>
 
-
-        </div></section>
-        <section className="border-t border-lumina-border/70 py-5" aria-label="Account shortcuts"><h2 className="text-[11px] uppercase tracking-[0.12em] text-lumina-text-muted">Shortcuts</h2><div className="mt-3 flex gap-6 text-[13px]"><Link href="/saved" className="text-lumina-text-muted underline decoration-lumina-border underline-offset-4">Saved Artists</Link><Link href="/my-requests" className="text-lumina-text-muted underline decoration-lumina-border underline-offset-4">My Requests</Link></div></section>
-        <button onClick={signOut} className="mt-4 min-h-11 w-full border-t border-lumina-border/70 pt-5 text-left text-[13px] text-lumina-text-muted">Sign out</button>
-      </section>
-      </div>
     </ClientWorkspaceShell>
   );
 }

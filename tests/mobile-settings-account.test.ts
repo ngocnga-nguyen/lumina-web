@@ -10,17 +10,16 @@ const reset = source("../app/account/reset-password/page.tsx");
 const home = source("../app/page.tsx");
 const sharedSheet = source("../components/MobileManagementSheet.tsx");
 
-test("client mobile account groups identity and security without duplicating profile persistence", () => {
-  assert.match(client, /Profile &amp; settings/);
-  assert.match(client, /Account &amp; security/);
+test("client mobile account shares the compact settings presentation and existing sheets", () => {
+  const overview = source("../components/ClientSettingsOverview.tsx");
+  assert.match(overview, /Profile &amp; settings/);
+  assert.match(overview, /Account &amp; security/);
   assert.match(client, /MobileManagementSheet open=\{mobileSheet === "profile"\}/);
-  assert.match(client, /IdentityAvatar name=\{savedName/);
+  assert.match(overview, /IdentityAvatar name=\{props.name/);
   assert.match(client, /avatar_url: profileImageUrl \|\| null/);
   assert.match(client, /supabase\.auth\.updateUser\(\{\s*data:/);
   assert.match(client, /setProfileImageUrl\(""\)/);
-  assert.match(client, /hidden max-w-\[1040px\][\s\S]*lg:block/);
-  const mobile = client.slice(client.indexOf("<section className=\"mx-auto max-w-xl px-5 pb-10"), client.indexOf("<section className=\"mx-auto hidden max-w-[1040px]"));
-  assert.doesNotMatch(mobile, /Saved Artists|My Requests|Notifications|Preferences/);
+  assert.doesNotMatch(overview, /Saved Artists|My Requests|Notifications|Preferences/);
 });
 
 test("professional mobile profile uses the existing save path and direct media editor", () => {

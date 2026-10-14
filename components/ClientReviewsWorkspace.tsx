@@ -319,8 +319,8 @@ export default function ClientReviewsWorkspace() {
                     Review ready
                   </h2>
                 </div>
-                <span className="text-[11px] text-lumina-text-muted">
-                  {readyRequests.length}
+                <span className="max-w-[170px] text-right text-[11px] leading-[1.5] text-lumina-text-muted lg:max-w-none">
+                  {readyRequests.length} {readyRequests.length === 1 ? "service" : "services"} waiting for your review
                 </span>
               </div>
 

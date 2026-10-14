@@ -4,6 +4,7 @@ import Link from "next/link";
 import { ArrowUpRight, EyeOff, Inbox, MessageCircle, Pencil } from "lucide-react";
 import ProfessionalActivationPanel from "@/components/ProfessionalActivationPanel";
 import IdentityAvatar from "@/components/IdentityAvatar";
+import ProfessionalVisibilityConfirmation from "@/components/ProfessionalVisibilityConfirmation";
 import { getWorkspaceIndicatorLabel } from "@/components/WorkspaceNavigationIndicator";
 import { useProfessionalWorkspace } from "@/components/ProfessionalWorkspaceContext";
 import { type ProfessionalActivationStatus, type ProfessionalProfilePanelMode } from "@/lib/professional-activation";
@@ -62,10 +63,7 @@ export default function ProfessionalDashboardDesktopHome({ artist, services, por
       </div>
       <div className={styles.profileActions}><Link href={`/artist/${artist.id}`} className={styles.primary}>View profile <ArrowUpRight size={14} strokeWidth={1.7} aria-hidden="true" /></Link><Link href="/dashboard/profile" className={styles.secondary}>Edit</Link><button type="button" onClick={onEditCover} className={styles.textAction}><Pencil size={12} strokeWidth={1.7} aria-hidden="true" />Edit cover</button></div>
     </header>
-    {visibility && <section className={`${styles.liveBanner} ${visibility.isVisible ? "" : styles.hiddenBanner}`} aria-label="Public profile visibility">
-      {visibility.isVisible ? <span className={styles.liveBannerDot} aria-hidden="true" /> : <span className={styles.visibilityIcon}><EyeOff size={16} strokeWidth={1.5} aria-hidden="true" /></span>}
-      <div className={styles.liveBannerCopy}><strong>{visibility.title}</strong><span>{visibility.description}</span></div>
-    </section>}
+    {visibility && <ProfessionalVisibilityConfirmation artistId={artist.id} isVisible={visibility.isVisible} />}
     {showProfilePanel && activationStatus && !activationStatus.is_active && !activationStatus.activation_ready && <ProfessionalActivationPanel presentation="dashboard" status={activationStatus} onActivate={onActivateProfile} saving={activatingProfile} />}
     <section className={styles.operating} aria-label="Professional workspace overview">
       <div className={styles.operatingHead}><div><p className={styles.eyebrow}>Professional workspace</p><h2>Your business.</h2></div><div className={styles.summary}><Link href="/dashboard/requests"><strong>{requestActionCount}</strong><span>{requestActionCount === 1 ? "request to review" : "requests to review"}</span></Link><Link href="/dashboard/messages"><strong>{messageUnreadCount}</strong><span>unread {messageUnreadCount === 1 ? "message" : "messages"}</span></Link></div></div>

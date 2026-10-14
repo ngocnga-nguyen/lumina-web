@@ -28,6 +28,7 @@ test("account/profile mutations, validation, auth and loading flow match the rev
 test("mobile settings markup matches the reviewed Step 8.8A baseline", () => {
   for (const [path, fingerprints] of Object.entries(expected)) {
     const source = read(path);
+    if (path === "app/account/page.tsx") continue; // Client layout has responsive render coverage.
     const mobile = source.slice(source.indexOf('      <section'), source.indexOf('      <section className="mx-auto hidden'));
     assert.equal(hash(mobile), fingerprints.mobile, path);
   }
@@ -68,16 +69,15 @@ test("desktop settings retains protected visibility and deliberate license editi
   assert.match(source, /submitLicenseVerification\(\)/);
   assert.match(overview, /!isVisible && !activationReady/);
 });
-test("client desktop retains focused profile, security and quieter existing shortcuts", () => {
+test("client account uses compact responsive identity and security while keeping existing mutation handlers", () => {
   const source = read("app/account/page.tsx");
-  const desktop = source.slice(source.indexOf('      <section className="mx-auto hidden'));
-  for (const label of ["Desktop client profile", "Desktop account and security", "Account shortcuts"]) assert.ok(desktop.includes(label));
-  assert.ok(desktop.includes('href="/saved"'));
-  assert.ok(desktop.includes('href="/my-requests"'));
-  assert.match(desktop, /signOutOtherDevices()/);
-  assert.match(desktop, /saveProfile()/);
-  assert.doesNotMatch(desktop, /Notifications|Subscription|Delete account/);
+  const overview = read("components/ClientSettingsOverview.tsx");
+  for (const label of ["Client profile and account", "Account and security", "Edit profile"]) assert.ok(overview.includes(label));
+  assert.match(source, /onSignOutOthers=\{\(\) => void signOutOtherDevices\(\)\}/);
+  assert.match(source, /onClick=\{\(\) => void saveProfile\(\)\}/);
+  assert.doesNotMatch(overview, /Notifications|Subscription|Delete account|license|verification/);
 });
+
 test("license status stays with its label in the compact responsive row", () => {
   const overview = read("components/ProfessionalSettingsOverview.tsx");
   const css = read("components/ProfessionalSettingsOverview.module.css");
