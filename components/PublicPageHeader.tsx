@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import Link from "next/link";
 import MarketplacePublicNavigation from "@/components/MarketplacePublicNavigation";
 import AccountMenu from "@/components/AccountMenu";
+import LuminaBrand from "@/components/LuminaBrand";
 
 type PublicPageHeaderProps = {
   backHref: string;
@@ -39,9 +40,9 @@ export default function PublicPageHeader({
         <Link
           href="/"
           aria-label="Lumina home"
-          className="col-start-2 row-start-1 justify-self-center text-[12px] font-medium uppercase tracking-[0.3em] text-lumina-text transition hover:opacity-65 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-lumina-text"
+          className="col-start-2 row-start-1 justify-self-center text-lumina-text transition hover:opacity-65 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-lumina-text"
         >
-          Lumina
+          <LuminaBrand />
         </Link>
 
         <div className="col-start-3 row-start-1 min-w-0 justify-self-end">

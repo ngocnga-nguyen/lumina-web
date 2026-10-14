@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import LuminaBrand from "@/components/LuminaBrand";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import AccountMenu from "@/components/AccountMenu";
@@ -80,8 +81,8 @@ export default function LashPage() {
           ← Back
         </Link>
 
-        <Link href="/" className="font-medium transition hover:opacity-70">
-          Lumina
+        <Link href="/" aria-label="Lumina home" className="transition hover:opacity-70">
+          <LuminaBrand />
         </Link>
 
         <AccountMenu />

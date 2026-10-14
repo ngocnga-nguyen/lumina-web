@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import LuminaBrand from "@/components/LuminaBrand";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 
@@ -60,9 +61,14 @@ export default function ArtistSignupPage() {
 
   return (
     <main className="min-h-screen bg-lumina-bg px-4 py-10 text-lumina-text md:px-10">
-      <Link href="/join-as-artist" className="text-[15px] hover:opacity-70">
-        ← Back to artist info
-      </Link>
+      <header className="flex items-center justify-between gap-4">
+        <Link href="/join-as-artist" className="inline-flex min-h-11 items-center text-[15px] hover:opacity-70">
+          ← Back to artist info
+        </Link>
+        <Link href="/" aria-label="Lumina home" className="inline-flex min-h-11 shrink-0 items-center">
+          <LuminaBrand />
+        </Link>
+      </header>
 
       <div className="mx-auto mt-10 max-w-[460px] rounded-[24px] bg-lumina-surface p-6 shadow-sm sm:mt-16 sm:p-8 md:p-10">
         <h1

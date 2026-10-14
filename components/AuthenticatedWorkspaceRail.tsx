@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import LuminaBrand from "@/components/LuminaBrand";
 import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import { Menu, PanelLeftClose, PanelLeftOpen, X } from "lucide-react";
@@ -366,9 +367,7 @@ export default function AuthenticatedWorkspaceRail() {
           >
             <div className="flex h-[68px] items-center justify-between border-b border-lumina-glass-border px-5">
               <div>
-                <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-lumina-text-muted">
-                  Lumina
-                </p>
+                <LuminaBrand />
                 <p className="mt-1 text-[14px] font-medium text-lumina-text">
                   {workspaceLabel}
                 </p>

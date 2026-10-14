@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import LuminaBrand from "@/components/LuminaBrand";
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 
@@ -96,7 +97,7 @@ export default function PortfolioAdminPage() {
   return (
     <main className="min-h-screen bg-lumina-surface text-lumina-text">
       <header className="flex items-center justify-between border-b border-lumina-border bg-lumina-surface px-4 py-5 md:px-10">
-        <Link href="/">Lumina</Link>
+        <Link href="/" aria-label="Lumina home"><LuminaBrand /></Link>
         <div>Portfolio Admin</div>
         <Link href="/browse">Browse</Link>
       </header>

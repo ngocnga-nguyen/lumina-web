@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import LuminaBrand from "@/components/LuminaBrand";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
@@ -70,8 +71,8 @@ export default function ResetPasswordPage() {
         <Link href={returnTo} className="text-sm transition hover:opacity-70">
           ← {returnTo === "/account" ? "Account" : "Settings"}
         </Link>
-        <Link href="/" className="justify-self-center font-medium">
-          Lumina
+        <Link href="/" aria-label="Lumina home" className="justify-self-center">
+          <LuminaBrand />
         </Link>
         <div />
       </header>
